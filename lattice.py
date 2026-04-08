@@ -13,8 +13,23 @@ TILE_TYPE_MAP = {
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
 
+def _load_lattice_dll():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    gershon_dir = os.path.join(base_dir, "gershon")
+    dll_path = os.path.join(gershon_dir, "MSDLLD64.dll")
+    dll_path = os.path.abspath(dll_path)
+
+    try:
+        return ctypes.CDLL(dll_path)
+    except OSError as exc:
+        raise OSError(
+            f"Found DLL at '{dll_path}' but failed to load it. "
+            f"This usually means a missing dependency. Original error: {exc}"
+        ) from exc
+
+
 # Load DLL
-dll = ctypes.CDLL(r"D:\dev\python\flask\lattice_from_home\gershon\MSDLL64.dll")
+dll = _load_lattice_dll()
 
 # ---- Configure function signature once ----
 dll.MSDLLMSFromRevolution.restype = c_char_p

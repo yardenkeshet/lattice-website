@@ -267,7 +267,7 @@ app = Flask(__name__)
 
 socketio = SocketIO(
     app,
-    async_mode='eventlet',
+    async_mode='threading',
     cors_allowed_origins='*',
     max_http_buffer_size=100 * 1024 * 1024,   # 100 MB
     ping_interval=25,   # seconds between pings (default ~25)
@@ -1059,7 +1059,7 @@ def download_results():
 # taskkill /PID 12345 /F
 #
 if __name__ == '__main__':
-    print("Starting Flask-SocketIO server on http://0.0.0.0:5000")
+    print("Starting Flask-SocketIO server on http://localhost:5003")
     print('socketio.server =', getattr(socketio, 'server', None))
     socketio.run(app, host='0.0.0.0', port=5003)
 
