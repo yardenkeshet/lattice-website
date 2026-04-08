@@ -1,0 +1,11 @@
+{
+  "filename": "PenroseTriangle.stl",
+  "args": {
+    "tileType": "diagonal",
+    "nt1": 20,
+    "nt2": 24,
+    "nt3": 0.4,
+    "g1": 2,
+    "g2": 0.2
+  }
+}

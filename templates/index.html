@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Algorithm Visualization</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS Reset & Base Styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevents scroll */
+            /* Deep Space Background */
+            background-color: #0D1117;
+            font-family: 'Heebo', sans-serif;
+            color: #ffffff;
+        }
+
+        /* Full Screen 3D Canvas */
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: auto; /* Force Firefox to interact with it */
+            touch-action: none
+        }
+
+        #perfBox {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            z-index: 10;
+            background: rgba(0,0,0,0.4);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            color: green;
+        }
+
+        /* --- Futuristic UI Panel (HUD Style) --- */
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px; /* Positioned to Left */
+            right: auto;
+            width: 220px; /* Reduced width */
+            padding: 15px;
+            /* Dark, almost opaque background */
+            background: rgba(10, 10, 15, 0.9);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            /* Thin Cyan Border */
+            border: 1px solid #00FFFF;
+            border-radius: 4px; /* Sharper corners */
+            z-index: 10;
+            /* Subtle Cyan Glow */
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(0, 255, 255, 0.2);
+            transition: transform 0.3s ease; /* Animation for toggle */
+        }
+
+        /* Class for hiding the panel */
+        .closed-panel {
+            transform: translateX(calc(-100% - 30px)); /* Hide off-screen to the left */
+        }
+
+        /* Toggle button (Cyan Accent) - LEFT */
+        #toggle-ui-btn {
+            position: absolute;
+            top: 15px; /* Slightly raised to clear the panel edge */
+            left: 240px; /* Positioned just to the right of the panel when open */
+            width: 40px;
+            height: 40px;
+            background: #00E5FF; /* Bright Cyan */
+            border: none;
+            border-radius: 4px;
+            color: #0D1117; /* Dark text */
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 11;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            transition: all 0.3s ease, left 0.3s ease; /* Transition 'left' for opening/closing */
+        }
+
+        #toggle-ui-btn.closed {
+             left: 20px; /* Move back to initial position when closed */
+        }
+
+        #toggle-ui-btn:hover {
+            background: #00FFFF;
+            box-shadow: 0 0 15px #00FFFF;
+        }
+        
+        /* NEW TOP-RIGHT CLOSE BUTTON */
+        #close-ui-btn {
+            position: absolute;
+            top: 5px; 
+            right: 5px; 
+            width: 25px;
+            height: 25px;
+            background: none;
+            border: none;
+            color: #FF004C; /* Red/Magenta color for alert/close */
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+            z-index: 12; 
+            transition: color 0.2s;
+        }
+
+        #close-ui-btn:hover {
+            color: #FF77A9; /* Lighter on hover */
+        }
+
+
+        /* UI Elements Styling */
+        h1 {
+            font-size: 1rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            /* Cyan bottom line */
+            border-bottom: 1px solid #00E5FF;
+            padding-bottom: 8px;
+            color: #FFFFFF;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            font-weight: 300;
+            color: #00E5FF; /* Cyan label */
+        }
+
+        /* Custom Select & Inputs (Monochrome with Cyan focus) */
+        select, input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03); /* Very dark input field */
+            border: 1px solid #333;
+            border-radius: 2px; /* Very sharp corners */
+            color: #fff;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+
+        /* Layout for multi-input rows */
+        .input-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .input-row input {
+            min-width: 0;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: #00FFFF;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
+        }
+
+        select option {
+            background: #0D1117;
+        }
+
+        /* calculateTile Button */
+        #calculateTile {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #00E5FF;
+            border: 1px solid #00FFFF;
+            border-radius: 4px;
+            color: #0D1117; /* Dark text */
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        #calculateTileBtn:hover {
+            background: #00FFFF;
+            box-shadow: 0 0 15px #00FFFF;
+        }
+        #calculateTileBtn:active {
+            transform: scale(0.98);
+        }
+
+
+        /* Calculate Button */
+        #calculate {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #00E5FF;
+            border: 1px solid #00FFFF;
+            border-radius: 4px;
+            color: #0D1117; /* Dark text */
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        #calculate:hover {
+            background: #00FFFF;
+            box-shadow: 0 0 15px #00FFFF;
+        }
+        #calculate:active {
+            transform: scale(0.98);
+        }
+
+        /* Download Button Styling (Pure Cyan) */
+        #download-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #00E5FF;
+            border: 1px solid #00FFFF;
+            border-radius: 4px;
+            color: #0D1117; /* Dark text */
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #download-btn:hover {
+            background: #00FFFF;
+            box-shadow: 0 0 15px #00FFFF;
+        }
+
+        #download-btn:active {
+            transform: scale(0.98);
+        }
+
+        #download-area {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+            display: none; /* Crucial: hide until calculation is done */
+        }
+
+        /* Responsive styling */
+        @media (max-width: 600px) {
+            #ui-panel {
+                width: calc(100% - 40px);
+                top: auto;
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+                transform: none !important;
+            }
+
+            #toggle-ui-btn {
+                top: 20px;
+                right: 20px;
+                left: auto;
+            }
+        }
+
+        #calc-activity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 14px 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #ddd;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid #777;
+    border-top-color: #19a1f7;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  .timer {
+    font-size: 0.95rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Optional: disabled look for the Calculate button */
+  .btn-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+   /* Scorolling entry field */
+        .input-row input[type="number"] {
+    cursor: ew-resize; /* Horizontal resize cursor suggests dragging */
+}
+
+/* Hide the default browser arrows for a cleaner look */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+    </style>
+</head>
+<body>
+
+    <button id="toggle-ui-btn">«</button>
+
+    <div id="ui-panel">
+        
+        <button id="close-ui-btn" title="Close Panel">✕</button>
+        
+        <div class="control-group">
+            <label>Camera Mode</label>
+            <button id="cameraModeToggle" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid #333; border-radius: 2px; color: #00E5FF; font-weight: 700; cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.2s;">
+                📷 PERSPECTIVE
+            </button>
+        </div>
+
+        <div class="control-group">
+            <h1>Lattice Type</h1>
+            <select id="tileType">
+                <option value="diagonal">DIAGONAL</option>
+                <option value="cross">CROSS</option>
+                <option value="cross_diagonal">CROSS_DIAGONAL</option>
+            </select>
+            <label>Tile Parameters (P1, P2, P3)</label>
+    <div class="input-row">
+        <input type="number" id="p1" value="0.2" step="0.01">
+        <input type="number" id="p2" value="0.1" step="0.01">
+        <input type="number" id="p3" value="0.4" step="0.01">
+    </div>
+        </div>
+
+        <div class="control-group">
+    <button id="calculateTile" style="width: 100%; margin-top: 10px;">Calculate Tile</button>
+</div>
+
+        <div class="control-group">
+                    <h1>Lattice</h1>
+            <label>Num Tiles</label>
+            <div class="input-row">
+                <input type="number" id="nt1" value="20" title="Count X">
+                <input type="number" id="nt2" value="20" title="Count Z">
+                <input type="number" id="nt3" value="1.0" step="0.1" title="Scale/Spacing">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Graded </label>
+            <div class="input-row">
+                <input type="number" id="g1" value="2.0" step="0.1" title="Amplitude">
+                <input type="number" id="g2" value="0.2" step="0.05" title="Frequency">
+            </div>
+        </div>
+
+        <div id="dropzone">Drag & Drop STL here or <input id="fileInput" type="file" accept=".stl"></div>
+
+
+        <button id="calculate">Calculate & Send</button>
+
+
+        <div style="margin-top:8px;">
+            <strong>Status:</strong> <span id="status">idle</span>
+        </div>
+
+
+        <!-- ✅ ADD: Animated status area -->
+        <div id="calc-activity" style="display:none;">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="timer">
+            <span id="calc-label">Calculating…</span>
+            <span id="calc-elapsed">0.0</span>s
+          </div>
+        </div>
+
+        
+        <div id="download-area">
+            <p>Your latest results are ready for download.</p>
+
+            <form id="download-form" action="{{ url_for('download_results') }}" method="POST">
+                <input type="hidden" name="token" id="download-token-input">
+                <button id="download-btn" type="submit" class="export-button">⬇️ Download Results</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="perfBox">
+        <div>Client→Server: <span id="t_client_server">-</span> ms</div>
+        <div>Server process: <span id="t_process">-</span> ms</div>
+        <div>Compress: <span id="t_compress">-</span> ms</div>
+        <div>Send back: <span id="t_send">-</span> ms</div>
+        <div>Overall: <span id="t_overall">-</span> ms</div>
+    </div>
+
+    <canvas id="viewer"></canvas>
+    
+    <script src="/static/pako.min.js"></script>
+    <script type="module" src="/static/client.js"></script>
+    
+    <script>
+        // Get references to the elements
+        const uiPanel = document.getElementById('ui-panel');
+        const toggleBtn = document.getElementById('toggle-ui-btn');
+        const closeBtn = document.getElementById('close-ui-btn'); 
+
+        // --- Function to hide the panel (reusable) ---
+        function closePanel() {
+            uiPanel.classList.add('closed-panel');
+            toggleBtn.textContent = '☰'; // Change the left button icon to 'open'
+            toggleBtn.classList.add('closed');
+        }
+
+        // --- Function to show the panel (reusable) ---
+        function openPanel() {
+            uiPanel.classList.remove('closed-panel');
+            toggleBtn.textContent = '«'; // Change the left button icon to 'close'
+            toggleBtn.classList.remove('closed');
+        }
+
+
+        // 1. Add listener for the main LEFT toggle button (toggles open/close)
+        toggleBtn.addEventListener('click', () => {
+            if (uiPanel.classList.contains('closed-panel')) {
+                openPanel();
+            } else {
+                closePanel();
+            }
+        });
+
+        // 2. Add listener for the new TOP RIGHT close button (always closes)
+        closeBtn.addEventListener('click', () => {
+            closePanel();
+        });
+
+    </script>
+</body>
+</html>

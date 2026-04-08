@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ log_file }} Real-Time Viewer</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <style>
+        body { font-family: monospace; background-color: #282c34; color: #abb2bf; margin: 0; padding: 20px; }
+        h1 { color: #61afef; text-align: center; margin-bottom: 30px; }
+        .log-container {
+            background-color: #3e4451;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 500px;
+            max-height: 85vh;
+            overflow-y: auto; /* Allows scrolling */
+            white-space: pre-wrap; /* Wraps log lines */
+            font-size: 0.85em;
+            line-height: 1.4;
+            border: 1px solid #5c6370;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Log Tailing: {{ log_file }}</h1>
+    <div id="log-output" class="log-container">
+        <p>Waiting for connection and log updates...</p>
+    </div>
+
+    <script type="text/javascript">
+        // 2. Initialize the WebSocket connection
+        var socket = io();
+        var logOutput = document.getElementById('log-output');
+
+        // --- Socket.IO Event Handlers ---
+
+        // 3. Connect Event: Fires when connection to the server is established
+        socket.on('connect', function() {
+            console.log('Connected to server!');
+            logOutput.innerHTML = '<p>Connected. Streaming log data now...</p>';
+        });
+
+        // 4. Log Update Event: Receives new log lines from the Flask backend
+        socket.on('log_update', function(msg) {
+            // Create a new div element for the log line
+            var newLogLine = document.createElement('div');
+            newLogLine.textContent = msg.data;
+
+            // Append the new line to the log container
+            logOutput.appendChild(newLogLine);
+
+            // Automatically scroll to the bottom (tail -f behavior)
+            logOutput.scrollTop = logOutput.scrollHeight;
+        });
+
+        // 5. Error Event: Handles errors like the log file not being found
+        socket.on('log_error', function(msg) {
+            logOutput.innerHTML += '<div style="color: red;">SERVER ERROR: ' + msg.data + '</div>';
+        });
+
+        // 6. Disconnect Event: Fires if the connection is lost
+        socket.on('disconnect', function() {
+            logOutput.innerHTML += '<p style="color: orange;">Disconnected from server. Refresh to reconnect.</p>';
+        });
+    </script>
+</body>
+</html>

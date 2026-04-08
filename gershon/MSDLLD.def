@@ -1,0 +1,7 @@
+LIBRARY MSDLLD
+EXPORTS
+MSDLLGetTile
+MSDLLMSFromRuling
+MSDLLMSFromExtrusion
+MSDLLMSFromRevolution
+

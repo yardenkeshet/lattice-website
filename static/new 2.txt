@@ -1,0 +1,61 @@
+// Initialize Three.js
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ stencil: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Load OBJ model
+const loader = new THREE.OBJLoader();
+loader.load('path/to/your/model.obj', (obj) => {
+  // Assuming your OBJ model is in 'obj' variable
+
+  // Add the model to the scene
+  scene.add(obj);
+
+  // Create a shader material to write to the stencil buffer
+  const stencilMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
+  const stencilMesh = new THREE.Mesh(obj.children[0].geometry, stencilMaterial);
+  stencilMesh.renderOrder = 1; // Make sure it's rendered first
+  scene.add(stencilMesh);
+
+  // Configure the renderer for the stencil pass
+  renderer.autoClear = false; // Prevent clearing the color and depth buffers
+  renderer.clearStencil(); // Clear the stencil buffer
+
+  // Create a shader material to render normals
+  const normalMaterial = new THREE.MeshNormalMaterial();
+  const normalMesh = new THREE.Mesh(obj.children[0].geometry, normalMaterial);
+  normalMesh.renderOrder = 2; // Render normals after the mask
+  scene.add(normalMesh);
+
+  // Configure the renderer for the normal pass
+  renderer.autoClear = true; // Allow clearing the color and depth buffers
+
+  // Set up camera position
+  camera.position.z = 5;
+
+  // Render the scene
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // Rotate the model (optional)
+    obj.rotation.x += 0.005;
+    obj.rotation.y += 0.005;
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  const newWidth = window.innerWidth;
+  const newHeight = window.innerHeight;
+
+  camera.aspect = newWidth / newHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(newWidth, newHeight);
+});
