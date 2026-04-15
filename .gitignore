@@ -25,6 +25,7 @@ frontend/dist/
 .env.production.local
 
 # --- Project Specific (Results & Logs) ---
+lattice.log
 logs/
 last_results/
 last_tiles_results/

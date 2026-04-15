@@ -1,6 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { io, Socket } from 'socket.io-client';
 import './App.css';
+import { Canvas } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber'
+import Viewer from './components/Viewer';
+import pako from 'pako';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 
 // Define the shape of our lattice data for TypeScript
 interface LatticeParams {
@@ -10,13 +15,23 @@ interface LatticeParams {
   g1: number; g2: number;
 }
 
+function STLModel({ url }) {
+  const geometry = useLoader(STLLoader, url)
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color="orange" />
+    </mesh>
+  )
+}
+
 const App: React.FC = () => {
   // --- UI State ---
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [cameraMode, setCameraMode] = useState<'PERSPECTIVE' | 'ORTHO'>('PERSPECTIVE');
   const [status, setStatus] = useState('idle');
-  const [isCalculating, setIsCalculating] = useState(false);
+  const [isCalculating, ] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   // --- Lattice State ---
   const [params, setParams] = useState<LatticeParams>({
@@ -74,6 +89,33 @@ const handleCalculate = () => {
   
   // Emitting the event through the persistent socket reference
   socketRef.current.emit('calculate_tile', tileParams);
+  socketRef.current.on("result", (data) => {
+    try {
+        // 1. Decode Base64 string to a binary string
+        const decodedData = window.atob(data.stl_gz_b64);
+        
+        // 2. Convert binary string to Uint8Array for pako
+        const charData = new Uint8Array(decodedData.length);
+        for (let i = 0; i < decodedData.length; i++) {
+            charData[i] = decodedData.charCodeAt(i);
+        }
+
+        // 3. Decompress using Pako (Gzip)
+        // pako.ungzip returns a Uint8Array of the original STL
+        const decompressed = pako.ungzip(charData);
+
+        // 4. Parse the geometry with STLLoader
+        const loader = new STLLoader();
+        const geometry = loader.parse(decompressed.buffer);
+
+        // 5. Update your React state
+        setGeometry(geometry);
+        
+        console.log("Timings from server:", data.timings);
+    } catch (err) {
+        console.error("Failed to extract geometry:", err);
+    }
+});
 };
 
   return (
@@ -157,6 +199,7 @@ const handleCalculate = () => {
 
       {/* The 3D Viewport */}
       <canvas id="viewer" ref={canvasRef}></canvas>
+      <Viewer geometry={geometry  }></Viewer>
     </div>
   );
 };
