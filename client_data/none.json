@@ -1,7 +1,7 @@
 {
   "filename": null,
   "args": {
-    "tileType": "cross_diagonal",
+    "tileType": "diagonal",
     "nt1": 20,
     "nt2": 20,
     "nt3": 1,

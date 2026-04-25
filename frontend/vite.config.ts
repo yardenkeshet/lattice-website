@@ -1,6 +1,8 @@
+import path from "path"
 import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   server: {
@@ -20,10 +22,16 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    tailwindcss(),
     babel({ 
       presets: [reactCompilerPreset()],
       // Ensure the compiler only runs on your source files
       include: /\.(jsx|tsx|ts|js)$/,
     })
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
 })
