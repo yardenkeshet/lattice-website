@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/inter";
+
+@theme inline {
+  /* Serious Blue Palette */
+  --color-technion-blue: #104b66; /* Deep serious blue for the top bar */
+  --color-brand-blue: #2563eb; /* Action blue for icons */
+  --color-slate-900: #0f172a; /* Text color */
+  --color-slate-600: #475569; /* Paragraph text */
+
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  html,
+  body {
+    /* Changed to white background with slate-900 text */
+    
+    font-family: 'Comfortaa';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    @apply m-0 p-0 w-full h-full overflow-hidden bg-white text-slate-900 font-sans;
+  }
+
+  #canvas-container {
+    /* A subtle gradient or light gray background helps 3D models pop */
+    @apply absolute inset-0 z-1 w-full h-full block touch-none pointer-events-auto bg-slate-50;
+  }
+}
+
+@layer components {
+  /* Serious CAD-style Panel */
+  .hud-panel {
+    @apply absolute top-5 left-5 w-64 p-5 z-10;
+    @apply bg-white/95 backdrop-blur-sm;
+    @apply border border-slate-200 rounded-md;
+    /* Soft, realistic shadow instead of neon glow */
+    @apply shadow-xl shadow-slate-200/50;
+    transition: var(--transition-ui);
+  }
+
+  .hud-panel.closed {
+    @apply -translate-x-[calc(100%+40px)];
+  }
+
+  /* Professional Inputs */
+  .hud-input {
+    @apply w-full p-2 bg-slate-50 border border-slate-300 rounded-md text-sm text-slate-900 outline-none;
+    @apply transition-colors duration-200;
+    /* Blue focus ring */
+    @apply focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20;
+  }
+
+  /* Action Buttons */
+  .btn-serious {
+    @apply w-full p-2.5 mt-4 bg-brand-blue text-white font-semibold rounded-md;
+    @apply transition-all active:scale-[0.97] cursor-pointer;
+    @apply hover:bg-blue-700 hover:shadow-md;
+    @apply disabled:bg-slate-300 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary/Close Buttons */
+  .btn-icon-close {
+    @apply absolute top-2 right-2 p-1 text-slate-400 hover:text-slate-600 transition-colors;
+  }
+}
+
+/* Number Input UX */
+input[type="number"] {
+  @apply cursor-ew-resize;
+  -moz-appearance: textfield;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  @apply m-0;
+}
