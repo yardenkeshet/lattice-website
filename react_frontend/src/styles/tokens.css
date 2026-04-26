@@ -110,4 +110,9 @@
 
   /* ── NumberInput component ── */
   --number-input-width: 51px; /* exact Figma spec */
+
+  /* ── Dropdown component ── */
+  --dropdown-height:        32px;
+  --dropdown-shadow:        0 4px 16px rgba(0, 0, 0, 0.10);
+  --dropdown-shadow-hover:  0 4px 16px rgba(0, 0, 0, 0.16);
 }
