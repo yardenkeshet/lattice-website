@@ -111,6 +111,17 @@
   /* ── NumberInput component ── */
   --number-input-width: 51px; /* exact Figma spec */
 
+  /* ── IconButton component ── */
+  --icon-btn-hit:    44px;   /* outer hit / glow area */
+  --icon-btn-size:   31px;   /* visible inner button */
+  --icon-btn-radius: 14px;   /* outer glow radius */
+  --icon-btn-bg:     var(--bg-tertiary);
+  --icon-btn-border: color-mix(in srgb, var(--gray-400) 50%, transparent);
+  --icon-btn-glow:          var(--bg-primary);
+  --icon-btn-bg-hover:      var(--gray-100);
+  --icon-btn-shadow-outer:  1px 2px 9px 2px rgba(0, 0, 0, 0.10);
+  --icon-btn-shadow-inner:  0 1px 1px 1px rgba(0, 0, 0, 0.12);
+
   /* ── TileCard component ── */
   --tile-card-size-sm:    80px;
   --tile-card-size-lg:   166px;
