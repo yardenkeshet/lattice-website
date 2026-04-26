@@ -114,6 +114,9 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
           ))}
         </div>
 
+        {/* ── Edge gradient overlay ── */}
+        <div style={overlayStyle} aria-hidden="true" />
+
         {/* ── Arrow buttons ── */}
         {showArrows && count > 1 && (
           <>
@@ -220,6 +223,14 @@ const slideStyle: React.CSSProperties = {
   objectPosition: 'center',
 }
 
+const overlayStyle: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  background: 'var(--carousel-overlay)',
+  pointerEvents: 'none',
+  zIndex: 5,
+}
+
 const arrowStyle: React.CSSProperties = {
   position: 'absolute',
   top: '50%',
@@ -235,7 +246,7 @@ const arrowStyle: React.CSSProperties = {
   padding: 0,
   outline: 'none',
   transition: 'background-color 150ms ease, opacity 150ms ease',
-  zIndex: 10,
+  zIndex: 20,
 }
 
 const arrowHoverStyle: React.CSSProperties = {

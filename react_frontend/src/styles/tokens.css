@@ -116,6 +116,14 @@
   --carousel-arrow-h:        62px;
   --carousel-arrow-bg:       rgba(217, 217, 217, 0.50);
   --carousel-arrow-bg-hover: rgba(217, 217, 217, 0.80);
+  /* Edge gradient overlay — exact Figma stops */
+  --carousel-overlay: linear-gradient(
+    to right,
+    var(--navy-dark) 0%,
+    rgba(4, 44, 78, 0) 21%,
+    rgba(4, 44, 78, 0) 76%,
+    var(--navy-dark) 100%
+  );
 
   /* ── Button component ── */
   --btn-height:       31px;
