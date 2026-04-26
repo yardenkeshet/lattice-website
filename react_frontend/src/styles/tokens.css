@@ -111,6 +111,14 @@
   /* ── NumberInput component ── */
   --number-input-width: 51px; /* exact Figma spec */
 
+  /* ── Button component ── */
+  --btn-height:       31px;
+  --btn-padding-y:    9px;
+  --btn-padding-x:    21px;
+  --btn-gap:          10px;
+  --text-size-button: 0.6875rem;  /* 11px — exact Figma spec */
+  --btn-shadow:       0 1px 1px rgba(0, 0, 0, 0.15);
+
   /* ── IconButton component ── */
   --icon-btn-hit:    44px;   /* outer hit / glow area */
   --icon-btn-size:   31px;   /* visible inner button */
