@@ -94,6 +94,9 @@
   --icon-md: 24px;
   --icon-lg: 32px;
 
+  /* ── Typography: extra sizes ── */
+  --text-size-xs: 0.625rem; /* 10px — compact inputs */
+
   /* ── Slider component ── */
   --slider-track-height:  30px;
   --slider-thumb-width:   22px;
@@ -104,4 +107,7 @@
   --text-size-sm:         0.8125rem; /* 13px */
   --shadow-thumb:         0 1px 4px rgba(0, 0, 0, 0.12);
   --shadow-thumb-hover:   0 2px 8px rgba(0, 0, 0, 0.18);
+
+  /* ── NumberInput component ── */
+  --number-input-width: 51px; /* exact Figma spec */
 }
