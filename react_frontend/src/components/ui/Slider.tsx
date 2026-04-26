@@ -1,6 +1,7 @@
 import * as React from 'react'
 import * as SliderPrimitive from '@radix-ui/react-slider'
 import { Slot } from '@radix-ui/react-slot'
+import { cn } from '../../lib/utils'
 
 export interface SliderProps
   extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
@@ -12,8 +13,18 @@ export interface SliderProps
   label?: string
   /** Render the root wrapper as its child element (Slot pattern) */
   asChild?: boolean
+  /** Width of the slider track (e.g. 200, '100%', '12rem'). Defaults to 100% of its container. */
+  length?: number | string
+  /**
+   * Formats the thumb aria-valuetext for screen readers.
+   * Useful for domain-specific units e.g. (v) => `${v} tiles`
+   */
+  getValueText?: (value: number) => string
 }
 
+// Note: ref is forwarded to SliderPrimitive.Root (the focusable/interactive
+// element), not the outer wrapper div. Use a callback ref on the wrapper if
+// you need its bounding rect.
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   SliderProps
@@ -25,6 +36,7 @@ const Slider = React.forwardRef<
       valuePrecision = 2,
       label,
       asChild = false,
+      length,
       min = 0,
       max = 1,
       step = 0.01,
@@ -32,81 +44,110 @@ const Slider = React.forwardRef<
       value,
       disabled,
       onValueChange,
+      getValueText,
       ...props
     },
     ref
   ) => {
-    const [internalValue, setInternalValue] = React.useState<number[]>(
+    // [C1] displayValue tracks what to show in the badge only.
+    // value/defaultValue are passed straight through to Radix, which owns the
+    // controlled/uncontrolled contract. We never duplicate Radix's state.
+    const [displayValue, setDisplayValue] = React.useState<number[]>(
       value ?? defaultValue ?? [min]
     )
 
-    const currentValue = value ?? internalValue
+    // Sync badge when parent drives a controlled value change.
+    React.useEffect(() => {
+      if (value !== undefined) setDisplayValue(value)
+    }, [value])
 
     const handleValueChange = (next: number[]) => {
-      setInternalValue(next)
+      setDisplayValue(next)
       onValueChange?.(next)
     }
 
+    // [C2] State-driven hover — no direct DOM mutation.
+    const [hoveredThumb, setHoveredThumb] = React.useState<number | null>(null)
+
+    // [R1] Associate the visible label with the Radix root via aria-labelledby.
+    const labelId = React.useId()
+
     const Wrapper = asChild ? Slot : 'div'
 
+    const wrapperWidth =
+      length != null
+        ? typeof length === 'number'
+          ? `${length}px`
+          : length
+        : '100%'
+
     return (
-      <Wrapper className={['slider-root', className].filter(Boolean).join(' ')} style={sliderWrapperStyle}>
-        {label && (
-          <span style={labelStyle}>
-            {label}
-          </span>
-        )}
-        <div style={rowStyle}>
-          <SliderPrimitive.Root
-            ref={ref}
-            min={min}
-            max={max}
-            step={step}
-            value={currentValue}
-            disabled={disabled}
-            onValueChange={handleValueChange}
-            style={rootStyle(disabled)}
-            {...props}
-          >
-            <SliderPrimitive.Track style={trackStyle}>
-              <SliderPrimitive.Range style={rangeStyle} />
-            </SliderPrimitive.Track>
-
-            {currentValue.map((_, i) => (
-              <SliderPrimitive.Thumb
-                key={i}
-                aria-label={label ?? 'Slider'}
-                style={thumbStyle}
-                onMouseEnter={e => {
-                  if (!disabled) Object.assign((e.target as HTMLElement).style, thumbHoverStyle)
-                }}
-                onMouseLeave={e => {
-                  Object.assign((e.target as HTMLElement).style, thumbStyle)
-                }}
-              />
-            ))}
-          </SliderPrimitive.Root>
-
-          {showValue && (
-            <div style={badgeStyle}>
-              {currentValue.map(v => v.toFixed(valuePrecision)).join(' – ')}
-            </div>
+      <>
+        <Wrapper
+          className={cn('slider-root', className)}
+          style={{ ...wrapperStyle, width: wrapperWidth }}
+        >
+          {label && (
+            <span id={labelId} style={labelStyle}>
+              {label}
+            </span>
           )}
-        </div>
-      </Wrapper>
+
+          <div style={rowStyle}>
+            {/* [C1] value and defaultValue passed directly — Radix owns the state. */}
+            <SliderPrimitive.Root
+              ref={ref}
+              min={min}
+              max={max}
+              step={step}
+              value={value}
+              defaultValue={defaultValue ?? (value === undefined ? [min] : undefined)}
+              disabled={disabled}
+              onValueChange={handleValueChange}
+              aria-labelledby={label ? labelId : undefined}
+              style={rootStyle(disabled)}
+              {...props}
+            >
+              <SliderPrimitive.Track style={trackStyle}>
+                <SliderPrimitive.Range style={rangeStyle} />
+              </SliderPrimitive.Track>
+
+              {displayValue.map((v, i) => (
+                <SliderPrimitive.Thumb
+                  key={`thumb-${i}`}
+                  className="slider-thumb"
+                  aria-valuetext={getValueText ? getValueText(v) : undefined}
+                  style={
+                    hoveredThumb === i && !disabled
+                      ? thumbHoverStyle
+                      : thumbBaseStyle
+                  }
+                  onMouseEnter={() => setHoveredThumb(i)}
+                  onMouseLeave={() => setHoveredThumb(null)}
+                />
+              ))}
+            </SliderPrimitive.Root>
+
+            {showValue && (
+              <div style={displayValue.length > 1 ? badgeRangeStyle : badgeStyle}>
+                {displayValue.map(v => v.toFixed(valuePrecision)).join(' – ')}
+              </div>
+            )}
+          </div>
+        </Wrapper>
+      </>
     )
   }
 )
 
 Slider.displayName = 'Slider'
 
-/* ─── Styles (all values reference design tokens) ─── */
+/* ─── Styles — all values reference design tokens ─── */
 
-const sliderWrapperStyle: React.CSSProperties = {
+const wrapperStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-sm)',
-  width: '100%',
 }
 
 const labelStyle: React.CSSProperties = {
@@ -137,9 +178,9 @@ const rootStyle = (disabled?: boolean): React.CSSProperties => ({
 const trackStyle: React.CSSProperties = {
   position: 'relative',
   flexGrow: 1,
-  height: '30px',
+  height: 'var(--slider-track-height)',
   backgroundColor: 'var(--bg-tertiary)',
-  borderRadius: 'var(--radius-full)',
+  borderRadius: 'var(--radius-track)',
   overflow: 'hidden',
 }
 
@@ -147,39 +188,47 @@ const rangeStyle: React.CSSProperties = {
   position: 'absolute',
   height: '100%',
   backgroundColor: 'var(--gray-400)',
-  borderRadius: 'var(--radius-full)',
 }
 
-const thumbStyle: React.CSSProperties = {
+const thumbBaseStyle: React.CSSProperties = {
   display: 'block',
-  width: '22px',
-  height: '35px',
+  width: 'var(--slider-thumb-width)',
+  height: 'var(--slider-thumb-height)',
   backgroundColor: 'var(--bg-primary)',
   border: '2px solid var(--border-base)',
-  borderRadius: '5px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+  borderRadius: 'var(--radius-thumb)',
+  boxShadow: 'var(--shadow-thumb)',
   cursor: 'grab',
   transition: 'border-color 150ms ease, box-shadow 150ms ease',
-  outline: 'none',
+  // [C3] outline removed here — focus ring is handled by .slider-thumb:focus-visible
 }
 
 const thumbHoverStyle: React.CSSProperties = {
-  ...thumbStyle,
+  ...thumbBaseStyle,
   borderColor: 'var(--action-primary)',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+  boxShadow: 'var(--shadow-thumb-hover)',
 }
 
 const badgeStyle: React.CSSProperties = {
-  minWidth: '48px',
-  padding: '6px 10px',
+  width: 'var(--slider-badge-width)',
+  flexShrink: 0,
+  padding: '0 10px',
+  height: 'var(--slider-track-height)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   backgroundColor: 'var(--bg-tertiary)',
-  borderRadius: 'var(--radius-card)',
+  borderRadius: 'var(--radius-track)',
   fontFamily: 'var(--font-body)',
-  fontSize: '13px',
+  fontSize: 'var(--text-size-sm)',
   fontWeight: 500,
   color: 'var(--text-base)',
-  textAlign: 'center',
   whiteSpace: 'nowrap',
+}
+
+const badgeRangeStyle: React.CSSProperties = {
+  ...badgeStyle,
+  width: 'var(--slider-badge-width-range)',
 }
 
 export { Slider }
