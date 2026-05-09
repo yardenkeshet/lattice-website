@@ -17,10 +17,11 @@ export interface TileCardProps {
   /** Label shown at the bottom of the small variant (e.g. "Cross") */
   label?: string
   /**
-   * 'small' (80px) — tile selector card with label.
-   * 'large' (166px) — real-time preview panel, no label.
+   * 'mini'  (45.5px) — compact thumbnail used inside LatticeMenu, no label.
+   * 'small' (80px)   — tile selector card with label.
+   * 'large' (166px)  — real-time preview panel, no label.
    */
-  size?: 'small' | 'large'
+  size?: 'mini' | 'small' | 'large'
   /** Highlights the card with a blue border */
   selected?: boolean
   disabled?: boolean
@@ -63,10 +64,15 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
 
     const Wrapper = asChild ? Slot : 'div'
 
+    const cardSize =
+      size === 'mini'  ? '45.5px' :
+      size === 'small' ? 'var(--tile-card-size-sm)' :
+      'var(--tile-card-size-lg)'
+
     const cardStyle: React.CSSProperties = {
       position: 'relative',
-      width: size === 'small' ? 'var(--tile-card-size-sm)' : 'var(--tile-card-size-lg)',
-      height: size === 'small' ? 'var(--tile-card-size-sm)' : 'var(--tile-card-size-lg)',
+      width: cardSize,
+      height: cardSize,
       borderRadius: 'var(--radius-track)',
       backgroundColor: 'var(--bg-tertiary)',
       overflow: 'hidden',
@@ -128,7 +134,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
           )}
         </Canvas>
 
-        {/* Label — small size only */}
+        {/* Label — small size only (mini and large have no label) */}
         {label && size === 'small' && (
           <div style={labelStyle} aria-hidden="true">
             {label}

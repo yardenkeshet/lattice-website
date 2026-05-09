@@ -67,6 +67,7 @@ module.exports = {
         tag:    'var(--radius-tag)',
         card:   'var(--radius-card)',
         button: 'var(--radius-button)',
+        track:  'var(--radius-track)',
         full:   'var(--radius-full)',
       },
       spacing: {

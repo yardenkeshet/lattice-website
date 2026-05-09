@@ -1,0 +1,255 @@
+import * as React from 'react'
+import { cn } from '../../lib/utils'
+import { useStlBlobUrl } from '../../lib/stl'
+import type { TileType } from '../../api/types'
+import { TileCard } from './TileCard'
+import { Slider } from './Slider'
+
+/* ─── Per-tile-type slider definitions ─── */
+
+interface SliderDef {
+  label: string
+  min: number
+  /** null means the max is dynamic (driven by another slider's value) */
+  max: number | null
+  defaultValue: number
+  step: number
+}
+
+const TILE_PARAMS: Record<TileType, SliderDef[]> = {
+  cross_diagonal: [
+    { label: 'Cross Radius',             min: 0.01, max: 0.5,  defaultValue: 0.2,  step: 0.01 },
+    { label: 'Diagonal Relative Radius', min: 0.01, max: 2.0,  defaultValue: 0.5,  step: 0.01 },
+  ],
+  diagonal: [
+    { label: 'Center Size',       min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
+    { label: 'End-Arm Size',      min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
+    { label: 'Smoothing of Arms', min: 0.0,  max: 1.0,  defaultValue: 0.5,  step: 0.01 },
+  ],
+  cross: [
+    { label: 'Outer Radius', min: 0.01, max: 0.5,  defaultValue: 0.3,  step: 0.01 },
+    { label: 'Inner Radius', min: 0.0,  max: null, defaultValue: 0.15, step: 0.01 },
+  ],
+}
+
+export function defaultSliderValues(type: TileType): number[] {
+  return TILE_PARAMS[type].map(p => p.defaultValue)
+}
+
+/* ─── Public API ─── */
+
+export interface TileMenuProps {
+  tileType: TileType
+  /** Current slider values for the selected tile type (2 or 3 numbers). */
+  sliderValues: number[]
+  /**
+   * base64( gzip( ASCII-STL ) ) from the server's calculateTile response.
+   * Drives the 166px live preview.
+   */
+  previewStlGzB64?: string
+  onTileTypeChange: (type: TileType) => void
+  onSliderChange: (values: number[]) => void
+  onClose: () => void
+  className?: string
+}
+
+const TILE_OPTIONS: { type: TileType; label: string }[] = [
+  { type: 'cross',          label: 'Cross' },
+  { type: 'diagonal',       label: 'Diagonal' },
+  { type: 'cross_diagonal', label: 'Cross Diagonal' },
+]
+
+const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
+  (
+    {
+      tileType,
+      sliderValues,
+      previewStlGzB64,
+      onTileTypeChange,
+      onSliderChange,
+      onClose,
+      className,
+    },
+    ref
+  ) => {
+    const previewUrl = useStlBlobUrl(previewStlGzB64)
+    const defs = TILE_PARAMS[tileType]
+
+    const handleSliderChange = (index: number, value: number) => {
+      const next = [...sliderValues]
+      next[index] = value
+      // For `cross`: Inner Radius max is capped at Outer Radius
+      if (tileType === 'cross' && index === 0) {
+        // Outer radius changed — clamp inner radius if needed
+        next[1] = Math.min(next[1], value)
+      }
+      onSliderChange(next)
+    }
+
+    return (
+      <div
+        ref={ref}
+        className={cn('tile-menu', className)}
+        style={containerStyle}
+      >
+        {/* ── Header ── */}
+        <div style={headerStyle}>
+          <span style={headerTitleStyle}>Lattice Tile</span>
+          <button
+            type="button"
+            aria-label="Close tile menu"
+            onClick={onClose}
+            style={closeButtonStyle}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <Divider />
+
+        {/* ── Live 166px preview ── */}
+        <TileCard
+          size="large"
+          modelUrl={previewUrl}
+          enableOrbit
+          aria-label="Tile live preview"
+        />
+
+        <Divider />
+
+        {/* ── Tile type selection ── */}
+        <div style={sectionStyle}>
+          <span style={sectionLabelStyle}>Tile Type</span>
+          <div style={tileGridStyle}>
+            {TILE_OPTIONS.map(({ type, label }) => (
+              <TileCard
+                key={type}
+                size="small"
+                label={label}
+                selected={tileType === type}
+                onClick={() => onTileTypeChange(type)}
+                aria-label={label}
+              />
+            ))}
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* ── Dynamic sliders ── */}
+        <div style={sectionStyle}>
+          {defs.map((def, i) => {
+            const maxVal = def.max ?? (tileType === 'cross' ? sliderValues[0] ?? 0.5 : 0.5)
+            return (
+              <div key={def.label} style={sliderRowStyle}>
+                <Slider
+                  label={def.label}
+                  min={def.min}
+                  max={maxVal}
+                  step={def.step}
+                  value={[sliderValues[i] ?? def.defaultValue]}
+                  showValue
+                  valuePrecision={2}
+                  onValueChange={([v]) => handleSliderChange(i, v)}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+)
+
+TileMenu.displayName = 'TileMenu'
+
+/* ─── Close icon ─── */
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/* ─── Divider ─── */
+
+function Divider() {
+  return <div aria-hidden="true" style={dividerStyle} />
+}
+
+/* ─── Styles ─── */
+
+const containerStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  width: 220,
+  backgroundColor: 'var(--bg-primary)',
+  borderRadius: 14,
+  boxShadow: '1px 2px 9px 0px rgba(0,0,0,0.10)',
+  padding: '9px 0 16px',
+  overflowY: 'auto',
+  maxHeight: '100%',
+}
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0 var(--space-md)',
+}
+
+const headerTitleStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--text-size-xs)',
+  fontWeight: 600,
+  color: 'var(--text-base)',
+}
+
+const closeButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 2,
+  color: 'var(--text-secondary)',
+  display: 'flex',
+  alignItems: 'center',
+}
+
+const dividerStyle: React.CSSProperties = {
+  height: 3,
+  backgroundColor: 'var(--bg-tertiary)',
+  margin: '0 0',
+  flexShrink: 0,
+  boxShadow: '1px 2px 6px -2px rgba(0,0,0,0.14)',
+}
+
+const sectionStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  padding: '0 var(--space-md)',
+}
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--text-size-xs)',
+  fontWeight: 600,
+  color: 'var(--text-base)',
+}
+
+const tileGridStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '7px 9px',
+}
+
+const sliderRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+}
+
+export { TileMenu }

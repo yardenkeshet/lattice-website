@@ -111,6 +111,13 @@
   /* ── NumberInput component ── */
   --number-input-width: 51px; /* exact Figma spec */
 
+  /* ── Banner component ── */
+  --banner-height:       157px;
+  --banner-bg:           linear-gradient(to right, var(--navy-medium), var(--navy-dark));
+  --banner-left-w:       360px;   /* left logo section width */
+  --banner-right-w:      232px;   /* right logo width */
+  --banner-circle-size:  496px;   /* lab logo background circle */
+
   /* ── Carousel component ── */
   --carousel-arrow-w:        39px;
   --carousel-arrow-h:        62px;
@@ -145,6 +152,7 @@
   --icon-btn-shadow-inner:  0 1px 1px 1px rgba(0, 0, 0, 0.12);
 
   /* ── TileCard component ── */
+  --tile-card-size-mini:  45.5px;
   --tile-card-size-sm:    80px;
   --tile-card-size-lg:   166px;
   --text-size-xxs:      0.5rem;   /* 8px — tile card label */
