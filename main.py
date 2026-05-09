@@ -7,6 +7,7 @@ import gzip
 import json
 from threading import Thread
 import threading
+import uuid
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -40,10 +41,10 @@ TileParams = (c_double * 3)(
 )
 Graded = (c_double * 2)(
     0.2,
-    1.5
+    0.5
 )
 
-Num_Tiles = (c_int * 3)(2, 2, 2)
+Num_Tiles = (ctypes.c_int * 3)(2, 2, 2)
 
 #   lattice functions
 
@@ -146,57 +147,83 @@ def do_revolution(id_folder):
     print("Result:", result)
     print(f" -- Done MSDLLMSFromRevolution ")
     return download_token, stl_content
-def do_extrusion(id_folder):
-    print(f"Do MSDLLMSFromExtrusion")
-    sid = request.sid
+
+def do_extrusion(sid, input_path, args):
+    """
+    sid: Session ID
+    input_path: Absolute path to the uploaded .igs file
+    args: Dictionary containing UI parameters (nt1, g1, extrude_length, etc.)
+    """
+    print(f"--- Starting MSDLLMSFromExtrusion for SID: {sid} ---")
+    
     download_token = str(uuid.uuid4())
 
-    # Prepare inputs
-    srf_igs = b"Input\\ExtrudeSrf.igs"
-    extrude_length = c_double(10.0)
-    Num_Tiles[0] = Num_Tiles[1] = Num_Tiles[2] = 4
-    tile_type = MSDLL_TILE_DIAGONAL
+    # 1. Setup Output Directory
+    # Using absolute paths ensures the DLL finds the folder regardless of the working directory
+    results_dir = os.path.abspath(os.path.join(os.getcwd(), 'results', sid))
+    os.makedirs(results_dir, exist_ok=True)
 
-    TileParams[0] = 0.2
-    TileParams[1] = 0.1
-    TileParams[2] = 0.4
+    out_igs_path = os.path.join(results_dir, "MSExtrd.igs")
+    out_stl_path = os.path.join(results_dir, "MSExtrd.stl")
 
-    new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
-    os.makedirs(new_folder, exist_ok=True)
+    # 2. Prepare Parameters from args
+    # Map your UI inputs to the C-arrays/values
+    try:
+        # Assuming Num_Tiles and TileParams are already defined ctypes arrays
+        Num_Tiles[0] = int(args.get('nt1', 4))
+        Num_Tiles[1] = int(args.get('nt2', 4))
+        Num_Tiles[2] = int(args.get('nt3', 3))
 
-    out_igs = b"Data\\MSExtrd.igs"
-    out_stl = b"Data\\MSExtrd.stl"
+        TileParams[0] = float(args.get('g1', 0.2))
+        TileParams[1] = float(args.get('g2', 0.1))
+        TileParams[2] = float(args.get('g3', 0.4))
 
-    out_igs = os.path.join(new_folder, "MSExtrd.igs")
-    igs = out_igs.encode('ascii')  # or .encode('utf-8')
-    out_stl = os.path.join(new_folder, "MSExtrd.stl")
-    stl = out_stl.encode('ascii')  # or .encode('utf-8')
+        extrude_val = float(args.get('extrude_length', 10.0))
+        extrude_length = c_double(extrude_val)
+        
+        # tile_type mapping (ensure this matches your DLL expectations)
+        tile_type = lt.TILE_TYPE_MAP.get(args.get('tileType'), MSDLL_TILE_DIAGONAL)
 
-    # Call function
+    except (ValueError, TypeError) as e:
+        print(f"Error parsing arguments: {e}")
+        return None, None
+    # input_path = os.path.abspath(input_path)  # Ensure absolute path for DLL
+    print(f"YANIV path: {input_path}")
+    print(f"Parsed Parameters: Num_Tiles={Num_Tiles[0]} {Num_Tiles[1]} {Num_Tiles[2]}, TileParams={TileParams[0]} {TileParams[1]} {TileParams[2]}, extrude_length={extrude_length.value}, tile_type={tile_type}")
+    # 3. Call the DLL
+    # We encode paths to 'ascii' or 'utf-8' because C expects char* (bytes)
+    srf_igs = b"Input\\Car1.igs"
+    # srf_igs = b"Input\\ExtrudeSrf.igs"
+    # srf_igs = os.path.abspath(input_path).encode('ascii')  # or .encode('utf-8')
     result = lt.MSDLLMSFromExtrusion(
         srf_igs,
         extrude_length,
         Num_Tiles,
-        Graded,
+        Graded,                     # Assuming this is defined globally
         tile_type,
         TileParams,
-        igs,
-        stl
+        out_igs_path.encode('ascii'),
+        out_stl_path.encode('ascii')
     )
 
-    print(f"Result: {result}")
-    if result:
-        print(f"Message: {result.decode('utf-8', errors='replace')}")
+    print(f"DLL Result Code: {result}")
+    print(f"Expected output files at: {out_igs_path} and {out_stl_path}")
+    # 4. Handle Output
+    stl_content = None
+    if os.path.exists(out_stl_path):
+        stl_content = read_ascii_stl_file(out_stl_path)
+        
+        # Store metadata for the download route
+        DOWNLOAD_CACHE[download_token] = {
+            'sid': sid,
+            'full_path_stl': out_stl_path,
+            'full_path_igs': out_igs_path,
+            'filename': "MSExtrd.stl"
+        }
+    else:
+        print(f"ERROR: DLL finished but {out_stl_path} was not found.")
 
-    stl_content = read_ascii_stl_file(out_stl)
-    DOWNLOAD_CACHE[download_token] = {
-        'sid': sid,  # <--- NEW: Store the sid for folder lookup
-        'out_stl': f"MSExtrd.stl",
-        'out_igs': f"MSExtrd.igs"
-    }
-
-    print("Result:", result)
-    print(f" -- Done MSDLLMSFromExtrusion ")
+    print(f"--- Done MSDLLMSFromExtrusion ---")
     return download_token, stl_content
 
 def do_GetTile():
@@ -759,7 +786,7 @@ def handle_calculate(data):
             download_token, stl_content = do_revolution(sid)
         elif tile_type_int == MSDLL_TILE_DIAGONAL:
             print("Tile type is DIAGONAL ")
-            download_token, stl_content = do_extrusion(sid)
+            download_token, stl_content = do_extrusion(sid, stl_path, args)
         elif tile_type_int == MSDLL_TILE_CROSS_DIAGONAL:
             print("Tile type is CROSS_DIAGONAL .")
             download_token, stl_content = do_Ruling(sid)
@@ -768,7 +795,9 @@ def handle_calculate(data):
         print(f"Error: Unknown tile_type string received: {tile_type}")
 
     t_processed = time.time()
-
+    # with open("yaniv.stl", "w") as file:
+    #     file.write(stl_content)
+    #     return
     # download_token = generate_dummy_files_results(sid)
     # 3. COMPRESSION
     logger.info("[3] Compression: gzipping processed STL")
@@ -817,10 +846,10 @@ def handle_calculate(data):
     })
 
 
-    emit('result', {
-        'filename': filename,
-        'download_token': download_token  # <-- Send the token to the client
-    })
+    # emit('result', {
+    #     'filename': filename,
+    #     'download_token': download_token  # <-- Send the token to the client
+    # })
 
     logger.info(f"Finished sending {filename}. Timings: {timings}")
     print(f"Finished sending {filename}. Timings: {timings}")
@@ -1062,4 +1091,3 @@ if __name__ == '__main__':
     print("Starting Flask-SocketIO server on http://localhost:5003")
     print('socketio.server =', getattr(socketio, 'server', None))
     socketio.run(app, host='0.0.0.0', port=5003)
-

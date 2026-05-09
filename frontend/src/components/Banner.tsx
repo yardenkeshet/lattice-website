@@ -4,7 +4,7 @@ import technionLogo from "../../public/technion-logo.png";
 import { Card } from "./ui/card";
 import { Link } from "react-router-dom";
 
-const Banner = () => {
+const BannerV1 = () => {
   return (
     <header className="bg-technion-blue border-b-4 border-white/10 shadow-lg">
       <div className="container mx-auto px-4 py-4 md:py-6 flex items-center justify-between gap-6">
@@ -69,4 +69,4 @@ const Banner = () => {
     </header>
   );
 };
-export default Banner;
+export default BannerV1;
