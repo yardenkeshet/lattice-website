@@ -1061,5 +1061,5 @@ def download_results():
 if __name__ == '__main__':
     print("Starting Flask-SocketIO server on http://localhost:5003")
     print('socketio.server =', getattr(socketio, 'server', None))
-    socketio.run(app, host='0.0.0.0', port=5003)
+    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
 

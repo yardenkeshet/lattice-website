@@ -24,11 +24,17 @@ export interface ViewerSceneProps {
   zoom?: number
   /** Called when user drops a 3D file onto the canvas. */
   onFileDrop?: (file: File) => void
+  /** Called when the user scrolls over the viewer to zoom. */
+  onZoomChange?: (zoom: number) => void
   className?: string
   style?: React.CSSProperties
 }
 
 const ACCEPTED_EXTS = new Set(['.stl', '.obj', '.3mf'])
+
+const SCROLL_ZOOM_STEP = 10
+const SCROLL_ZOOM_MIN  = 10
+const SCROLL_ZOOM_MAX  = 500
 
 export function ViewerScene({
   uploadedFile = null,
@@ -36,10 +42,29 @@ export function ViewerScene({
   cameraMode = 'perspective',
   zoom = 100,
   onFileDrop,
+  onZoomChange,
   className,
   style,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
+
+  // Ref so the wheel handler always reads the latest zoom without a stale closure.
+  const zoomRef = React.useRef(zoom)
+  React.useEffect(() => { zoomRef.current = zoom }, [zoom])
+
+  // Container ref for attaching the wheel listener with passive:false.
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const el = containerRef.current
+    if (!el || !onZoomChange) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -SCROLL_ZOOM_STEP : SCROLL_ZOOM_STEP
+      onZoomChange(Math.min(SCROLL_ZOOM_MAX, Math.max(SCROLL_ZOOM_MIN, zoomRef.current + delta)))
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [onZoomChange])
 
   /* Convert gz+b64 result to a Blob URL */
   const resultBlobUrl = useStlBlobUrl(resultStlGzB64)
@@ -75,6 +100,7 @@ export function ViewerScene({
 
   return (
     <div
+      ref={containerRef}
       className={className}
       style={{
         position: 'relative',

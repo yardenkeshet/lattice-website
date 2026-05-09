@@ -20,6 +20,8 @@ export interface SliderProps
    * Useful for domain-specific units e.g. (v) => `${v} tiles`
    */
   getValueText?: (value: number) => string
+  /** Called when the user finishes interacting (mouse up / key up / badge commit). */
+  onValueCommit?: (value: number[]) => void
 }
 
 // Note: ref is forwarded to SliderPrimitive.Root (the focusable/interactive
@@ -44,6 +46,7 @@ const Slider = React.forwardRef<
       value,
       disabled,
       onValueChange,
+      onValueCommit,
       getValueText,
       ...props
     },
@@ -64,6 +67,30 @@ const Slider = React.forwardRef<
     const handleValueChange = (next: number[]) => {
       setDisplayValue(next)
       onValueChange?.(next)
+    }
+
+    // Editable badge state — tracks the raw string while the user is typing.
+    const [inputStr, setInputStr] = React.useState(
+      (value ?? defaultValue ?? [min])[0].toFixed(valuePrecision)
+    )
+    const inputFocused = React.useRef(false)
+
+    // Keep input in sync with slider thumb movement (skip when user is typing).
+    React.useEffect(() => {
+      if (!inputFocused.current) {
+        setInputStr((displayValue[0] ?? min).toFixed(valuePrecision))
+      }
+    }, [displayValue, valuePrecision, min])
+
+    const commitInput = () => {
+      const parsed = parseFloat(inputStr)
+      const clamped = isNaN(parsed)
+        ? (displayValue[0] ?? min)
+        : Math.min(max, Math.max(min, parsed))
+      setInputStr(clamped.toFixed(valuePrecision))
+      setDisplayValue([clamped])
+      onValueChange?.([clamped])
+      onValueCommit?.([clamped])
     }
 
     // [C2] State-driven hover — no direct DOM mutation.
@@ -104,6 +131,7 @@ const Slider = React.forwardRef<
               defaultValue={defaultValue ?? (value === undefined ? [min] : undefined)}
               disabled={disabled}
               onValueChange={handleValueChange}
+              onValueCommit={onValueCommit}
               aria-labelledby={label ? labelId : undefined}
               style={rootStyle(disabled)}
               {...props}
@@ -128,8 +156,19 @@ const Slider = React.forwardRef<
               ))}
             </SliderPrimitive.Root>
 
-            {showValue && (
-              <div style={displayValue.length > 1 ? badgeRangeStyle : badgeStyle}>
+            {showValue && displayValue.length === 1 && (
+              <input
+                style={badgeInputStyle}
+                value={inputStr}
+                onChange={e => setInputStr(e.target.value)}
+                onFocus={e => { inputFocused.current = true; e.target.select() }}
+                onBlur={() => { inputFocused.current = false; commitInput() }}
+                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                aria-label={label ? `${label} value` : 'slider value'}
+              />
+            )}
+            {showValue && displayValue.length > 1 && (
+              <div style={badgeRangeStyle}>
                 {displayValue.map(v => v.toFixed(valuePrecision)).join(' – ')}
               </div>
             )}
@@ -229,6 +268,16 @@ const badgeStyle: React.CSSProperties = {
 const badgeRangeStyle: React.CSSProperties = {
   ...badgeStyle,
   width: 'var(--slider-badge-width-range)',
+}
+
+const badgeInputStyle: React.CSSProperties = {
+  ...badgeStyle,
+  background: 'transparent',
+  border: 'none',
+  outline: 'none',
+  cursor: 'text',
+  textAlign: 'center',
+  padding: '0 4px',
 }
 
 export { Slider }

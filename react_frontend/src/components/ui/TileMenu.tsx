@@ -49,6 +49,8 @@ export interface TileMenuProps {
   previewStlGzB64?: string
   onTileTypeChange: (type: TileType) => void
   onSliderChange: (values: number[]) => void
+  /** Called on slider release or badge commit — triggers model recalculation. */
+  onSliderCommit?: (values: number[]) => void
   onClose: () => void
   className?: string
 }
@@ -67,6 +69,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
       previewStlGzB64,
       onTileTypeChange,
       onSliderChange,
+      onSliderCommit,
       onClose,
       className,
     },
@@ -75,15 +78,21 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
     const previewUrl = useStlBlobUrl(previewStlGzB64)
     const defs = TILE_PARAMS[tileType]
 
-    const handleSliderChange = (index: number, value: number) => {
+    const buildNext = (index: number, value: number): number[] => {
       const next = [...sliderValues]
       next[index] = value
-      // For `cross`: Inner Radius max is capped at Outer Radius
       if (tileType === 'cross' && index === 0) {
-        // Outer radius changed — clamp inner radius if needed
         next[1] = Math.min(next[1], value)
       }
-      onSliderChange(next)
+      return next
+    }
+
+    const handleSliderChange = (index: number, value: number) => {
+      onSliderChange(buildNext(index, value))
+    }
+
+    const handleSliderCommit = (index: number, value: number) => {
+      onSliderCommit?.(buildNext(index, value))
     }
 
     return (
@@ -151,6 +160,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
                   showValue
                   valuePrecision={2}
                   onValueChange={([v]) => handleSliderChange(i, v)}
+                  onValueCommit={([v]) => handleSliderCommit(i, v)}
                 />
               </div>
             )

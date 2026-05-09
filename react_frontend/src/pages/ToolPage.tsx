@@ -82,10 +82,13 @@ export function ToolPage() {
     return () => { unsubResult(); unsubError() }
   }, [socket])
 
-  /* ── Tile param change → calculateTile ── */
+  /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
     setTileSliderValues(values)
-    // Pad to 3 values as the API requires
+  }, [])
+
+  /* ── Tile param commit (mouse-up or badge Enter) → calculateTile ── */
+  const handleTileSliderCommit = React.useCallback((values: number[]) => {
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
     socket.calculateTile({ type: tileType, values: padded })
   }, [socket, tileType])
@@ -196,6 +199,7 @@ export function ToolPage() {
               resultStlGzB64={resultGzB64}
               cameraMode={cameraMode}
               zoom={zoom}
+              onZoomChange={setZoom}
               onFileDrop={handleFileAdd}
             />
           </div>
@@ -210,6 +214,7 @@ export function ToolPage() {
               previewStlGzB64={tilePreviewGzB64 ?? undefined}
               onTileTypeChange={handleTileTypeChange}
               onSliderChange={handleTileSliderChange}
+              onSliderCommit={handleTileSliderCommit}
               onClose={() => setIsTileMenuOpen(false)}
             />
           </div>
