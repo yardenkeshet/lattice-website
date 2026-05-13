@@ -127,8 +127,8 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
 
           {enableOrbit && (
             <OrbitControls
-              enablePan={false}
-              enableZoom={false}
+              enablePan={true}
+              enableZoom={true}
               makeDefault
             />
           )}

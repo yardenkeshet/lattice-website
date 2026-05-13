@@ -16,7 +16,8 @@ export interface CalculateArgs {
 export interface CalculatePayload {
   filename: string;
   /** base64-encoded STL file bytes (ASCII or binary) */
-  stl_text_b64: string;
+  stl_text_b64?: any;
+  igs_b64?: any;
   /** true when the original file was a binary STL */
   binary?: boolean;
   /** performance.now() value captured just before emit, for round-trip timing */
@@ -24,6 +25,11 @@ export interface CalculatePayload {
   args: CalculateArgs;
 }
 
+export interface ConvertIGESToSTLPayload {
+  filename: string;
+  /** raw IGES text content */
+  data: string;
+}
 // ─── calculate_tile event ────────────────────────────────────────────────────
 
 export interface CalculateTilePayload {
@@ -41,31 +47,35 @@ export interface CalculateTilePayload {
 // After `calculate_tile` it emits one STLResult (no token follow-up).
 
 export interface Timings {
-  /** null when client_ts was not provided in the request */
   client_to_server_ms: number | null;
+  time_parsed_ms: number;
   time_processed_ms: number;
   time_compress_ms: number;
-  time_parsed_ms: number;
   overall_ms: number;
 }
 
-export interface STLResult {
-  kind: 'stl';
+/** Shared properties for all calculation results */
+interface BaseResult {
   filename: string;
-  /** base64( gzip( ASCII-STL ) ) — decompress with pako.ungzip */
-  stl_gz_b64: string;
   timings: Timings;
-  /** echoed back from the calculate args */
-  args_echo?: CalculateArgs;
+  args_echo?: any; // Replace 'any' with your CalculateArgs type
 }
 
-export interface TokenResult {
-  kind: 'token';
-  filename: string;
+export interface TileSTLResult extends BaseResult {
+  kind: 'tile_stl';
+  /** base64( gzip( ASCII-STL ) ) — decompress with pako.ungzip */
+  stl_gz_b64: string;
+}
+
+export interface ModelIGSResult extends BaseResult {
+  kind: 'model_igs';
+  /** base64( gzip( IGS content ) ) — decompress with pako.ungzip */
+  igs_gz_b64: string;
   download_token: string;
 }
 
-export type ResultPayload = STLResult | TokenResult;
+/** Discriminated Union for result handling */
+export type Result = TileSTLResult | ModelIGSResult;
 
 // ─── error event (server → client) ───────────────────────────────────────────
 //
@@ -87,3 +97,5 @@ export interface LogLine {
 export interface DownloadRequest {
   token: string;
 }
+
+export type VIEWER_ORDER = "uploaded" | "tile_preview" | "result";

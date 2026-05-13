@@ -7,6 +7,9 @@ import type {
   TokenResult,
   ErrorPayload,
   LogLine,
+  TileSTLResult,
+  ModelSTLResult,
+  ConvertIGESToSTLPayload,
 } from './types';
 
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
@@ -14,6 +17,7 @@ import type {
 interface RawResult {
   filename?: string;
   stl_gz_b64?: string;
+  kind?: string;
   timings?: STLResult['timings'];
   args_echo?: STLResult['args_echo'];
   download_token?: string;
@@ -56,6 +60,10 @@ export class LatticeSocketClient {
 
   calculate(payload: CalculatePayload): void {
     this.socket.emit('calculate', payload);
+  }
+
+  convertIGESToSTL(payload: ConvertIGESToSTLPayload): void {
+    this.socket.emit('convert_iges_to_stl', payload);
   }
 
   calculateTile(payload: CalculateTilePayload): void {
@@ -107,20 +115,24 @@ export class LatticeSocketClient {
   private resultHandlers = new Set<ResultHandler>();
 
   private handleRawResult(raw: RawResult): void {
-    const payload: ResultPayload = raw.stl_gz_b64
-      ? {
-          kind: 'stl',
-          filename: raw.filename ?? '',
-          stl_gz_b64: raw.stl_gz_b64,
-          timings: raw.timings!,
-          args_echo: raw.args_echo,
-        }
-      : {
-          kind: 'token',
-          filename: raw.filename ?? '',
-          download_token: raw.download_token ?? '',
-        };
-
+    console.log("Raw result: ", raw);
+    const payload: ResultPayload = (raw.kind && raw.kind =="tile_stl")
+    ? {
+      kind: raw.kind,
+      filename: raw.filename ?? '',
+      stl_gz_b64: raw.stl_gz_b64,
+      timings: raw.timings!,
+      args_echo: raw.args_echo,
+    } as TileSTLResult
+    : {
+      kind: raw.kind,
+      filename: raw.filename ?? '',
+      stl_gz_b64: raw.stl_gz_b64!,
+      timings: raw.timings!,
+      args_echo: raw.args_echo,
+      download_token: raw.download_token ?? '',
+    } as ModelSTLResult;
+    
     this.resultHandlers.forEach((h) => h(payload));
   }
 }

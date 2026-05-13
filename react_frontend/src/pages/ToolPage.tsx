@@ -6,11 +6,11 @@ import { Footer } from '../components/ui/Footer'
 import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
-import { ViewerScene } from '../components/ViewerScene'
+import { ViewerSceneAndDrop } from '../components/ViewerSceneAndDrop'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults } from '../api/httpClient'
 import { useStlBlobUrl } from '../lib/stl'
-import type { TileType } from '../api/types'
+import type { TileType, VIEWER_ORDER } from '../api/types'
 
 /* ─── File reading utility ─── */
 
@@ -60,32 +60,59 @@ export function ToolPage() {
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
+  const [modelPreviewOrder, setModelPreviewOrder] = React.useState<VIEWER_ORDER>('tile_preview') 
+  const [igesUrl, setIgesUrl] = React.useState<string | null>(null);
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
 
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
-    const unsubResult = socket.onResult(payload => {
-      setIsCalculating(false)
-      if (payload.kind === 'stl') {
-        setResultGzB64(payload.stl_gz_b64)
-        setTilePreviewGzB64(payload.stl_gz_b64) // also update tile preview
-      } else {
-        setDownloadToken(payload.download_token)
-      }
-    })
-    const unsubError = socket.onError(err => {
-      setIsCalculating(false)
-      setErrorMsg(err.message)
-    })
-    return () => { unsubResult(); unsubError() }
-  }, [socket])
+  const unsubResult = socket.onResult((payload) => {
+    setIsCalculating(false)
 
-  /* ── Tile param change → update state only (no backend call on drag) ── */
-  const handleTileSliderChange = React.useCallback((values: number[]) => {
-    setTileSliderValues(values)
-  }, [])
+    // 1. Check for the new IGS kind we defined in the backend
+    if (payload.kind === 'model_igs') {
+      console.log('Received model IGS result:', payload);
+      
+      // Use the new igs_gz_b64 key
+      setResultGzB64(payload.igs_gz_b64);
+      
+      // Update preview order logic
+      setModelPreviewOrder(payload.igs_gz_b64 ? 'result' : 'tile_preview');
+      
+      // If the backend sent a download token, save it
+      if (payload.download_token) {
+        setDownloadToken(payload.download_token);
+      }
+
+    } else if (payload.kind === 'tile_stl') {
+      // Keeping this for your tile preview if that still uses STL
+      console.log('Received tile preview:', payload);
+      setTilePreviewGzB64(payload.stl_gz_b64);
+      
+      if (resultGzB64 === null) {
+        setModelPreviewOrder('tile_preview');
+      }
+    } else {
+      // Fallback for other kinds or unexpected payloads
+      if (payload.download_token) {
+        setDownloadToken(payload.download_token);
+      }
+    }
+  })
+
+  const unsubError = socket.onError(err => {
+    console.log("Got error:", err);
+    setIsCalculating(false);
+    setErrorMsg(err.message || "An unknown error occurred");
+  })
+
+  return () => { 
+    unsubResult(); 
+    unsubError(); 
+  }
+}, [socket, resultGzB64]) // Added resultGzB64 to dependencies for the preview order logic
 
   /* ── Tile param commit (mouse-up or badge Enter) → calculateTile ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
@@ -107,17 +134,23 @@ export function ToolPage() {
     setResultGzB64(null)      // clear previous result
     setDownloadToken(null)
     setErrorMsg(null)
-    try {
-      const b64 = await readFileAsB64(file)
-      setUploadedB64(b64)
-    } catch {
-      setErrorMsg('Failed to read file')
-    }
+    setModelPreviewOrder('uploaded')
+    // if(file)
+    // {
+    //   const url = URL.createObjectURL(file);
+    //   setIgesUrl(url);
+    // }
+    // try {
+    //   const b64 = await readFileAsB64(file)
+    //   setUploadedB64(b64)
+    // } catch {
+    //   setErrorMsg('Failed to read file')
+    // }
   }
 
   /* ── Calculate ── */
   const handleCalculate = () => {
-    if (!uploadedFile || !uploadedB64) {
+    if (!uploadedFile ) {
       setErrorMsg('Please upload a 3D file first')
       return
     }
@@ -125,12 +158,46 @@ export function ToolPage() {
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
-    socket.calculate({
-      filename: uploadedFile.name,
-      stl_text_b64: uploadedB64,
-      client_ts: performance.now(),
-      args: { tileType, nt1, nt2, nt3, g1, g2 },
-    })
+    console.log("Emitting calculate with file:", uploadedFile);
+    // socket.calculate({
+    //   filename: uploadedFile.name,
+    //   stl_text_b64: uploadedFile ,
+    //   client_ts: performance.now(),
+    //   args: { tileType, nt1, nt2, nt3, g1, g2 },
+    // })
+if (!uploadedFile) {
+        console.error("No file selected");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        // reader.result will be a Data URL (e.g., "data:application/octet-stream;base64,AAAA...")
+        // We need to strip the prefix to get just the base64 string
+        const base64String = (reader.result as string).split(',')[1];
+
+        // Assuming 'socket' is your Socket.IO client instance
+        socket.calculate({
+            filename: uploadedFile.name,
+            igs_b64: base64String, 
+            client_ts: Date.now(),
+            args: {
+                tileType: 'diagonal',
+                nt1: 10,
+                nt2: 10,
+                nt3: 1,
+                g1: 0.57,
+                g2: 0.83
+            }
+        });
+    };
+
+    reader.onerror = (error) => {
+        console.error("Error reading file:", error);
+    };
+
+    reader.readAsDataURL(uploadedFile);
   }
 
   /* ── Export ── */
@@ -139,6 +206,10 @@ export function ToolPage() {
     downloadResults(downloadToken).catch(() => setErrorMsg('Download failed'))
   }
 
+
+    const handleTileSliderChange = React.useCallback((values: number[]) => {
+    setTileSliderValues(values)
+  }, [])
   return (
     <div style={pageStyle}>
       <Banner />
@@ -194,9 +265,11 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            <ViewerScene
-              uploadedFile={uploadedFile}
-              resultStlGzB64={resultGzB64}
+            <ViewerSceneAndDrop
+              // model={modelPreviewOrder === 'uploaded' 
+              //   ? {type: 'iges', data: igesUrl} : 
+              //   { type: 'stl', data: modelPreviewOrder === 'result' ? resultGzB64 : (modelPreviewOrder === 'tile_preview' ? tilePreviewGzB64 : null) }}
+              model={ {type: 'stl', data: resultGzB64??tilePreviewGzB64}}
               cameraMode={cameraMode}
               zoom={zoom}
               onZoomChange={setZoom}
@@ -266,10 +339,11 @@ const toolbarRowStyle: React.CSSProperties = {
 }
 
 const viewerStyle: React.CSSProperties = {
-  flex: 1,
+  // flex: 1,
   minHeight: 500,
   borderRadius: 12,
   overflow: 'hidden',
+  height: 0,
 }
 
 const rightPanelStyle: React.CSSProperties = {

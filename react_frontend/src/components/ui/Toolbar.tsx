@@ -22,7 +22,7 @@ export interface ToolbarProps {
 const ZOOM_STEP = 10
 const ZOOM_MIN  = 10
 const ZOOM_MAX  = 500
-const ACCEPTED_3D = '.stl,.obj,.3mf'
+export const ACCEPTED_3D = ['.iges', '.igs']
 
 const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
