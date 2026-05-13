@@ -644,81 +644,6 @@ def on_disconnect():
     clean_session(sid);
 import tempfile
 
-
-def convert(input_path, output_path):
-    try:
-        gmsh.initialize()
-        # No signals needed here since it's a dedicated process
-        gmsh.option.setNumber("General.Terminal", 1) 
-        gmsh.model.add("MeshWorker")
-        
-        gmsh.model.occ.importShapes(os.path.abspath(input_path))
-        gmsh.model.occ.synchronize()
-        
-        # Adjust for quality
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 2.0)
-        gmsh.model.mesh.generate(2)
-        
-        gmsh.write(os.path.abspath(output_path))
-        gmsh.finalize()
-        return True
-    except Exception as e:
-        print(f"Worker Error: {e}")
-        return False
-
-
-
-
-@socketio.on('convert_iges_to_stl')
-def handle_convert_iges_to_stl(data):
-    iges_text = data.get('data')
-    if not iges_text:
-        return emit('error', {'msg': 'Empty file data'})
-
-    # 1. Create unique temporary files
-    fd_in, temp_in = tempfile.mkstemp(suffix=".iges")
-    fd_out, temp_out = tempfile.mkstemp(suffix=".stl")
-    
-    try:
-        # Write the IGES text to the temp file
-        with os.fdopen(fd_in, 'w') as f:
-            f.write(iges_text)
-        os.close(fd_out) # Close the output file descriptor so Gmsh can write to it
-
-        # 2. Spawn the worker process
-        # This is the "Clean Room" - Gmsh gets its own process/memory
-        result = subprocess.run(
-            ['python', 'mesh_worker.py', temp_in, temp_out],
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode != 0:
-            raise Exception(f"Gmsh Process Failed: {result.stderr}")
-
-        # 3. Read the generated STL
-        if os.path.exists(temp_out):
-            with open(temp_out, 'r', encoding='utf-8', errors='ignore') as f:
-                stl_content = f.read()
-            
-            # Use your existing compression logic here
-            # ... (gzip -> b64 -> emit) ...
-            
-            print(f"Successfully converted {data.get('filename')}")
-            # Example emit:
-            # emit('result', {'kind': 'model_stl', 'stl_gz_b64': encoded_data})
-
-    except Exception as e:
-        print(f"Conversion failed: {e}")
-        emit('error', {'msg': str(e)})
-        
-    finally:
-        # 4. Cleanup
-        for p in [temp_in, temp_out]:
-            if os.path.exists(p):
-                os.remove(p)
-
-
 @socketio.on('calculate')
 def handle_calculate(data):
     sid = request.sid
@@ -986,6 +911,42 @@ def read_ascii_stl_file(stl_file):
 
     return stl_content
 
+
+@socketio.on('convert_igs_to_stl')
+def handle_convert_igs_to_stl(data):
+    print("Received request to convert IGS to STL (Running Dummy Mode)")
+    
+    igs_text = data.get('data')
+    if not igs_text:
+        return emit('error', {'msg': 'Empty file data'})
+
+    # 1. Define the absolute path to the dummy STL file on your machine
+    DUMMY_STL_PATH = r"./models/Elephant.stl"  # For Windows (use r"" prefix)
+    # DUMMY_STL_PATH = "/path/to/your/mock_file.stl"  # For macOS/Linux
+
+    try:
+        # 2. Verify the dummy file exists
+        if not os.path.exists(DUMMY_STL_PATH):
+            print(f"Error: Dummy file not found at {DUMMY_STL_PATH}")
+            return emit('error', {'msg': 'Server configuration error: Mock file missing.'})
+
+        # 3. Read the file 
+        # Using 'rb' (read binary) handles both ASCII and Binary STL formats.
+        # Flask-SocketIO natively supports sending binary data.
+        with open(DUMMY_STL_PATH, 'rb') as f:
+            stl_content = f.read()
+
+        # 4. Emit the data back to the client
+        # Change 'conversion_success' to match whatever event your frontend listens for
+        gzipped_data = gzip.compress(stl_content)
+        b64_string = base64.b64encode(gzipped_data).decode('utf-8')
+        emit('result', {'stl_gz_b64': b64_string, 'kind': "model_preview_stl"})
+        print("Successfully returned dummy STL file.")
+
+    except Exception as e:
+        print(f"Error reading dummy file: {e}")
+        emit('error', {'msg': f'Internal server error during mock conversion: {str(e)}'})
+
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
     # Extract the 3 values
@@ -1017,8 +978,8 @@ def handle_calculate_tile(data):
     }
     state["tile_type"] = tile_type
     state["p1"] = p1
-    state["p1"] = p2
-    state["p1"] = p3
+    state["p2"] = p2
+    state["p3"] = p3
     #state["event"].set()
 
     calculate_tile(TileParams, Graded, tile_type)
@@ -1121,6 +1082,7 @@ def download_results():
         download_name='results.zip'  # The name the user will see
     )
 
+
 #
 # netstat -ano | findstr :5000
 # taskkill /PID 12345 /F
@@ -1129,4 +1091,3 @@ if __name__ == '__main__':
     print("Starting Flask-SocketIO server on http://localhost:5003")
     print('socketio.server =', getattr(socketio, 'server', None))
     socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
-

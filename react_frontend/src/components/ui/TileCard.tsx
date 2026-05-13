@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Center, Environment } from '@react-three/drei'
+import { OrbitControls, Center, Environment, Bounds } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
@@ -111,7 +111,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
         {/* Three.js canvas — leaves room for the label when present */}
         <Canvas
           style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
-          camera={{ position: [0, 0, 3], fov: 45 }}
+          camera={{ position: [0, 0, 3], fov: 90 }}
           gl={{ antialias: true, alpha: true }}
         >
           <ambientLight intensity={0.7} />
@@ -119,10 +119,12 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
           <directionalLight position={[-3, -2, -3]} intensity={0.2} />
 
           <React.Suspense fallback={<PlaceholderMesh color={meshColor} />}>
-            {modelUrl
-              ? <STLModel url={modelUrl} color={meshColor} />
-              : <PlaceholderMesh color={meshColor} />
-            }
+            <Bounds fit clip observe margin={1.3}>
+              {modelUrl
+                ? <STLModel url={modelUrl} color={meshColor} />
+                : <PlaceholderMesh color={meshColor} />
+              }
+            </Bounds>
           </React.Suspense>
 
           {enableOrbit && (

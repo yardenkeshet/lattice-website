@@ -117,7 +117,7 @@ export function ViewerScene({
 
       <Canvas
         key={cameraMode}
-        camera={cameraMode === 'perspective' ? { position: [0, 0, 5], fov: 45 } : undefined}
+        camera={cameraMode === 'perspective' ? { position: [0, 0, 5], fov: 60 } : undefined}
         orthographic={cameraMode === 'orthographic'}
         gl={{ antialias: true, alpha: true }}
       >

@@ -70,7 +70,7 @@ export function ToolPage() {
   React.useEffect(() => {
   const unsubResult = socket.onResult((payload) => {
     setIsCalculating(false)
-
+    console.log("Received result payload:", payload);
     // 1. Check for the new IGS kind we defined in the backend
     if (payload.kind === 'model_igs') {
       console.log('Received model IGS result:', payload);
@@ -94,6 +94,11 @@ export function ToolPage() {
       if (resultGzB64 === null) {
         setModelPreviewOrder('tile_preview');
       }
+    } else if (payload.kind === 'model_preview_stl') {
+      // Keeping this for your tile preview if that still uses STL
+      console.log('Received model_preview_stl:', payload);
+      setResultGzB64(payload.stl_gz_b64);
+      
     } else {
       // Fallback for other kinds or unexpected payloads
       if (payload.download_token) {
@@ -130,11 +135,34 @@ export function ToolPage() {
 
   /* ── File upload ── */
   const handleFileAdd = async (file: File) => {
-    setUploadedFile(file)
+  try {
+
+      // 1. file.text() returns a Promise, so you must await it
+      const fileContent = await file.text();
+    console.log("Added file :", { 
+        filename: file.name, 
+        data: fileContent 
+      });
     setResultGzB64(null)      // clear previous result
     setDownloadToken(null)
     setErrorMsg(null)
+    setUploadedFile(file)
     setModelPreviewOrder('uploaded')
+      // 2. Emit the payload matching the key ('data') the backend expects
+      // If using standard socket.io-client syntax:
+      socket.convertIGESToSTL({ 
+        filename: file.name, 
+        data: fileContent 
+      });
+
+      // Alternatively, if you are using a custom wrapper object:
+      // socket.convertIGESToSTL({ filename: file.name, data: fileContent });
+
+    } catch (err) {
+      console.error("Failed to read file text:", err);
+    }
+
+    
     // if(file)
     // {
     //   const url = URL.createObjectURL(file);
@@ -269,7 +297,8 @@ if (!uploadedFile) {
               // model={modelPreviewOrder === 'uploaded' 
               //   ? {type: 'iges', data: igesUrl} : 
               //   { type: 'stl', data: modelPreviewOrder === 'result' ? resultGzB64 : (modelPreviewOrder === 'tile_preview' ? tilePreviewGzB64 : null) }}
-              model={ {type: 'stl', data: resultGzB64??tilePreviewGzB64}}
+              // model={ {type: 'stl', data: resultGzB64 }}
+              model={ {type: 'stl', data: resultGzB64 ?? tilePreviewGzB64}}
               cameraMode={cameraMode}
               zoom={zoom}
               onZoomChange={setZoom}

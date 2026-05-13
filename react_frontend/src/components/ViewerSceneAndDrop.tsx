@@ -7,7 +7,6 @@ import * as THREE from 'three'
 import { useStlBlobUrl } from '../lib/stl'
 import { ACCEPTED_3D } from './ui/Toolbar'
 import { ViewerScene } from './ViewerScene';
-
 /* ─── Public API ─── */
 
 export interface ViewerSceneProps {

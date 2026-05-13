@@ -1,35 +1,32 @@
 import * as React from 'react'
-import { Canvas, useThree, useLoader } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
-import { IGESLoader } from "three-iges-loader";
-import * as THREE from 'three'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Bounds, OrbitControls } from '@react-three/drei'
 import { useStlBlobUrl } from '../lib/stl'
-import { ACCEPTED_3D } from './ui/Toolbar'
 import { IGESMesh } from './IGESMesh';
 import { STLMesh } from './STLMesh';
 
 /* ─── Public API ─── */
 
 export interface ViewerSceneProps {
-  // model.data can be a File (from upload) or a string (b64 from server or raw IGES text)
-  model: { type: 'iges' | 'stl', data: string | File | null }, 
+  model: { 
+    data: string | File | null;
+    type?: 'iges' | 'stl'; // Added type here so TS knows it exists
+  }, 
   cameraMode?: 'perspective' | 'orthographic'
 }
 
-
 export function ViewerScene({
-  model = { type: 'stl', data: null },
+  model = { data: null, type: 'iges' },
   cameraMode = 'perspective',
 }: ViewerSceneProps) {
-  const [zoom, setZoom] = React.useState(100);
   const [activeUrl, setActiveUrl] = React.useState<string | null>(null);
 
   // 1. Handle Server-side STL (Base64 + Gzip)
-  // Assuming useStlBlobUrl handles decoding/decompression and returns a blob: URL
-  const resultStlUrl = useStlBlobUrl(model.type === 'stl' && typeof model.data === 'string' ? model.data : null);
+  // Only pass data to the hook if it's explicitly a server-returned string for an STL
+  const isServerStl = model.type === 'stl' && typeof model.data === 'string';
+  const resultStlUrl = useStlBlobUrl(isServerStl ? (model.data as string) : null);
 
-React.useEffect(() => {
+  React.useEffect(() => {
     // Priority 1: Use the processed STL blob URL from the server result
     if (resultStlUrl) {
       setActiveUrl(resultStlUrl);
@@ -48,6 +45,7 @@ React.useEffect(() => {
       url = URL.createObjectURL(model.data);
     } 
     // Priority 3: If it's raw IGES text (string)
+    // Fixed: changed from 'model.data === string' to 'typeof'
     else if (model.type === 'iges' && typeof model.data === 'string') {
       const blob = new Blob([model.data], { type: 'text/plain' });
       url = URL.createObjectURL(blob);
@@ -59,26 +57,36 @@ React.useEffect(() => {
     }
   }, [model.data, model.type, resultStlUrl]);
 
-  return       <Canvas
-        key={cameraMode}
-        camera={cameraMode === 'perspective' ? { position: [0, 0, 5], fov: 45 } : undefined}
-        orthographic={cameraMode === 'orthographic'}
-        gl={{ antialias: true, alpha: true }}
-      >
-        <ambientLight intensity={0.6} />
-        <pointLight position={[10, 10, 10]} />
-        
-        <React.Suspense fallback={null}>
-          {activeUrl && (
-            model.type === 'iges' 
-              // ? <IGESMesh igesUrl={activeUrl} /> 
-              ?<STLMesh url={activeUrl} />
-              : <STLMesh url={activeUrl} />
-          )}
-        </React.Suspense>
+  return (
+    <Canvas
+      key={cameraMode}
+      camera={{ position: [100, 0, 100], fov: 60 }}
+      gl={{ antialias: true, alpha: true }}
+    >
+      
+      {/* Lights turned back on so the meshes aren't pitch black */}
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[3, 4, 3]} intensity={0.8} />
+      <directionalLight position={[-3, -2, -3]} intensity={0.2} />
+          <axesHelper args={[5]} />
+      
+      <React.Suspense fallback={null}>
+           <Bounds fit clip observe>
 
-        <OrbitControls makeDefault enablePan enableZoom={true} />
-      </Canvas>
+        {activeUrl && (
+          // Fixed conditional routing: 
+          // If it came back from the hook, it's definitely an STL. Otherwise check the type.
+          model.type === 'stl' || resultStlUrl
+            ? <STLMesh url={activeUrl} />
+            : <IGESMesh igesUrl={activeUrl} />
+        )}
+           </Bounds>
+
+      </React.Suspense>
+
+      <OrbitControls makeDefault enablePan enableZoom={true} />
+    </Canvas>
+  );
 }
   // const [isDragOver, setIsDragOver] = React.useState(false)
   // const [activeUrl, setActiveUrl] = React.useState<string | null>(null)
