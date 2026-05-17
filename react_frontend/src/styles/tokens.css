@@ -1,0 +1,166 @@
+:root {
+  /* ── Brand ── */
+  --navy-dark:    #042c4e;
+  --navy-primary: #00446c;
+  --navy-medium:  #09526f;
+  --blue-bright:  #046bd2;
+  --blue-light:   #00a3cc;
+  --cyan-light:   #b6e3ec;
+  --white:        #ffffff;
+
+  /* ── Neutral ── */
+  --gray-50:  #f8f8f8;
+  --gray-100: #ececf0;
+  --gray-400: #717282;
+  --gray-600: #4a4a5a;
+  --gray-900: #1a1a24;
+
+  /* ── Pastel accents ── */
+  --pastel-green:  #c8f0d4;
+  --pastel-blue:   #d4e8f8;
+  --pastel-yellow: #fff4d4;
+  --pastel-pink:   #ffe4e8;
+
+  /* ── Semantic: Backgrounds ── */
+  --bg-primary:    var(--white);
+  --bg-secondary:  var(--gray-50);
+  --bg-tertiary:   var(--gray-100);
+  --bg-card:       var(--white);
+  --bg-surface:    var(--navy-dark);
+  --bg-surface-mid: var(--navy-primary);
+
+  /* ── Semantic: Borders ── */
+  --border-base:  var(--gray-100);
+  --border-muted: var(--gray-50);
+  --border-brand: var(--navy-primary);
+  --border-focus: var(--blue-bright);
+  --border-error: #b3261e;
+
+  /* ── Semantic: Text ── */
+  --text-base:        var(--gray-900);
+  --text-secondary:   var(--gray-600);
+  --text-tertiary:    var(--gray-400);
+  --text-on-brand:    var(--white);
+  --text-link:        var(--blue-bright);
+  --text-placeholder: var(--gray-400);
+  --text-error:       #b3261e;
+
+  /* ── Semantic: Actions ── */
+  --action-primary:       var(--navy-primary);
+  --action-primary-hover: var(--navy-dark);
+  --action-primary-text:  var(--white);
+  --action-secondary:       var(--blue-bright);
+  --action-secondary-hover: var(--navy-medium);
+  --action-accent:          var(--blue-light);
+
+  /* ── Semantic: Status ── */
+  --status-success-bg: var(--pastel-green);
+  --status-info-bg:    var(--pastel-blue);
+  --status-warning-bg: var(--pastel-yellow);
+  --status-error-bg:   var(--pastel-pink);
+  --status-error:      #b3261e;
+
+  /* ── Typography ── */
+  --font-heading: 'Instrument Sans', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    ui-monospace, Consolas, monospace;
+
+  --text-size-h1:   2rem;      /* 32px */
+  --text-size-h2:   1.5rem;    /* 24px */
+  --text-size-h3:   1.25rem;   /* 20px */
+  --text-size-h4:   1.125rem;  /* 18px */
+  --text-size-body: 1rem;      /* 16px */
+
+  --leading-h1:   1.3;
+  --leading-h2:   1.4;
+  --leading-h3:   1.4;
+  --leading-h4:   1.5;
+  --leading-body: 1.5;
+
+  /* ── Spacing ── */
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+
+  /* ── Border Radius ── */
+  --radius-tag:    4px;
+  --radius-card:   8px;
+  --radius-button: 10px;
+  --radius-track:  9px;
+  --radius-full:   9999px;
+
+  /* ── Icon sizes ── */
+  --icon-sm: 16px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+
+  /* ── Typography: extra sizes ── */
+  --text-size-xs: 0.625rem; /* 10px — compact inputs */
+
+  /* ── Slider component ── */
+  --slider-track-height:  30px;
+  --slider-thumb-width:   22px;
+  --slider-thumb-height:  35px;
+  --slider-badge-width:        47px;
+  --slider-badge-width-range:  80px;
+  --radius-thumb:         5px;
+  --text-size-sm:         0.8125rem; /* 13px */
+  --shadow-thumb:         0 1px 4px rgba(0, 0, 0, 0.12);
+  --shadow-thumb-hover:   0 2px 8px rgba(0, 0, 0, 0.18);
+
+  /* ── NumberInput component ── */
+  --number-input-width: 51px; /* exact Figma spec */
+
+  /* ── Banner component ── */
+  --banner-height:       157px;
+  --banner-bg:           linear-gradient(to right, var(--navy-medium), var(--navy-dark));
+  --banner-left-w:       360px;   /* left logo section width */
+  --banner-right-w:      232px;   /* right logo width */
+  --banner-circle-size:  496px;   /* lab logo background circle */
+
+  /* ── Carousel component ── */
+  --carousel-arrow-w:        39px;
+  --carousel-arrow-h:        62px;
+  --carousel-arrow-bg:       rgba(217, 217, 217, 0.50);
+  --carousel-arrow-bg-hover: rgba(217, 217, 217, 0.80);
+  /* Edge gradient overlay — exact Figma stops */
+  --carousel-overlay: linear-gradient(
+    to right,
+    var(--navy-dark) 0%,
+    rgba(4, 44, 78, 0) 21%,
+    rgba(4, 44, 78, 0) 76%,
+    var(--navy-dark) 100%
+  );
+
+  /* ── Button component ── */
+  --btn-height:       31px;
+  --btn-padding-y:    9px;
+  --btn-padding-x:    21px;
+  --btn-gap:          10px;
+  --text-size-button: 0.6875rem;  /* 11px — exact Figma spec */
+  --btn-shadow:       0 1px 1px rgba(0, 0, 0, 0.15);
+
+  /* ── IconButton component ── */
+  --icon-btn-hit:    44px;   /* outer hit / glow area */
+  --icon-btn-size:   31px;   /* visible inner button */
+  --icon-btn-radius: 14px;   /* outer glow radius */
+  --icon-btn-bg:     var(--bg-tertiary);
+  --icon-btn-border: color-mix(in srgb, var(--gray-400) 50%, transparent);
+  --icon-btn-glow:          var(--bg-primary);
+  --icon-btn-bg-hover:      var(--gray-100);
+  --icon-btn-shadow-outer:  1px 2px 9px 2px rgba(0, 0, 0, 0.10);
+  --icon-btn-shadow-inner:  0 1px 1px 1px rgba(0, 0, 0, 0.12);
+
+  /* ── TileCard component ── */
+  --tile-card-size-mini:  45.5px;
+  --tile-card-size-sm:    80px;
+  --tile-card-size-lg:   166px;
+  --text-size-xxs:      0.5rem;   /* 8px — tile card label */
+  --tile-card-border-selected: 2px solid var(--border-focus);
+  --tile-card-border-hover:    1px solid var(--border-base);
+
+  /* ── Dropdown component ── */
+  --dropdown-height:        32px;
+  --dropdown-shadow:        0 4px 16px rgba(0, 0, 0, 0.10);
+  --dropdown-shadow-hover:  0 4px 16px rgba(0, 0, 0, 0.16);
+}

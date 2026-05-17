@@ -1,0 +1,63 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { downloadResults } from '../httpClient'
+
+/* ─── Tests ─── */
+
+describe('downloadResults()', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // Spy on global fetch
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+    // Stub URL and anchor APIs used for triggering the download
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:mock-url'),
+      revokeObjectURL: vi.fn(),
+    })
+
+    const mockAnchor = { href: '', download: '', click: vi.fn() }
+    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('POSTs to the correct URL with a form-encoded token', async () => {
+    fetchSpy.mockResolvedValue(
+      new Response(new Blob(['zip-content']), { status: 200 })
+    )
+
+    await downloadResults('tok-abc-123')
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://localhost:5003/download-results')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBeInstanceOf(URLSearchParams)
+    expect((init.body as URLSearchParams).get('token')).toBe('tok-abc-123')
+  })
+
+  it('throws when the server returns a non-ok status', async () => {
+    fetchSpy.mockResolvedValue(new Response('', { status: 400, statusText: 'Bad Request' }))
+
+    await expect(downloadResults('bad-token')).rejects.toThrow('Download failed: 400 Bad Request')
+  })
+
+  it('triggers a browser file download with filename results.zip', async () => {
+    fetchSpy.mockResolvedValue(
+      new Response(new Blob(['zip']), { status: 200 })
+    )
+
+    const anchorMock = { href: '', download: '', click: vi.fn() }
+    vi.spyOn(document, 'createElement').mockReturnValue(anchorMock as unknown as HTMLElement)
+
+    await downloadResults('tok-xyz')
+
+    expect(anchorMock.download).toBe('results.zip')
+    expect(anchorMock.click).toHaveBeenCalledOnce()
+  })
+})

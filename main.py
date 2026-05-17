@@ -1,6 +1,7 @@
 # app.py
 import os
 import shutil
+import sys
 import time
 import base64
 import gzip
@@ -31,7 +32,7 @@ import os
 #
 import lattice as lt
 from lattice import (MSDLL_TILE_CROSS, MSDLL_TILE_DIAGONAL, MSDLL_TILE_CROSS_DIAGONAL)
-
+import gmsh
 
 TileParams = (c_double * 3)(
     0.2,
@@ -641,6 +642,7 @@ def on_disconnect():
     logger.info('Client disconnected - ')
     sid = request.sid
     clean_session(sid);
+import tempfile
 
 @socketio.on('calculate')
 def handle_calculate(data):
@@ -648,7 +650,8 @@ def handle_calculate(data):
     print(f"======> calculate - id : {sid}  ")
     start_total = time.time()
     client_ts = data.get('client_ts')
-    filename = data.get('filename', 'uploaded.stl')
+    # Changed default extension to .igs
+    filename = data.get('filename', 'uploaded.igs')
     args = data.get('args', {})
 
     tile_type = args.get('tileType')
@@ -659,7 +662,6 @@ def handle_calculate(data):
     g1 = float(args.get('g1', 0.0))
     g2 = float(args.get('g2', 0.0))
 
-
     print(f"✅ Extracted Params:")
     print(f"  tileType: {tile_type}")
     print(f"  nt1  {nt1}, nt2 : {nt2}, nt3 : {nt3}")
@@ -667,73 +669,70 @@ def handle_calculate(data):
 
     tile_type_int = lt.TILE_TYPE_MAP.get(tile_type)
 
-    #print(f" args : {args}")
+    # 1. GET THE IGS
+    logger.info(f"[1] get the IGS: {filename}")
+    print(f"[1] get the IGS: {filename}")
 
-    # 1. GET THE STL
-    logger.info(f"[1] get the STL: {filename}")
-    print(f"[1] get the STL: {filename}")
-
-    stl_b64_ascii = data.get('stl_text_b64')
-    stl_b64 = data.get('stl_b64', stl_b64_ascii)
+    # Updated keys to expect igs instead of stl
+    igs_b64_ascii = data.get('igs_text_b64')
+    igs_b64 = data.get('igs_b64', igs_b64_ascii)
     is_binary = bool(data.get('binary', False))
 
-    if not stl_b64:
-        logger.error("No STL payload in request")
-        print("ERROR: No STL payload in request")
-        emit('error', {'msg': 'No STL payload'})
+    if not igs_b64:
+        logger.error("No IGS payload in request")
+        print("ERROR: No IGS payload in request")
+        emit('error', {'msg': 'No IGS payload'})
         return
 
     # decode base64
     try:
-        stl_bytes = base64.b64decode(stl_b64)
+        igs_bytes = base64.b64decode(igs_b64)
     except Exception as e:
-        logger.exception("Failed to base64-decode incoming STL")
-        print("ERROR: Failed to decode STL")
-        emit('error', {'msg': 'Failed to decode STL b64'})
+        logger.exception("Failed to base64-decode incoming IGS")
+        print("ERROR: Failed to decode IGS")
+        emit('error', {'msg': 'Failed to decode IGS b64'})
         return
 
     # ---------------------------------------------------------------
-    # 🔵 ADD A: STL original size logging
-    stl_size_mb = len(stl_bytes) / (1024 * 1024)
-    logger.info(f"Original STL size: {stl_size_mb:.3f} MB ({len(stl_bytes)} bytes)")
-    print(f"Original STL size: {stl_size_mb:.3f} MB ({len(stl_bytes)} bytes)")
+    # 🔵 IGS original size logging
+    igs_size_mb = len(igs_bytes) / (1024 * 1024)
+    logger.info(f"Original IGS size: {igs_size_mb:.3f} MB ({len(igs_bytes)} bytes)")
+    print(f"Original IGS size: {igs_size_mb:.3f} MB ({len(igs_bytes)} bytes)")
     # ---------------------------------------------------------------
 
-    # Save STL
-    last_results_stl_path=""
+    # Save IGS
+    last_results_igs_path=""
     if filename is not None:
         safe_base = os.path.splitext(os.path.basename(filename))[0]
-        stl_path = os.path.join(DATA_DIR, f"{safe_base}.stl")
+        igs_path = os.path.join(DATA_DIR, f"{safe_base}.igs")
         json_path = os.path.join(DATA_DIR, f"{safe_base}.json")
-        last_results_stl_path = os.path.join(LAST_RESULTS_DIR, f"{safe_base}.stl")
+        last_results_igs_path = os.path.join(LAST_RESULTS_DIR, f"{safe_base}.igs")
     else:
-        stl_path = os.path.join(DATA_DIR, f"none.stl")
+        igs_path = os.path.join(DATA_DIR, f"none.igs")
         json_path = os.path.join(DATA_DIR, f"none.json")
-        last_results_stl_path = LAST_RESULTS_DIR
+        last_results_igs_path = LAST_RESULTS_DIR
         safe_base = "none"
 
     print(f" safe_base = {safe_base}")
+    print(f"--- Saved : \n\t IGS : {igs_path} \n\t : {json_path} ")
 
-#saved results path
-
-    print(f"--- Saved : \n\t STL : {stl_path} \n\t : {json_path} ")
     try:
         if is_binary:
-            with open(stl_path, 'wb') as f:
-                f.write(stl_bytes)
-            logger.info(f"Saved binary STL to {stl_path}")
-            print(f"Saved binary STL to {stl_path}")
-            stl_text = None
+            with open(igs_path, 'wb') as f:
+                f.write(igs_bytes)
+            logger.info(f"Saved binary IGS to {igs_path}")
+            print(f"Saved binary IGS to {igs_path}")
+            igs_text = None
         else:
-            stl_text = stl_bytes.decode('utf-8', errors='ignore')
-            with open(stl_path, 'w', encoding='utf-8') as f:
-                f.write(stl_text)
-            logger.info(f"Saved ASCII STL to {stl_path}")
-            print(f"Saved ASCII STL to {stl_path}")
+            igs_text = igs_bytes.decode('utf-8', errors='ignore')
+            with open(igs_path, 'w', encoding='utf-8') as f:
+                f.write(igs_text)
+            logger.info(f"Saved ASCII IGS to {igs_path}")
+            print(f"Saved ASCII IGS to {igs_path}")
     except Exception:
-        logger.exception("Failed to save STL")
-        print("ERROR: Failed to save STL")
-        emit('error', {'msg': 'Failed to save STL'})
+        logger.exception("Failed to save IGS")
+        print("ERROR: Failed to save IGS")
+        emit('error', {'msg': 'Failed to save IGS'})
         return
 
     # Save JSON
@@ -747,37 +746,33 @@ def handle_calculate(data):
         print("ERROR: Failed to save JSON metadata")
 
     # 2. PROCESS
-
     t_recv = time.time()
-    processed_stl_text = None
+    igs_content = None # Renamed for clarity
 
     if tile_type_int is not None:
         print(f"Incoming tile_type string: '{tile_type}' maps to integer: {tile_type_int}")
-        # Example comparison using the integer value:
         if tile_type_int == MSDLL_TILE_CROSS:
             print("Tile type is CROSS ")
-            download_token, stl_content = do_revolution(sid)
+            download_token, igs_content = do_revolution(sid)
         elif tile_type_int == MSDLL_TILE_DIAGONAL:
             print("Tile type is DIAGONAL ")
-            download_token, stl_content = do_extrusion(sid)
+            download_token, igs_content = do_extrusion(sid)
         elif tile_type_int == MSDLL_TILE_CROSS_DIAGONAL:
             print("Tile type is CROSS_DIAGONAL .")
-            download_token, stl_content = do_Ruling(sid)
-
+            download_token, igs_content = do_Ruling(sid)
     else:
         print(f"Error: Unknown tile_type string received: {tile_type}")
 
     t_processed = time.time()
 
-    # download_token = generate_dummy_files_results(sid)
     # 3. COMPRESSION
-    logger.info("[3] Compression: gzipping processed STL")
-    print("[3] Compression: gzipping processed STL")
+    logger.info("[3] Compression: gzipping processed IGS")
+    print("[3] Compression: gzipping processed IGS")
 
     try:
         buf = BytesIO()
         with gzip.GzipFile(fileobj=buf, mode='wb') as gz:
-            gz.write(stl_content.encode('utf-8'))
+            gz.write(igs_content.encode('utf-8'))
         compressed = buf.getvalue()
         t_compressed = time.time()
     except Exception:
@@ -788,15 +783,15 @@ def handle_calculate(data):
 
     t_parsed = time.time()
     # ---------------------------------------------------------------
-    # 🔵 ADD B: Compressed STL size logging
+    # 🔵 Compressed IGS size logging
     comp_mb = len(compressed) / (1024 * 1024)
-    logger.info(f"Compressed STL size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
-    print(f"Compressed STL size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
+    logger.info(f"Compressed IGS size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
+    print(f"Compressed IGS size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
     # ---------------------------------------------------------------
 
     # 4. SEND TO CLIENT
-    logger.info("[4] Sending: emitting compressed STL to client")
-    print("[4] Sending: emitting compressed STL to client")
+    logger.info("[4] Sending: emitting compressed IGS to client")
+    print("[4] Sending: emitting compressed IGS to client")
 
     compressed_b64 = base64.b64encode(compressed).decode('ascii')
 
@@ -808,18 +803,14 @@ def handle_calculate(data):
         'overall_ms': (time.time() - start_total)*1000.0
     }
 
-
     emit('result', {
-        'filename': safe_base + "_reduced.stl",
-        'stl_gz_b64': compressed_b64,
+        'filename_reduced': safe_base + "_reduced.igs",
+        'kind': "model_igs",
+        'igs_gz_b64': compressed_b64,
         'timings': timings,
-        'args_echo': args
-    })
-
-
-    emit('result', {
+        'args_echo': args,
         'filename': filename,
-        'download_token': download_token  # <-- Send the token to the client
+        'download_token': download_token
     })
 
     logger.info(f"Finished sending {filename}. Timings: {timings}")
@@ -892,6 +883,7 @@ def calculate_tile(TileParams, Graded, tile_type):
         print(f" sending tile : {stl_tile_path}")
         emit('result', {
             'filename': stl_tile_path,
+            'kind': "tile_stl",
             'stl_gz_b64': compressed_b64,
             'timings': timings,
         })
@@ -918,6 +910,42 @@ def read_ascii_stl_file(stl_file):
         emit('error', {'message': error_msg})
 
     return stl_content
+
+
+@socketio.on('convert_igs_to_stl')
+def handle_convert_igs_to_stl(data):
+    print("Received request to convert IGS to STL (Running Dummy Mode)")
+    
+    igs_text = data.get('data')
+    if not igs_text:
+        return emit('error', {'msg': 'Empty file data'})
+
+    # 1. Define the absolute path to the dummy STL file on your machine
+    DUMMY_STL_PATH = r"./models/Elephant.stl"  # For Windows (use r"" prefix)
+    # DUMMY_STL_PATH = "/path/to/your/mock_file.stl"  # For macOS/Linux
+
+    try:
+        # 2. Verify the dummy file exists
+        if not os.path.exists(DUMMY_STL_PATH):
+            print(f"Error: Dummy file not found at {DUMMY_STL_PATH}")
+            return emit('error', {'msg': 'Server configuration error: Mock file missing.'})
+
+        # 3. Read the file 
+        # Using 'rb' (read binary) handles both ASCII and Binary STL formats.
+        # Flask-SocketIO natively supports sending binary data.
+        with open(DUMMY_STL_PATH, 'rb') as f:
+            stl_content = f.read()
+
+        # 4. Emit the data back to the client
+        # Change 'conversion_success' to match whatever event your frontend listens for
+        gzipped_data = gzip.compress(stl_content)
+        b64_string = base64.b64encode(gzipped_data).decode('utf-8')
+        emit('result', {'stl_gz_b64': b64_string, 'kind': "model_preview_stl"})
+        print("Successfully returned dummy STL file.")
+
+    except Exception as e:
+        print(f"Error reading dummy file: {e}")
+        emit('error', {'msg': f'Internal server error during mock conversion: {str(e)}'})
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
@@ -950,8 +978,8 @@ def handle_calculate_tile(data):
     }
     state["tile_type"] = tile_type
     state["p1"] = p1
-    state["p1"] = p2
-    state["p1"] = p3
+    state["p2"] = p2
+    state["p3"] = p3
     #state["event"].set()
 
     calculate_tile(TileParams, Graded, tile_type)
@@ -1054,6 +1082,7 @@ def download_results():
         download_name='results.zip'  # The name the user will see
     )
 
+
 #
 # netstat -ano | findstr :5000
 # taskkill /PID 12345 /F
@@ -1061,5 +1090,4 @@ def download_results():
 if __name__ == '__main__':
     print("Starting Flask-SocketIO server on http://localhost:5003")
     print('socketio.server =', getattr(socketio, 'server', None))
-    socketio.run(app, host='0.0.0.0', port=5003)
-
+    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)

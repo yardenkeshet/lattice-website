@@ -1,41 +1,14 @@
-# --- IDE & OS ---
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
-
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-ENV/
-env/
-*.log
-
-# --- Node / React (Root and Frontend) ---
-node_modules/
-frontend/node_modules/
-frontend/dist/
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# --- Project Specific (Results & Logs) ---
-lattice.log
-logs/
+client_data/
+front/
+gershon/
+GUI/
+igs/
+Input/
 last_results/
 last_tiles_results/
+logs/
+/models/
+output/
+results/
+results_tiles/
 uploads/
-client_data/
-lattice.log
-
-
-# --- CAD/Geometry Artifacts (Optional) ---
-# Ignore large generated model files if you don't want them in Git
-# *.stl
-# *.obj
-# igs/
