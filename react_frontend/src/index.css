@@ -1,0 +1,90 @@
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font: var(--text-size-body) / var(--leading-body) var(--font-body);
+  letter-spacing: 0.18px;
+  color: var(--text-base);
+  background: var(--bg-primary);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+h1 {
+  font-size: var(--text-size-h1);
+  line-height: var(--leading-h1);
+  letter-spacing: -0.5px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 1.75rem;
+    margin: 20px 0;
+  }
+}
+
+h2 {
+  font-size: var(--text-size-h2);
+  line-height: var(--leading-h2);
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: var(--text-size-h3);
+  }
+}
+
+h3 {
+  font-size: var(--text-size-h3);
+  line-height: var(--leading-h3);
+}
+
+h4 {
+  font-size: var(--text-size-h4);
+  line-height: var(--leading-h4);
+}
+
+p {
+  margin: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  border-radius: var(--radius-tag);
+  background: var(--bg-tertiary);
+  color: var(--text-base);
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+}

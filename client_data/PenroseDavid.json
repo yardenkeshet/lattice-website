@@ -1,0 +1,11 @@
+{
+  "filename": "PenroseDavid.stl",
+  "args": {
+    "tileType": "diagonal",
+    "nt1": 20,
+    "nt2": 20,
+    "nt3": 1,
+    "g1": 2,
+    "g2": 0.2
+  }
+}

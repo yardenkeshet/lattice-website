@@ -1,0 +1,7 @@
+LIBRARY MSDLL64
+EXPORTS
+MSDLLGetTile
+MSDLLMSFromRuling
+MSDLLMSFromExtrusion
+MSDLLMSFromRevolution
+

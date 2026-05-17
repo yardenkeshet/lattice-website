@@ -1,0 +1,1066 @@
+2026-04-08 12:11:36,933 INFO Client connected
+2026-04-08 12:11:36,939 INFO {'sid': 'Jc4K_O8y4lNqNqsPAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5003/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1775639496.9392843, 'last_activity': 1775639496.939285, 'unique_file_id': '71352f79-639f-4fb2-8aee-1bce01c9e1af'}
+2026-04-08 12:11:36,940 INFO Client connected
+2026-04-08 12:18:04,436 INFO Client connected
+2026-04-08 12:18:04,439 INFO {'sid': 'AsToMhFvvnrVtQOTAAAC', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5003/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1775639884.4397085, 'last_activity': 1775639884.4397087, 'unique_file_id': '60ca114b-ad16-4f4d-9850-2c9676042429'}
+2026-04-08 12:18:04,440 INFO Client connected
+2026-05-09 11:53:34,140 INFO Client connected
+2026-05-09 11:53:34,144 INFO {'sid': 'M5iK8luCc2EPD_OlAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778316814.1439898, 'last_activity': 1778316814.1439905, 'unique_file_id': '72d2fe27-e3da-41dd-94b1-1864eb90296c'}
+2026-05-09 11:53:34,146 INFO Client connected
+2026-05-09 11:53:37,080 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:37,091 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:37,692 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:43,783 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,318 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,326 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,336 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,678 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,765 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,816 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,836 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:44,883 INFO Compressed Tile STL size: 0.000 MB (438 bytes)
+2026-05-09 11:53:45,243 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:45,324 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:46,736 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:46,738 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:46,789 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:46,801 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:46,807 INFO Compressed Tile STL size: 0.000 MB (20 bytes)
+2026-05-09 11:53:48,363 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:48,402 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:48,938 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:48,975 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:49,003 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:49,083 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:49,084 INFO Compressed Tile STL size: 0.561 MB (587794 bytes)
+2026-05-09 11:53:53,595 INFO Client disconnected - 
+2026-05-09 11:53:56,428 INFO Client connected
+2026-05-09 11:53:56,431 INFO {'sid': 'GNvzOByp9-eax0kBAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778316836.4317458, 'last_activity': 1778316836.4317467, 'unique_file_id': 'ddac4044-16ac-4b4c-919c-b86fa368c96f'}
+2026-05-09 11:53:56,433 INFO Client connected
+2026-05-09 11:54:10,060 INFO Compressed Tile STL size: 0.019 MB (19472 bytes)
+2026-05-09 11:54:10,061 INFO Compressed Tile STL size: 0.019 MB (19472 bytes)
+2026-05-09 11:54:10,067 INFO Compressed Tile STL size: 0.019 MB (19472 bytes)
+2026-05-09 12:00:18,004 INFO Client disconnected - 
+2026-05-09 12:00:20,928 INFO Client connected
+2026-05-09 12:00:20,931 INFO {'sid': '-8D_MFqIAA_Uc6OxAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778317220.9318683, 'last_activity': 1778317220.931869, 'unique_file_id': '5169a0de-90c0-4d41-b909-c31e09b9643e'}
+2026-05-09 12:00:20,933 INFO Client connected
+2026-05-09 12:00:38,170 INFO Compressed Tile STL size: 0.034 MB (35581 bytes)
+2026-05-09 12:00:51,386 INFO Compressed Tile STL size: 0.034 MB (35575 bytes)
+2026-05-09 12:01:12,211 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 12:01:38,787 INFO Compressed Tile STL size: 0.034 MB (35945 bytes)
+2026-05-09 12:01:57,211 INFO Compressed Tile STL size: 0.034 MB (36124 bytes)
+2026-05-09 12:02:10,104 INFO Compressed Tile STL size: 0.034 MB (35606 bytes)
+2026-05-09 12:03:16,286 INFO Client disconnected - 
+2026-05-09 12:03:19,019 INFO Client connected
+2026-05-09 12:03:19,021 INFO {'sid': 'ncCH99210PAF6yUFAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778317399.0210204, 'last_activity': 1778317399.0210207, 'unique_file_id': 'c3b38ccf-7212-423b-8ea6-55599a946dde'}
+2026-05-09 12:03:19,022 INFO Client connected
+2026-05-09 12:03:24,751 INFO Compressed Tile STL size: 0.896 MB (940043 bytes)
+2026-05-09 12:03:25,370 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:03:25,599 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:03:42,719 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:11:10,686 INFO Client disconnected - 
+2026-05-09 12:11:12,526 INFO Client connected
+2026-05-09 12:11:12,528 INFO {'sid': 'w8hg0lORzqflEtpQAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778317872.528431, 'last_activity': 1778317872.5284314, 'unique_file_id': 'e7d52ad6-f2a7-4a42-993a-a10501dc1f5d'}
+2026-05-09 12:11:12,529 INFO Client connected
+2026-05-09 12:11:46,114 INFO Compressed Tile STL size: 0.896 MB (940043 bytes)
+2026-05-09 12:13:58,373 INFO Client disconnected - 
+2026-05-09 12:13:59,880 INFO Client connected
+2026-05-09 12:13:59,882 INFO {'sid': 'CZKcXF-NuquvALEtAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778318039.8824782, 'last_activity': 1778318039.8824785, 'unique_file_id': '5bfd2edd-b3e7-419b-a067-1ba18dc8953a'}
+2026-05-09 12:13:59,883 INFO Client connected
+2026-05-09 12:14:04,693 INFO Compressed Tile STL size: 0.429 MB (449625 bytes)
+2026-05-09 12:14:04,846 INFO Compressed Tile STL size: 0.429 MB (449625 bytes)
+2026-05-09 12:14:08,776 INFO Client disconnected - 
+2026-05-09 12:14:10,072 INFO Client connected
+2026-05-09 12:14:10,074 INFO {'sid': 'ieFw73eBJJmb_kdZAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778318050.0748289, 'last_activity': 1778318050.074829, 'unique_file_id': '02b594b5-d61b-4215-b366-977398834d2b'}
+2026-05-09 12:14:10,076 INFO Client connected
+2026-05-09 12:14:17,634 INFO Compressed Tile STL size: 0.034 MB (35684 bytes)
+2026-05-09 12:22:15,434 INFO Compressed Tile STL size: 0.034 MB (35795 bytes)
+2026-05-09 12:25:28,408 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 12:25:48,322 INFO Compressed Tile STL size: 0.896 MB (940043 bytes)
+2026-05-09 12:25:50,483 INFO Compressed Tile STL size: 0.899 MB (942509 bytes)
+2026-05-09 12:30:52,539 INFO Client disconnected - 
+2026-05-09 12:30:53,864 INFO Client connected
+2026-05-09 12:30:53,870 INFO {'sid': 'hFhDFLub89NYP4QLAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778319053.8702986, 'last_activity': 1778319053.8702989, 'unique_file_id': '0a98a6b7-d9e0-4e1b-a247-4f21fa6386ce'}
+2026-05-09 12:30:53,871 INFO Client connected
+2026-05-09 12:38:42,739 INFO Compressed Tile STL size: 0.600 MB (629663 bytes)
+2026-05-09 12:38:42,796 INFO Compressed Tile STL size: 0.600 MB (629663 bytes)
+2026-05-09 12:38:57,560 INFO Client disconnected - 
+2026-05-09 12:38:59,483 INFO Client connected
+2026-05-09 12:38:59,485 INFO {'sid': 'l0vnifjIJ5sPaHxpAAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778319539.4857757, 'last_activity': 1778319539.4857762, 'unique_file_id': '95382ba5-c147-4608-b451-9d8e65185fd7'}
+2026-05-09 12:38:59,487 INFO Client connected
+2026-05-09 12:39:14,519 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:39:24,879 INFO Client disconnected - 
+2026-05-09 12:39:26,550 INFO Client connected
+2026-05-09 12:39:26,552 INFO {'sid': '6vwqSjar2B3tAUjlAAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778319566.552516, 'last_activity': 1778319566.5525165, 'unique_file_id': '254463bd-8cca-45fe-875a-64c3eda85942'}
+2026-05-09 12:39:26,555 INFO Client connected
+2026-05-09 12:39:39,783 INFO Client disconnected - 
+2026-05-09 12:39:40,485 INFO Client connected
+2026-05-09 12:39:40,492 INFO {'sid': 'L7mTNM7AoW8-51YaAAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778319580.4923239, 'last_activity': 1778319580.492324, 'unique_file_id': '06220f9d-fca0-4c6f-aeef-5353498f18e9'}
+2026-05-09 12:39:40,493 INFO Client connected
+2026-05-09 12:39:59,895 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:40:03,182 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 12:43:52,243 INFO Compressed Tile STL size: 0.235 MB (246241 bytes)
+2026-05-09 12:43:58,321 INFO Compressed Tile STL size: 0.034 MB (35375 bytes)
+2026-05-09 12:44:02,954 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 12:44:04,601 INFO Compressed Tile STL size: 0.034 MB (35595 bytes)
+2026-05-09 12:46:39,460 INFO Client disconnected - 
+2026-05-09 12:46:40,944 INFO Client connected
+2026-05-09 12:46:40,946 INFO {'sid': 'aJpB6uL_Oe-MQdGDAAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320000.9461968, 'last_activity': 1778320000.946197, 'unique_file_id': 'c934241b-1e38-4811-89eb-d8de87b77815'}
+2026-05-09 12:46:40,947 INFO Client connected
+2026-05-09 12:55:14,502 INFO Client disconnected - 
+2026-05-09 12:55:15,934 INFO Client connected
+2026-05-09 12:55:15,935 INFO {'sid': 'iQHjNQju9U3MwfX9AAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320515.935659, 'last_activity': 1778320515.9356592, 'unique_file_id': 'aa6a3f30-5ba5-4f79-b513-d23caf500f2b'}
+2026-05-09 12:55:15,936 INFO Client connected
+2026-05-09 12:55:22,773 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 12:56:43,630 INFO Client connected
+2026-05-09 12:56:43,632 INFO {'sid': 'YoAxmMr0KKd3Ggj6AAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320603.6327648, 'last_activity': 1778320603.6327653, 'unique_file_id': '9011d361-6e53-4e04-9fd7-e31f18b9b874'}
+2026-05-09 12:56:43,633 INFO Client connected
+2026-05-09 12:56:51,336 INFO Compressed Tile STL size: 0.034 MB (35960 bytes)
+2026-05-09 12:58:01,378 INFO Compressed Tile STL size: 0.035 MB (36265 bytes)
+2026-05-09 12:59:22,219 INFO Client disconnected - 
+2026-05-09 12:59:24,235 INFO Client connected
+2026-05-09 12:59:24,236 INFO {'sid': '2hR1Ntff5bW1k__3AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320764.2369227, 'last_activity': 1778320764.236923, 'unique_file_id': '414f7f37-1489-4786-9ea7-9cb93add51ee'}
+2026-05-09 12:59:24,237 INFO Client connected
+2026-05-09 12:59:29,396 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 13:01:12,035 INFO Client disconnected - 
+2026-05-09 13:01:14,155 INFO Client connected
+2026-05-09 13:01:14,157 INFO {'sid': 'GvzIZ0CSrgznAkdVAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320874.1571324, 'last_activity': 1778320874.1571329, 'unique_file_id': 'a5e5d850-de2e-4d8b-a6e9-f3079507d2ba'}
+2026-05-09 13:01:14,158 INFO Client connected
+2026-05-09 13:01:14,377 INFO Client disconnected - 
+2026-05-09 13:01:17,128 INFO Client connected
+2026-05-09 13:01:17,129 INFO {'sid': 'cDGcGaxjpUmBW3SGAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778320877.1294904, 'last_activity': 1778320877.1294906, 'unique_file_id': 'd039b291-fef6-4c49-b7ca-65d6272d2997'}
+2026-05-09 13:01:17,130 INFO Client connected
+2026-05-09 14:37:25,911 INFO Client disconnected - 
+2026-05-09 14:37:28,632 INFO Client connected
+2026-05-09 14:37:28,634 INFO {'sid': 'sb0jwvxBfJ8swgWpAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778326648.6346607, 'last_activity': 1778326648.6346612, 'unique_file_id': '6b7c479a-99f5-4f61-8bd2-1898397f4ef8'}
+2026-05-09 14:37:28,635 INFO Client connected
+2026-05-09 15:15:14,630 INFO Client disconnected - 
+2026-05-09 15:15:20,507 INFO Client connected
+2026-05-09 15:15:20,530 INFO {'sid': 'hr0AWHtk2KHUhmW9AAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778328920.5308096, 'last_activity': 1778328920.5308106, 'unique_file_id': '1477a3fb-62a9-4b2e-95be-c0a7a033206f'}
+2026-05-09 15:15:20,536 INFO Client connected
+2026-05-09 15:15:23,082 INFO Client disconnected - 
+2026-05-09 15:15:31,536 INFO Client connected
+2026-05-09 15:15:31,540 INFO {'sid': 'RVGbr1RHioYQOVohAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778328931.540097, 'last_activity': 1778328931.5400975, 'unique_file_id': 'e876c246-620a-4663-ae4a-024c8abe9d59'}
+2026-05-09 15:15:31,547 INFO Client connected
+2026-05-09 15:18:19,299 INFO Client connected
+2026-05-09 15:18:19,300 INFO {'sid': 'ssbI8Ibx8QtcKf1aAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329099.3009608, 'last_activity': 1778329099.300961, 'unique_file_id': '1daa9dbb-5478-40a2-92ba-39ef70b41c71'}
+2026-05-09 15:18:19,301 INFO Client connected
+2026-05-09 15:18:25,546 INFO Client connected
+2026-05-09 15:18:25,547 INFO {'sid': '3iezL6DLmvH2XRnpAAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329105.547853, 'last_activity': 1778329105.5478532, 'unique_file_id': '4da89b5e-72f9-46bc-b097-57f58e966a9f'}
+2026-05-09 15:18:25,549 INFO Client connected
+2026-05-09 15:18:57,217 INFO Client connected
+2026-05-09 15:18:57,222 INFO {'sid': 'LqHYYHA4Ja2mhg54AAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329137.222942, 'last_activity': 1778329137.222942, 'unique_file_id': '10e73db1-9285-4f7c-825b-e1cd584526dc'}
+2026-05-09 15:18:57,224 INFO Client connected
+2026-05-09 15:18:57,730 INFO Client connected
+2026-05-09 15:18:57,736 INFO {'sid': 'CkMiphLbV6-59NOtAAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329137.7358558, 'last_activity': 1778329137.7358582, 'unique_file_id': 'd9ec3d3f-e8d1-4850-ab17-f492eba8d0d5'}
+2026-05-09 15:18:57,738 INFO Client connected
+2026-05-09 15:19:59,046 INFO Client connected
+2026-05-09 15:19:59,048 INFO {'sid': 'UMmer9eB2ETO3q_6AAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329199.0481076, 'last_activity': 1778329199.0481076, 'unique_file_id': '407954bb-4e31-4a84-adbc-5e35b8a5b723'}
+2026-05-09 15:19:59,050 INFO Client connected
+2026-05-09 15:19:59,723 INFO Client connected
+2026-05-09 15:19:59,724 INFO {'sid': '5gpmcv6Ro-18ghNGAAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329199.7243707, 'last_activity': 1778329199.7243707, 'unique_file_id': '8d54f9e8-d22e-4976-a6cc-4df0035a725b'}
+2026-05-09 15:19:59,724 INFO Client connected
+2026-05-09 15:20:03,650 INFO Client connected
+2026-05-09 15:20:03,652 INFO {'sid': 'Ly2OB7IBMT95u15UAAAb', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329203.6523416, 'last_activity': 1778329203.652342, 'unique_file_id': '1ac6f2e8-d528-4e8a-97de-7d784fd99cbc'}
+2026-05-09 15:20:03,653 INFO Client connected
+2026-05-09 15:20:04,465 INFO Client connected
+2026-05-09 15:20:04,468 INFO {'sid': 'x5ByBwToKecwNWxsAAAd', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329204.468431, 'last_activity': 1778329204.468431, 'unique_file_id': '461868b2-123a-4ab3-a838-8296b71e82f5'}
+2026-05-09 15:20:04,468 INFO Client connected
+2026-05-09 15:20:34,731 INFO Client connected
+2026-05-09 15:20:34,738 INFO {'sid': 'pLNUpPLPyxjqYkulAAAf', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329234.7386057, 'last_activity': 1778329234.7386057, 'unique_file_id': '2af50e69-4d19-45a5-837b-a2944230d6e4'}
+2026-05-09 15:20:34,739 INFO Client connected
+2026-05-09 15:20:35,483 INFO Client connected
+2026-05-09 15:20:35,488 INFO {'sid': 'tYKNz_LlJVITqrCmAAAh', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329235.488138, 'last_activity': 1778329235.488138, 'unique_file_id': '7fc9c6d3-64ea-44ee-bc2b-a28d9c29604e'}
+2026-05-09 15:20:35,489 INFO Client connected
+2026-05-09 15:20:39,931 INFO Client disconnected - 
+2026-05-09 15:20:39,932 INFO Client disconnected - 
+2026-05-09 15:20:39,933 INFO Client disconnected - 
+2026-05-09 15:20:39,934 INFO Client disconnected - 
+2026-05-09 15:20:39,935 INFO Client disconnected - 
+2026-05-09 15:20:39,936 INFO Client disconnected - 
+2026-05-09 15:20:39,936 INFO Client disconnected - 
+2026-05-09 15:20:39,937 INFO Client disconnected - 
+2026-05-09 15:20:39,937 INFO Client disconnected - 
+2026-05-09 15:20:39,939 INFO Client disconnected - 
+2026-05-09 15:20:39,940 INFO Client disconnected - 
+2026-05-09 15:20:41,594 INFO Client connected
+2026-05-09 15:20:41,597 INFO {'sid': '46IyMIQAayzQUUiRAAAj', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329241.5979602, 'last_activity': 1778329241.5979605, 'unique_file_id': '067ff284-8090-4f2c-a8e4-81388be01dd6'}
+2026-05-09 15:20:41,598 INFO Client connected
+2026-05-09 15:21:11,700 INFO Client connected
+2026-05-09 15:21:11,703 INFO {'sid': 'ZCJHBkwK9JY6HDkrAAAl', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329271.703598, 'last_activity': 1778329271.7035985, 'unique_file_id': 'da22c9a0-23b7-4081-89a1-e1603483709d'}
+2026-05-09 15:21:11,705 INFO Client connected
+2026-05-09 15:21:33,904 INFO Client connected
+2026-05-09 15:21:33,907 INFO {'sid': 'whA-zNZqLQzVnEmIAAAn', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329293.907441, 'last_activity': 1778329293.9074411, 'unique_file_id': 'c7f85a35-8808-4336-98e8-c2f1141a45dc'}
+2026-05-09 15:21:33,908 INFO Client connected
+2026-05-09 15:21:34,413 INFO Client connected
+2026-05-09 15:21:34,416 INFO {'sid': 'Iz3XwR61qfKGuReqAAAp', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329294.4159796, 'last_activity': 1778329294.4159799, 'unique_file_id': '557b19b7-e9be-4947-99b9-964aa1966c73'}
+2026-05-09 15:21:34,416 INFO Client connected
+2026-05-09 15:21:56,170 INFO Client connected
+2026-05-09 15:21:56,173 INFO {'sid': 'A7RADFZshwUpQyApAAAE', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329316.1730485, 'last_activity': 1778329316.173049, 'unique_file_id': '414d6233-0a0f-4792-b04f-bd41170533ad'}
+2026-05-09 15:21:56,173 INFO Client connected
+2026-05-09 15:21:56,280 INFO Client connected
+2026-05-09 15:21:56,281 INFO {'sid': 'tbhxFjQ8Tnyh00ynAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329316.2819252, 'last_activity': 1778329316.2819254, 'unique_file_id': 'c0386863-19f1-46d0-99f0-e45e8bcfab9c'}
+2026-05-09 15:21:56,282 INFO Client connected
+2026-05-09 15:21:56,349 INFO Client connected
+2026-05-09 15:21:56,350 INFO {'sid': 'ePDA63GCERxjjff-AAAG', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329316.3507295, 'last_activity': 1778329316.3507295, 'unique_file_id': '17a4295e-6c69-4703-8784-7f1ae601f65d'}
+2026-05-09 15:21:56,351 INFO Client connected
+2026-05-09 15:21:56,496 INFO Client connected
+2026-05-09 15:21:56,497 INFO {'sid': 'dVwt6PEKskfGVfTSAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329316.4979594, 'last_activity': 1778329316.4979596, 'unique_file_id': '0ed64694-824c-4502-8168-a58fd19136f4'}
+2026-05-09 15:21:56,498 INFO Client connected
+2026-05-09 15:22:05,687 INFO Client disconnected - 
+2026-05-09 15:22:05,689 INFO Client disconnected - 
+2026-05-09 15:22:05,690 INFO Client disconnected - 
+2026-05-09 15:22:05,691 INFO Client disconnected - 
+2026-05-09 15:22:07,741 INFO Client connected
+2026-05-09 15:22:07,742 INFO {'sid': 't8zh64wFb81BLtGNAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329327.74241, 'last_activity': 1778329327.7424102, 'unique_file_id': 'bfc17ace-a5d6-4854-b449-9540f6facb3d'}
+2026-05-09 15:22:07,743 INFO Client connected
+2026-05-09 15:22:12,155 INFO Compressed Tile STL size: 0.034 MB (35575 bytes)
+2026-05-09 15:22:23,833 INFO Compressed Tile STL size: 0.034 MB (35294 bytes)
+2026-05-09 15:22:27,318 INFO Compressed Tile STL size: 0.034 MB (36096 bytes)
+2026-05-09 15:27:56,130 INFO Client connected
+2026-05-09 15:27:56,132 INFO {'sid': 'WI_C1WwEX-mz3vWkAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329676.1322758, 'last_activity': 1778329676.1322763, 'unique_file_id': 'df83c727-b239-4abd-9737-f9779c9dc10d'}
+2026-05-09 15:27:56,133 INFO Client connected
+2026-05-09 15:29:45,485 INFO Client disconnected - 
+2026-05-09 15:29:45,508 INFO Client disconnected - 
+2026-05-09 15:29:48,383 INFO Client connected
+2026-05-09 15:29:48,385 INFO {'sid': 'Ql-NhbT_iU-AReRDAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778329788.385048, 'last_activity': 1778329788.3850482, 'unique_file_id': '2ac64a56-4026-49bd-b53e-22806f8aa5ca'}
+2026-05-09 15:29:48,386 INFO Client connected
+2026-05-09 15:30:09,173 INFO Compressed Tile STL size: 0.034 MB (35575 bytes)
+2026-05-09 15:30:16,108 INFO Compressed Tile STL size: 0.034 MB (35688 bytes)
+2026-05-09 15:31:20,129 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 15:31:21,298 INFO Compressed Tile STL size: 0.154 MB (161973 bytes)
+2026-05-09 15:31:21,332 INFO Compressed Tile STL size: 0.027 MB (28497 bytes)
+2026-05-09 15:31:22,225 INFO Compressed Tile STL size: 0.034 MB (35587 bytes)
+2026-05-09 15:31:25,209 INFO Compressed Tile STL size: 0.034 MB (35985 bytes)
+2026-05-09 15:31:26,530 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 15:31:27,558 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-09 17:49:38,830 INFO Client connected
+2026-05-09 17:49:38,832 INFO {'sid': 'wP6Zskb5LrtQGRFLAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778338178.832767, 'last_activity': 1778338178.8327684, 'unique_file_id': '5019287e-323f-4354-8f72-ece82905fe7d'}
+2026-05-09 17:49:38,833 INFO Client connected
+2026-05-09 17:49:50,553 INFO Client disconnected - 
+2026-05-09 17:49:52,065 INFO Client connected
+2026-05-09 17:49:52,069 INFO {'sid': '25TFD7jmpg6nEo3HAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778338192.0691574, 'last_activity': 1778338192.0691583, 'unique_file_id': 'db6cbcc3-ecea-4833-b04f-eae7e225daee'}
+2026-05-09 17:49:52,070 INFO Client connected
+2026-05-09 17:49:57,654 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 17:51:05,955 INFO Client disconnected - 
+2026-05-09 18:05:12,676 INFO Client connected
+2026-05-09 18:05:12,678 INFO {'sid': 'gPITQuLXdoC2NCMtAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339112.6782346, 'last_activity': 1778339112.6782346, 'unique_file_id': '95eaffaa-970a-42c4-affb-3cc6daaae510'}
+2026-05-09 18:05:12,679 INFO Client connected
+2026-05-09 18:05:12,935 INFO Client connected
+2026-05-09 18:05:12,937 INFO {'sid': 'B3-QfHcnhNyizgifAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339112.937078, 'last_activity': 1778339112.9370782, 'unique_file_id': '0af9f343-27d8-4722-b8b6-8dffa8b066d3'}
+2026-05-09 18:05:12,938 INFO Client connected
+2026-05-09 18:05:27,344 INFO Client connected
+2026-05-09 18:05:27,348 INFO {'sid': 'uMLlajPLvL-DppEcAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339127.3486218, 'last_activity': 1778339127.348622, 'unique_file_id': '843db28f-a816-4e2e-9e8e-a28f5fad86c7'}
+2026-05-09 18:05:27,350 INFO Client connected
+2026-05-09 18:05:30,120 INFO Client disconnected - 
+2026-05-09 18:05:30,127 INFO Client disconnected - 
+2026-05-09 18:05:30,128 INFO Client disconnected - 
+2026-05-09 18:05:31,423 INFO Client connected
+2026-05-09 18:05:31,425 INFO {'sid': 'sqJphilEHnh_nZNHAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339131.4252284, 'last_activity': 1778339131.4252288, 'unique_file_id': '8dad6df1-a7cd-4e88-8dce-8a2306ed5810'}
+2026-05-09 18:05:31,426 INFO Client connected
+2026-05-09 18:05:34,113 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 18:05:48,341 INFO Client connected
+2026-05-09 18:05:48,345 INFO {'sid': 'BwpgSudMBWabZkqBAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339148.3450243, 'last_activity': 1778339148.3450246, 'unique_file_id': 'b03346f9-b094-44c9-85b7-c57c1a4d22fd'}
+2026-05-09 18:05:48,346 INFO Client connected
+2026-05-09 18:05:52,530 INFO Client connected
+2026-05-09 18:05:52,533 INFO {'sid': 'DA9GwdAJbLnNLa5XAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339152.5331485, 'last_activity': 1778339152.5331488, 'unique_file_id': '1f696359-96b4-42da-b4fb-555c3eb3b2ba'}
+2026-05-09 18:05:52,534 INFO Client connected
+2026-05-09 18:06:00,144 INFO Client connected
+2026-05-09 18:06:00,148 INFO {'sid': 'j5NszlmQYjlGsZkmAAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339160.1480749, 'last_activity': 1778339160.148075, 'unique_file_id': 'afe039f8-a207-4fc4-ae4d-952bd7e27c93'}
+2026-05-09 18:06:00,149 INFO Client connected
+2026-05-09 18:06:07,071 INFO Client connected
+2026-05-09 18:06:07,075 INFO {'sid': 'CCztUFlBswHPsxZwAAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339167.0752914, 'last_activity': 1778339167.0752914, 'unique_file_id': '9b07722c-0c8e-49b6-8072-8404647f3217'}
+2026-05-09 18:06:07,076 INFO Client connected
+2026-05-09 18:06:17,616 INFO Client connected
+2026-05-09 18:06:17,624 INFO {'sid': 'LhGP0HvyxUl7f_X7AAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339177.6243715, 'last_activity': 1778339177.624372, 'unique_file_id': 'dd28b633-ec13-4444-a2fe-0fe7f507a649'}
+2026-05-09 18:06:17,629 INFO Client connected
+2026-05-09 18:06:38,344 INFO Client connected
+2026-05-09 18:06:38,347 INFO {'sid': '5s1IfVpp2M5cEhuKAAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339198.3470716, 'last_activity': 1778339198.3470726, 'unique_file_id': 'c75eac29-0853-4d9a-ac59-c15bfafe47c0'}
+2026-05-09 18:06:38,348 INFO Client connected
+2026-05-09 18:09:57,124 INFO Client disconnected - 
+2026-05-09 18:09:57,135 INFO Client disconnected - 
+2026-05-09 18:09:57,137 INFO Client disconnected - 
+2026-05-09 18:09:57,139 INFO Client disconnected - 
+2026-05-09 18:09:57,141 INFO Client disconnected - 
+2026-05-09 18:09:57,142 INFO Client disconnected - 
+2026-05-09 18:09:57,143 INFO Client disconnected - 
+2026-05-09 18:09:59,852 INFO Client connected
+2026-05-09 18:09:59,855 INFO {'sid': '9R2U5Kz42Ms6JbYXAAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339399.855104, 'last_activity': 1778339399.8551044, 'unique_file_id': 'c8f0b82f-f20e-4763-b379-407c0d8e1c49'}
+2026-05-09 18:09:59,856 INFO Client connected
+2026-05-09 18:10:02,520 INFO Compressed Tile STL size: 0.034 MB (35462 bytes)
+2026-05-09 18:10:39,314 INFO Client connected
+2026-05-09 18:10:39,317 INFO {'sid': 'UsXXzyo1hcjD0llqAAAb', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339439.3173234, 'last_activity': 1778339439.317324, 'unique_file_id': 'ec05b46d-2820-4b56-9ff2-3af9b35eff65'}
+2026-05-09 18:10:39,318 INFO Client connected
+2026-05-09 18:11:49,059 INFO Compressed Tile STL size: 0.034 MB (35531 bytes)
+2026-05-09 18:11:51,182 INFO Compressed Tile STL size: 0.034 MB (35628 bytes)
+2026-05-09 18:11:52,930 INFO Compressed Tile STL size: 0.034 MB (35607 bytes)
+2026-05-09 18:11:54,464 INFO Compressed Tile STL size: 0.034 MB (35621 bytes)
+2026-05-09 18:12:26,112 INFO Compressed Tile STL size: 0.034 MB (35475 bytes)
+2026-05-09 18:15:20,155 INFO Client disconnected - 
+2026-05-09 18:15:20,166 INFO Client disconnected - 
+2026-05-09 18:15:22,717 INFO Client connected
+2026-05-09 18:15:22,720 INFO {'sid': 'L4L5SiBkuhmOkO25AAAd', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339722.7201364, 'last_activity': 1778339722.720137, 'unique_file_id': '10a977a5-651b-4352-a31a-0c8f2ea9c557'}
+2026-05-09 18:15:22,721 INFO Client connected
+2026-05-09 18:15:52,368 INFO Client connected
+2026-05-09 18:15:52,369 INFO {'sid': 'UXiBk2KIYJv-pFnuAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339752.3697062, 'last_activity': 1778339752.3697069, 'unique_file_id': 'e889f707-a90b-4526-b98d-e6f39d6c4104'}
+2026-05-09 18:15:52,370 INFO Client connected
+2026-05-09 18:15:53,392 INFO Client disconnected - 
+2026-05-09 18:15:54,742 INFO Client connected
+2026-05-09 18:15:54,744 INFO {'sid': 'gJGtJID6nCFbmlW-AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339754.744854, 'last_activity': 1778339754.7448547, 'unique_file_id': 'd61a4ec7-d376-4027-9434-a80b3882ca24'}
+2026-05-09 18:15:54,746 INFO Client connected
+2026-05-09 18:17:07,954 INFO [1] get the STL: Car1.stl
+2026-05-09 18:17:07,957 INFO Original STL size: 0.618 MB (647984 bytes)
+2026-05-09 18:17:07,971 INFO Saved ASCII STL to client_data\Car1.stl
+2026-05-09 18:17:07,973 INFO Saved JSON metadata to client_data\Car1.json
+2026-05-09 18:17:37,497 INFO [3] Compression: gzipping processed STL
+2026-05-09 18:17:40,660 INFO Compressed STL size: 11.017 MB (11552246 bytes)
+2026-05-09 18:17:40,661 INFO [4] Sending: emitting compressed STL to client
+2026-05-09 18:17:40,790 INFO Finished sending Car1.stl. Timings: {'client_to_server_ms': 1778339753423.806, 'time_parsed_ms': 3162.7838611602783, 'time_processed_ms': 29523.36025238037, 'time_compress_ms': 3162.7821922302246, 'overall_ms': 32766.687870025635}
+2026-05-09 18:18:50,078 INFO Client connected
+2026-05-09 18:18:50,079 INFO {'sid': 'GSdnO4Onz5TyPEj6AAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339930.079925, 'last_activity': 1778339930.0799253, 'unique_file_id': 'eed8e362-8ed4-4555-9c47-56ff7badc7a9'}
+2026-05-09 18:18:50,080 INFO Client connected
+2026-05-09 18:19:28,468 INFO Client connected
+2026-05-09 18:19:28,470 INFO {'sid': 'Wn0kYnaxpi3ucpSYAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339968.4701264, 'last_activity': 1778339968.4701269, 'unique_file_id': '6bac01f8-ab5d-4123-989b-8e108f238339'}
+2026-05-09 18:19:28,471 INFO Client connected
+2026-05-09 18:19:33,717 INFO Client connected
+2026-05-09 18:19:33,720 INFO {'sid': 'alOABIh9cmDFzxDPAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778339973.720018, 'last_activity': 1778339973.7200181, 'unique_file_id': 'f75bfa80-fe79-4c9e-9e60-804fba554437'}
+2026-05-09 18:19:33,720 INFO Client connected
+2026-05-09 18:20:03,099 INFO Client connected
+2026-05-09 18:20:03,101 INFO {'sid': 'Wxqf7XrdR8AUdi3JAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340003.1015913, 'last_activity': 1778340003.1015913, 'unique_file_id': '0d083be3-8da1-405b-964d-21d1e67e22a7'}
+2026-05-09 18:20:03,102 INFO Client connected
+2026-05-09 18:24:48,828 INFO Client connected
+2026-05-09 18:24:48,829 INFO {'sid': 'Rnyp1quHo3g7QL3nAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340288.8291454, 'last_activity': 1778340288.8291457, 'unique_file_id': '80680420-79a5-45bc-b389-0c3448c057e8'}
+2026-05-09 18:24:48,829 INFO Client connected
+2026-05-09 18:24:51,807 INFO Client connected
+2026-05-09 18:24:51,808 INFO {'sid': 'zYqCj_qZGpjIehNHAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340291.8081412, 'last_activity': 1778340291.8081415, 'unique_file_id': 'e5813865-01ce-423f-8067-0e3593e0d12e'}
+2026-05-09 18:24:51,809 INFO Client connected
+2026-05-09 18:24:52,457 INFO Client connected
+2026-05-09 18:24:52,459 INFO {'sid': 'w4rxooo03yblCV7LAAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340292.4598248, 'last_activity': 1778340292.459825, 'unique_file_id': '8ae88aef-792f-485d-9bc5-bd44d8edb3ad'}
+2026-05-09 18:24:52,460 INFO Client connected
+2026-05-09 18:24:53,812 INFO Client connected
+2026-05-09 18:24:53,814 INFO {'sid': 'o8YdHgpndfzGBQUnAAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340293.8149474, 'last_activity': 1778340293.8149478, 'unique_file_id': '041c2d22-f58e-4703-b35e-75a470a2f649'}
+2026-05-09 18:24:53,816 INFO Client connected
+2026-05-09 18:25:01,702 INFO Client connected
+2026-05-09 18:25:01,704 INFO {'sid': '9ZkdfvRFdK8adoAuAAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340301.7046702, 'last_activity': 1778340301.7046704, 'unique_file_id': '896f7d94-3086-4cde-98cb-bdbcec657702'}
+2026-05-09 18:25:01,706 INFO Client connected
+2026-05-09 18:25:18,308 INFO Client connected
+2026-05-09 18:25:18,312 INFO {'sid': 'i9d63ZwO41SF-IwLAAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340318.3127587, 'last_activity': 1778340318.3127594, 'unique_file_id': 'c6ddf306-3603-4d2b-9ed3-a6a23d9ad4c3'}
+2026-05-09 18:25:18,313 INFO Client connected
+2026-05-09 18:26:37,783 INFO Client connected
+2026-05-09 18:26:37,785 INFO {'sid': 'IAq1fam_hJhJYQxdAAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340397.7850606, 'last_activity': 1778340397.7850676, 'unique_file_id': '3e1601d2-2578-4d7d-978d-7dc83af01083'}
+2026-05-09 18:26:37,785 INFO Client connected
+2026-05-09 18:26:38,766 INFO Client connected
+2026-05-09 18:26:38,769 INFO {'sid': 'QnmMhiwA4adJmKGQAAAb', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340398.7695272, 'last_activity': 1778340398.769528, 'unique_file_id': 'bb21a3f9-1c70-4107-b249-886a29dc3c03'}
+2026-05-09 18:26:38,770 INFO Client connected
+2026-05-09 18:26:42,265 INFO Client connected
+2026-05-09 18:26:42,268 INFO {'sid': '14n6FOMKqPF65pOhAAAd', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340402.268397, 'last_activity': 1778340402.2683973, 'unique_file_id': '18b1d6a4-a2e5-4990-9724-03dc64dae535'}
+2026-05-09 18:26:42,269 INFO Client connected
+2026-05-09 18:26:47,201 INFO Client connected
+2026-05-09 18:26:47,203 INFO {'sid': 'EBTMfAhh1Tcj18xXAAAf', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340407.2033572, 'last_activity': 1778340407.2033572, 'unique_file_id': '5cf7a52d-48b0-411e-bf90-8906fcdcce3c'}
+2026-05-09 18:26:47,204 INFO Client connected
+2026-05-09 18:26:48,500 INFO Client connected
+2026-05-09 18:26:48,503 INFO {'sid': 'CWYRUwPzjBcktzSRAAAh', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340408.5031765, 'last_activity': 1778340408.5031767, 'unique_file_id': 'ec90fbe2-76a8-4661-99e9-13aebcc5a326'}
+2026-05-09 18:26:48,503 INFO Client connected
+2026-05-09 18:26:50,854 INFO Client connected
+2026-05-09 18:26:50,859 INFO {'sid': 'Lpr2sc5vjvoY0yKCAAAj', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340410.8594131, 'last_activity': 1778340410.8594134, 'unique_file_id': 'acde80ec-fab7-49c5-ab49-accf02b2a4a2'}
+2026-05-09 18:26:50,861 INFO Client connected
+2026-05-09 18:27:18,069 INFO Client disconnected - 
+2026-05-09 18:27:18,076 INFO Client disconnected - 
+2026-05-09 18:27:18,077 INFO Client disconnected - 
+2026-05-09 18:27:18,077 INFO Client disconnected - 
+2026-05-09 18:27:18,071 INFO Client disconnected - 
+2026-05-09 18:27:18,080 INFO Client disconnected - 
+2026-05-09 18:27:18,082 INFO Client disconnected - 
+2026-05-09 18:27:18,084 INFO Client disconnected - 
+2026-05-09 18:27:18,085 INFO Client disconnected - 
+2026-05-09 18:27:18,085 INFO Client disconnected - 
+2026-05-09 18:27:18,086 INFO Client disconnected - 
+2026-05-09 18:27:18,087 INFO Client disconnected - 
+2026-05-09 18:27:18,087 INFO Client disconnected - 
+2026-05-09 18:27:18,088 INFO Client disconnected - 
+2026-05-09 18:27:18,089 INFO Client disconnected - 
+2026-05-09 18:27:18,090 INFO Client disconnected - 
+2026-05-09 18:27:18,091 INFO Client disconnected - 
+2026-05-09 18:27:20,302 INFO Client connected
+2026-05-09 18:27:20,307 INFO {'sid': 'hD62jFyBPP9A82WQAAAl', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778340440.3070607, 'last_activity': 1778340440.3070612, 'unique_file_id': '38b87f6e-80e8-48d1-91a4-aabf2b652566'}
+2026-05-09 18:27:20,308 INFO Client connected
+2026-05-09 18:27:32,000 INFO [1] get the STL: Car1.stl
+2026-05-09 18:27:32,002 INFO Original STL size: 0.618 MB (647984 bytes)
+2026-05-09 18:27:32,013 INFO Saved ASCII STL to client_data\Car1.stl
+2026-05-09 18:27:32,014 INFO Saved JSON metadata to client_data\Car1.json
+2026-05-09 18:28:01,563 INFO [3] Compression: gzipping processed STL
+2026-05-09 18:28:04,325 INFO Compressed STL size: 11.017 MB (11552246 bytes)
+2026-05-09 18:28:04,326 INFO [4] Sending: emitting compressed STL to client
+2026-05-09 18:28:04,438 INFO Finished sending Car1.stl. Timings: {'client_to_server_ms': 1778340438048.337, 'time_parsed_ms': 2762.30788230896, 'time_processed_ms': 29547.73187637329, 'time_compress_ms': 2762.3064517974854, 'overall_ms': 32378.455638885498}
+2026-05-09 18:39:21,380 INFO Compressed Tile STL size: 0.033 MB (35094 bytes)
+2026-05-09 18:39:51,109 INFO Client disconnected - 
+2026-05-09 18:39:52,999 INFO Client connected
+2026-05-09 18:39:53,009 INFO {'sid': 'Wy80wREaIXgwvCgFAAAn', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778341193.0092218, 'last_activity': 1778341193.0092225, 'unique_file_id': '1450ac36-9bef-4493-bcca-8014c7046569'}
+2026-05-09 18:39:53,121 INFO Client connected
+2026-05-09 18:39:57,385 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 18:43:32,311 INFO Client disconnected - 
+2026-05-09 18:44:52,608 INFO Client connected
+2026-05-09 18:44:52,609 INFO {'sid': 'IzpJtRvlqmgNR4PUAAAp', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778341492.6095524, 'last_activity': 1778341492.6095536, 'unique_file_id': 'c8f19213-8956-44ea-83b6-ce109d309ea3'}
+2026-05-09 18:44:52,610 INFO Client connected
+2026-05-09 18:49:10,632 INFO Client disconnected - 
+2026-05-09 18:49:12,310 INFO Client connected
+2026-05-09 18:49:12,311 INFO {'sid': 'Sf2rt2xEZ-6bbToiAAAr', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778341752.311825, 'last_activity': 1778341752.3118258, 'unique_file_id': 'ba1204c2-6f85-476a-8a01-eeea5eefd5b1'}
+2026-05-09 18:49:12,312 INFO Client connected
+2026-05-09 18:49:14,453 INFO Compressed Tile STL size: 0.034 MB (35352 bytes)
+2026-05-09 18:53:43,825 INFO Client disconnected - 
+2026-05-09 18:53:45,210 INFO Client connected
+2026-05-09 18:53:45,212 INFO {'sid': 'UgODn6P75V7m5kgvAAAt', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778342025.2126226, 'last_activity': 1778342025.2126231, 'unique_file_id': '68e02596-cba5-4079-9c36-48afd9274fa0'}
+2026-05-09 18:53:45,213 INFO Client connected
+2026-05-09 18:56:10,704 INFO [1] get the STL: Car1.iges
+2026-05-09 18:56:10,724 INFO Original STL size: 4.004 MB (4198716 bytes)
+2026-05-09 18:56:10,735 INFO Saved ASCII STL to client_data\Car1.stl
+2026-05-09 18:56:10,737 INFO Saved JSON metadata to client_data\Car1.json
+2026-05-09 18:56:36,919 INFO [3] Compression: gzipping processed STL
+2026-05-09 18:56:39,025 INFO Compressed STL size: 11.017 MB (11552246 bytes)
+2026-05-09 18:56:39,025 INFO [4] Sending: emitting compressed STL to client
+2026-05-09 18:56:39,111 INFO Finished sending Car1.iges. Timings: {'client_to_server_ms': 1778342023968.6277, 'time_parsed_ms': 2105.5023670196533, 'time_processed_ms': 26181.997299194336, 'time_compress_ms': 2105.501890182495, 'overall_ms': 28368.21174621582}
+2026-05-09 18:57:39,127 INFO Client connected
+2026-05-09 18:57:39,128 INFO {'sid': 'bJj5IXaxZVKOwxaPAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778342259.1287096, 'last_activity': 1778342259.1287098, 'unique_file_id': '67e8564e-e893-4754-9d92-bcce2bc344f3'}
+2026-05-09 18:57:39,129 INFO Client connected
+2026-05-09 18:57:41,277 INFO [1] get the STL: Car1.iges
+2026-05-09 18:57:41,320 INFO Original STL size: 4.004 MB (4198716 bytes)
+2026-05-09 18:57:41,346 INFO Saved ASCII STL to client_data\Car1.stl
+2026-05-09 18:57:41,347 INFO Saved JSON metadata to client_data\Car1.json
+2026-05-09 18:58:09,321 INFO [3] Compression: gzipping processed STL
+2026-05-09 18:58:11,623 INFO Compressed STL size: 11.017 MB (11552246 bytes)
+2026-05-09 18:58:11,624 INFO [4] Sending: emitting compressed STL to client
+2026-05-09 18:58:11,711 INFO Finished sending Car1.iges. Timings: {'client_to_server_ms': 1778342024058.7058, 'time_parsed_ms': 2301.6979694366455, 'time_processed_ms': 27973.56390953064, 'time_compress_ms': 2301.6974925994873, 'overall_ms': 30395.13087272644}
+2026-05-09 19:05:08,033 INFO Client disconnected - 
+2026-05-09 19:05:10,677 INFO Client connected
+2026-05-09 19:05:10,678 INFO {'sid': 'QdDUlmuZbUrziQPsAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778342710.6787255, 'last_activity': 1778342710.678726, 'unique_file_id': 'c3fe3cb7-4f1f-4892-b511-b5dd3343035e'}
+2026-05-09 19:05:10,679 INFO Client connected
+2026-05-09 19:12:21,068 INFO Client disconnected - 
+2026-05-09 19:12:22,405 INFO Client connected
+2026-05-09 19:12:22,408 INFO {'sid': '8_y5mokhQLaQLcCFAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343142.4089239, 'last_activity': 1778343142.4089239, 'unique_file_id': '9f19ec4d-3ea3-49e7-8884-01059e95a462'}
+2026-05-09 19:12:22,409 INFO Client connected
+2026-05-09 19:12:36,833 INFO Client disconnected - 
+2026-05-09 19:12:37,935 INFO Client connected
+2026-05-09 19:12:37,937 INFO {'sid': 'r_6eCH-z296MXqUrAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343157.9378376, 'last_activity': 1778343157.9378378, 'unique_file_id': 'e58778d1-e7a3-48eb-b426-a0a3e3dc6eab'}
+2026-05-09 19:12:37,938 INFO Client connected
+2026-05-09 19:18:30,887 INFO Client disconnected - 
+2026-05-09 19:18:32,515 INFO Client connected
+2026-05-09 19:18:32,516 INFO {'sid': 'eKa-tD3eTqBgIiURAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343512.5168746, 'last_activity': 1778343512.516875, 'unique_file_id': '0059f6e3-72c9-484f-a837-fd59f901ed2c'}
+2026-05-09 19:18:32,518 INFO Client connected
+2026-05-09 19:19:18,435 INFO Client disconnected - 
+2026-05-09 19:19:24,341 INFO Client connected
+2026-05-09 19:19:24,346 INFO {'sid': 'M0ytQy_7iOj4PGPcAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343564.3462167, 'last_activity': 1778343564.3462172, 'unique_file_id': '2c66f2ac-3c55-40f6-b67b-84ea0105a8b9'}
+2026-05-09 19:19:24,347 INFO Client connected
+2026-05-09 19:20:06,323 INFO Client disconnected - 
+2026-05-09 19:20:07,834 INFO Client connected
+2026-05-09 19:20:07,839 INFO {'sid': 'AGUqJOppVEf_K1ZwAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343607.8393974, 'last_activity': 1778343607.8393977, 'unique_file_id': '52167053-5cd7-4ecc-ac75-f534fb9131aa'}
+2026-05-09 19:20:07,840 INFO Client connected
+2026-05-09 19:20:28,023 INFO Client disconnected - 
+2026-05-09 19:20:29,143 INFO Client connected
+2026-05-09 19:20:29,146 INFO {'sid': 'GtgEJD7QiwPJJbnlAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343629.146402, 'last_activity': 1778343629.1464021, 'unique_file_id': '8ccd6ab5-2ffa-41ff-bd8b-cc96ac3298c5'}
+2026-05-09 19:20:29,147 INFO Client connected
+2026-05-09 19:21:59,111 INFO Client disconnected - 
+2026-05-09 19:22:00,449 INFO Client connected
+2026-05-09 19:22:00,451 INFO {'sid': 'ovIx2obISDtXte20AAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778343720.4517274, 'last_activity': 1778343720.4517279, 'unique_file_id': '1530c3c1-50fb-41c1-91a0-2868533d6423'}
+2026-05-09 19:22:00,452 INFO Client connected
+2026-05-09 19:27:45,844 INFO Client disconnected - 
+2026-05-09 19:33:33,924 INFO Client connected
+2026-05-09 19:33:33,926 INFO {'sid': 'tVbWqbzjI5WV8oh6AAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344413.9263444, 'last_activity': 1778344413.9263446, 'unique_file_id': 'cc82b2a7-dfb5-4858-b3cc-75dc1b50205e'}
+2026-05-09 19:33:33,927 INFO Client connected
+2026-05-09 19:34:17,657 INFO Client disconnected - 
+2026-05-09 19:35:11,781 INFO Client connected
+2026-05-09 19:35:11,782 INFO {'sid': 'Uc3S7YxxJnsCcp03AAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344511.7828226, 'last_activity': 1778344511.7828228, 'unique_file_id': 'ac5c23b7-2fd2-4278-9e27-5ae9b37f90e9'}
+2026-05-09 19:35:11,783 INFO Client connected
+2026-05-09 19:36:18,491 INFO Client disconnected - 
+2026-05-09 19:36:20,223 INFO Client connected
+2026-05-09 19:36:20,225 INFO {'sid': 'Ejd86n12102KnSdfAAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344580.2253644, 'last_activity': 1778344580.225365, 'unique_file_id': '79bb1105-deb5-4828-88fd-b4f37f538dc0'}
+2026-05-09 19:36:20,226 INFO Client connected
+2026-05-09 19:36:23,900 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 19:37:09,989 INFO Client disconnected - 
+2026-05-09 19:37:11,728 INFO Client connected
+2026-05-09 19:37:11,729 INFO {'sid': 'SjeZunhBMMGKqnPGAAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344631.7298663, 'last_activity': 1778344631.7298667, 'unique_file_id': '4fc7b7b6-8f7b-4394-9d68-8afbd44d4e3f'}
+2026-05-09 19:37:11,730 INFO Client connected
+2026-05-09 19:37:26,005 INFO Client disconnected - 
+2026-05-09 19:37:27,238 INFO Client connected
+2026-05-09 19:37:27,239 INFO {'sid': 'vp534peNPudzTDjFAAAb', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344647.2395978, 'last_activity': 1778344647.239598, 'unique_file_id': 'ece95ac9-1a14-4f13-9777-63300807045e'}
+2026-05-09 19:37:27,240 INFO Client connected
+2026-05-09 19:38:54,534 INFO Client disconnected - 
+2026-05-09 19:38:55,919 INFO Client connected
+2026-05-09 19:38:55,921 INFO {'sid': 'FQLPmMv85J5Nvtu3AAAd', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344735.9209979, 'last_activity': 1778344735.920998, 'unique_file_id': '08828285-7a4e-4416-8326-e613449fa38e'}
+2026-05-09 19:38:55,923 INFO Client connected
+2026-05-09 19:39:21,040 INFO Client disconnected - 
+2026-05-09 19:39:22,207 INFO Client connected
+2026-05-09 19:39:22,214 INFO {'sid': 'Ar3U_-RRw6e3s4jPAAAf', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344762.214319, 'last_activity': 1778344762.2143197, 'unique_file_id': '63de5087-21d5-4005-8945-30893effc4fa'}
+2026-05-09 19:39:22,215 INFO Client connected
+2026-05-09 19:39:30,124 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 19:40:21,705 INFO Compressed Tile STL size: 0.033 MB (34879 bytes)
+2026-05-09 19:41:54,339 INFO Client disconnected - 
+2026-05-09 19:42:14,803 INFO Client connected
+2026-05-09 19:42:14,804 INFO {'sid': '5XPJLt4dKrJ3v7BPAAAh', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344934.804824, 'last_activity': 1778344934.8048244, 'unique_file_id': 'e15beb36-cbab-4131-888d-c71639c70c81'}
+2026-05-09 19:42:14,805 INFO Client connected
+2026-05-09 19:42:48,736 INFO Client disconnected - 
+2026-05-09 19:42:50,094 INFO Client connected
+2026-05-09 19:42:50,097 INFO {'sid': 'SNTvQRoe9T_VBLntAAAj', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344970.097263, 'last_activity': 1778344970.0972638, 'unique_file_id': '2acc773b-594a-41bb-9670-34ae40f1f9e9'}
+2026-05-09 19:42:50,098 INFO Client connected
+2026-05-09 19:43:15,870 INFO Client disconnected - 
+2026-05-09 19:43:16,989 INFO Client connected
+2026-05-09 19:43:16,991 INFO {'sid': 'S4pQQB7lL7PUqYR_AAAl', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778344996.99185, 'last_activity': 1778344996.9918501, 'unique_file_id': '371be692-b4ab-4f1f-ad38-8f860c88b3c4'}
+2026-05-09 19:43:16,993 INFO Client connected
+2026-05-09 19:44:30,886 INFO Client disconnected - 
+2026-05-09 19:44:32,334 INFO Client connected
+2026-05-09 19:44:32,336 INFO {'sid': 'IQ4GDhsfa9Ql9mFeAAAn', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778345072.3361514, 'last_activity': 1778345072.3361518, 'unique_file_id': 'dc64926d-b0b0-4d7f-97be-ddc235ba82d6'}
+2026-05-09 19:44:32,337 INFO Client connected
+2026-05-09 19:48:24,115 INFO Client disconnected - 
+2026-05-09 21:38:11,828 INFO Client connected
+2026-05-09 21:38:11,829 INFO {'sid': 'EZcgnEBGHAIbydjCAAAp', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778351891.8297703, 'last_activity': 1778351891.8297706, 'unique_file_id': '29c42eab-616b-49fb-9950-c3cc51102bfe'}
+2026-05-09 21:38:11,830 INFO Client connected
+2026-05-09 21:38:15,586 INFO Client connected
+2026-05-09 21:38:15,588 INFO {'sid': 'D8so4ycAuVWwY6RiAAAr', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778351895.588217, 'last_activity': 1778351895.5882175, 'unique_file_id': 'c7d0384f-6dff-409b-8246-0619b3aa16a6'}
+2026-05-09 21:38:15,588 INFO Client connected
+2026-05-09 21:40:51,458 INFO Client disconnected - 
+2026-05-09 21:40:51,508 INFO Client disconnected - 
+2026-05-09 21:40:52,879 INFO Client connected
+2026-05-09 21:40:52,881 INFO {'sid': 'm4nXG9eQ8UKVAWtvAAAt', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778352052.8817818, 'last_activity': 1778352052.881782, 'unique_file_id': '20741686-e4a4-4fec-b882-a10e2851b01e'}
+2026-05-09 21:40:52,882 INFO Client connected
+2026-05-09 21:40:57,412 INFO Compressed Tile STL size: 0.034 MB (35589 bytes)
+2026-05-09 21:42:07,244 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 21:47:45,076 INFO Client disconnected - 
+2026-05-09 21:47:47,657 INFO Client connected
+2026-05-09 21:47:47,658 INFO {'sid': 'Q71aNZru72i7JQC2AAAv', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778352467.6588614, 'last_activity': 1778352467.6588616, 'unique_file_id': '628c4732-71a8-4aff-9bd3-09d0c588c863'}
+2026-05-09 21:47:47,659 INFO Client connected
+2026-05-09 21:52:23,893 INFO Client disconnected - 
+2026-05-09 21:52:26,110 INFO Client connected
+2026-05-09 21:52:26,112 INFO {'sid': '4BbYhLc7OgI4BWKEAAAx', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778352746.1121178, 'last_activity': 1778352746.1121185, 'unique_file_id': '69dcf05a-4865-44ee-9b2e-a119a22ace46'}
+2026-05-09 21:52:26,113 INFO Client connected
+2026-05-09 22:03:32,608 INFO Client disconnected - 
+2026-05-09 22:04:25,240 INFO Client connected
+2026-05-09 22:04:25,241 INFO {'sid': 'L1jN_Qq3WXfp7YTSAAA0', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778353465.2417312, 'last_activity': 1778353465.2417314, 'unique_file_id': '04bdf156-67db-438a-9d13-a1ea8573d506'}
+2026-05-09 22:04:25,242 INFO Client connected
+2026-05-09 22:05:06,725 INFO Client disconnected - 
+2026-05-09 22:05:08,433 INFO Client connected
+2026-05-09 22:05:08,434 INFO {'sid': '13BAhb6-g1EPngReAAA2', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778353508.434661, 'last_activity': 1778353508.4346614, 'unique_file_id': '9be1d15a-bc11-4eb4-9c22-398d9619c9d4'}
+2026-05-09 22:05:08,435 INFO Client connected
+2026-05-09 22:05:12,432 INFO Compressed Tile STL size: 0.034 MB (35500 bytes)
+2026-05-09 22:05:22,074 INFO Client disconnected - 
+2026-05-09 22:05:23,261 INFO Client connected
+2026-05-09 22:05:23,291 INFO {'sid': '5sx7aBbFHs2IJmPRAAA4', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778353523.291658, 'last_activity': 1778353523.2916582, 'unique_file_id': '080fe2c5-0c46-418b-aa8c-070c661016db'}
+2026-05-09 22:05:23,296 INFO Client connected
+2026-05-09 22:05:55,566 INFO Client disconnected - 
+2026-05-09 22:07:11,253 INFO Client connected
+2026-05-09 22:07:11,254 INFO {'sid': '63bw2sHwUVdtwLMQAAA7', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778353631.2544837, 'last_activity': 1778353631.2544837, 'unique_file_id': 'edf64a54-c02f-47d9-b3a1-8fddbbb2f581'}
+2026-05-09 22:07:11,255 INFO Client connected
+2026-05-09 22:07:20,613 INFO Compressed Tile STL size: 0.034 MB (35413 bytes)
+2026-05-09 22:13:39,376 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-09 22:13:42,243 INFO Compressed Tile STL size: 0.035 MB (36232 bytes)
+2026-05-09 22:15:06,944 INFO Client disconnected - 
+2026-05-09 22:15:08,295 INFO Client connected
+2026-05-09 22:15:08,298 INFO {'sid': 'qiddlCgvsu2uxCBdAAA9', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778354108.2986724, 'last_activity': 1778354108.298673, 'unique_file_id': '5ed86f1c-ac63-4fdf-a20a-de4e770b9a61'}
+2026-05-09 22:15:08,299 INFO Client connected
+2026-05-09 22:15:42,433 INFO Client disconnected - 
+2026-05-09 22:15:44,425 INFO Client connected
+2026-05-09 22:15:44,426 INFO {'sid': 'Id64UijAkOVf57ytAAA_', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778354144.426841, 'last_activity': 1778354144.4268415, 'unique_file_id': 'cf0d8c9c-3953-437d-b831-2a885506e6a3'}
+2026-05-09 22:15:44,427 INFO Client connected
+2026-05-09 22:22:21,849 INFO Client disconnected - 
+2026-05-09 22:22:23,193 INFO Client connected
+2026-05-09 22:22:23,195 INFO {'sid': 'hx-21Gwn0sj8plb7AABB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778354543.1950014, 'last_activity': 1778354543.1950018, 'unique_file_id': 'ccb0f2a0-2750-41e2-8941-422a66208f4c'}
+2026-05-09 22:22:23,195 INFO Client connected
+2026-05-09 22:24:39,243 INFO Client disconnected - 
+2026-05-09 22:24:40,667 INFO Client connected
+2026-05-09 22:24:40,669 INFO {'sid': '_dsTGtINxQ6osfzVAABD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778354680.6698577, 'last_activity': 1778354680.6698582, 'unique_file_id': 'ad85b01f-eec2-4194-969f-85d9ad723828'}
+2026-05-09 22:24:40,670 INFO Client connected
+2026-05-09 22:28:29,244 INFO Compressed Tile STL size: 0.033 MB (35094 bytes)
+2026-05-09 22:28:31,604 INFO Compressed Tile STL size: 0.034 MB (35285 bytes)
+2026-05-09 22:30:32,375 INFO Client disconnected - 
+2026-05-09 22:30:33,602 INFO Client connected
+2026-05-09 22:30:33,604 INFO {'sid': 'Z7pR0f4CEoaGbQA-AABF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778355033.604633, 'last_activity': 1778355033.6046336, 'unique_file_id': '061601a2-1d69-4bed-a676-9ef30e4da58c'}
+2026-05-09 22:30:33,605 INFO Client connected
+2026-05-09 22:46:43,357 INFO Client connected
+2026-05-09 22:46:43,358 INFO {'sid': 'QkisraxgYdDxvfPtAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356003.358537, 'last_activity': 1778356003.3585374, 'unique_file_id': '90f99e2a-0342-4457-9bd4-0c906a937160'}
+2026-05-09 22:46:43,358 INFO Client connected
+2026-05-09 22:49:51,019 INFO Client disconnected - 
+2026-05-09 22:50:45,216 INFO Client connected
+2026-05-09 22:50:45,217 INFO {'sid': 'ZecGl9GhXutjldL_AAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356245.2176719, 'last_activity': 1778356245.2176723, 'unique_file_id': '7d9ba004-0b89-430c-aac6-cd580384e526'}
+2026-05-09 22:50:45,218 INFO Client connected
+2026-05-09 22:53:52,374 INFO Client connected
+2026-05-09 22:53:52,375 INFO {'sid': 'jq_UxmLshaZ2AnN1AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356432.375581, 'last_activity': 1778356432.3755815, 'unique_file_id': 'a0e6d1b0-d5ce-4bbf-a620-b907525e13a5'}
+2026-05-09 22:53:52,376 INFO Client connected
+2026-05-09 22:54:25,225 INFO Client connected
+2026-05-09 22:54:25,227 INFO {'sid': 'eECwkSKq7IPDfbhxAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356465.2270527, 'last_activity': 1778356465.2270527, 'unique_file_id': '746e31a9-7ae4-4e35-803e-9aef4329e96e'}
+2026-05-09 22:54:25,227 INFO Client connected
+2026-05-09 22:54:35,216 INFO Client connected
+2026-05-09 22:54:35,218 INFO {'sid': 'EHGphqJStWsdzyzbAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356475.2183022, 'last_activity': 1778356475.2183025, 'unique_file_id': 'dc30862b-04b6-4d0a-a220-62a3e3d5eb36'}
+2026-05-09 22:54:35,218 INFO Client connected
+2026-05-09 22:54:49,219 INFO Client connected
+2026-05-09 22:54:49,221 INFO {'sid': 'muImW_K-c8VI7qqzAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356489.2218173, 'last_activity': 1778356489.2218175, 'unique_file_id': '0bc52ce6-6b84-467e-83a3-e885131c0f27'}
+2026-05-09 22:54:49,223 INFO Client connected
+2026-05-09 22:55:01,359 INFO Client connected
+2026-05-09 22:55:01,360 INFO {'sid': 'IdvDiAoa-396MCNkAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356501.3605435, 'last_activity': 1778356501.3605437, 'unique_file_id': '9b950478-7bdd-49fe-b0c5-949d3651a15d'}
+2026-05-09 22:55:01,361 INFO Client connected
+2026-05-09 22:55:01,427 INFO Client connected
+2026-05-09 22:55:01,429 INFO {'sid': 'ecEEwdbARrsV8A8zAAAG', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356501.4292953, 'last_activity': 1778356501.4292955, 'unique_file_id': '6e150c67-adf5-44a7-b627-ba05d155c951'}
+2026-05-09 22:55:01,430 INFO Client connected
+2026-05-09 22:55:01,458 INFO Client connected
+2026-05-09 22:55:01,463 INFO {'sid': '5YpAwn0Vnnk5XsmqAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356501.463004, 'last_activity': 1778356501.4630044, 'unique_file_id': '352a8464-ec8b-4565-88c4-7af4947cf553'}
+2026-05-09 22:55:01,463 INFO Client connected
+2026-05-09 22:55:01,708 INFO Client connected
+2026-05-09 22:55:01,709 INFO {'sid': 'McsHa5Ym4VcXgdKGAAAI', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356501.7093508, 'last_activity': 1778356501.709351, 'unique_file_id': 'd547e885-7827-4211-8ba7-b6431321cc12'}
+2026-05-09 22:55:01,709 INFO Client connected
+2026-05-09 22:55:01,775 INFO Client connected
+2026-05-09 22:55:01,776 INFO {'sid': '8kEB-tkvcew8XyPGAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356501.7769244, 'last_activity': 1778356501.7769246, 'unique_file_id': 'bad709dd-d7cb-49c7-919c-c15827850174'}
+2026-05-09 22:55:01,777 INFO Client connected
+2026-05-09 22:55:10,752 INFO Client disconnected - 
+2026-05-09 22:55:10,754 INFO Client disconnected - 
+2026-05-09 22:55:10,755 INFO Client disconnected - 
+2026-05-09 22:55:10,755 INFO Client disconnected - 
+2026-05-09 22:55:10,757 INFO Client disconnected - 
+2026-05-09 22:55:13,180 INFO Client connected
+2026-05-09 22:55:13,182 INFO {'sid': 'PwJZhCH3NWjinfcqAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356513.1827056, 'last_activity': 1778356513.182706, 'unique_file_id': '8975af6d-fea4-469e-b1b3-862fba9f21fc'}
+2026-05-09 22:55:13,183 INFO Client connected
+2026-05-09 22:55:44,522 INFO Client connected
+2026-05-09 22:55:44,523 INFO {'sid': 'n0M2eA1cP5WdzhF6AAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356544.5235124, 'last_activity': 1778356544.5235128, 'unique_file_id': '4f8fdf5b-57e7-4c93-b4df-a2172048f01b'}
+2026-05-09 22:55:44,524 INFO Client connected
+2026-05-09 22:55:48,470 INFO Client disconnected - 
+2026-05-09 22:55:49,741 INFO Client connected
+2026-05-09 22:55:49,742 INFO {'sid': 'apc4--3oZo3dSCHYAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356549.742517, 'last_activity': 1778356549.7425175, 'unique_file_id': '66537765-58c4-4c52-8124-01f2d1c625e5'}
+2026-05-09 22:55:49,743 INFO Client connected
+2026-05-09 22:59:31,366 INFO Client connected
+2026-05-09 22:59:31,368 INFO {'sid': 'U5ASWRlPu1vE3PrzAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356771.3688092, 'last_activity': 1778356771.36881, 'unique_file_id': '0a509040-5563-4db4-88c2-fb9a8f340c5d'}
+2026-05-09 22:59:31,369 INFO Client connected
+2026-05-09 22:59:35,505 INFO Client disconnected - 
+2026-05-09 22:59:37,579 INFO Client connected
+2026-05-09 22:59:37,582 INFO {'sid': 'uIXmcnRZahKPbDFLAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356777.5819907, 'last_activity': 1778356777.5819917, 'unique_file_id': '14c05a4c-3cb2-4bf9-8b1e-cff5b8596cfb'}
+2026-05-09 22:59:37,583 INFO Client connected
+2026-05-09 23:00:24,339 INFO Client connected
+2026-05-09 23:00:24,340 INFO {'sid': 'RVfHMRk1ZVXa1_-rAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356824.340671, 'last_activity': 1778356824.3406715, 'unique_file_id': '316d7d03-1d34-4397-a8d0-12458644198c'}
+2026-05-09 23:00:24,341 INFO Client connected
+2026-05-09 23:00:28,243 INFO Client disconnected - 
+2026-05-09 23:00:29,552 INFO Client connected
+2026-05-09 23:00:29,559 INFO {'sid': 'rUGjcPcCjFednVXiAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356829.5590208, 'last_activity': 1778356829.5590215, 'unique_file_id': '4f55baeb-39d5-4ca9-857d-1f0750273d1e'}
+2026-05-09 23:00:29,560 INFO Client connected
+2026-05-09 23:02:19,860 INFO Client connected
+2026-05-09 23:02:19,861 INFO {'sid': 'fvmOnZDv-f87qqGqAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356939.861967, 'last_activity': 1778356939.8619673, 'unique_file_id': 'c2fb5227-1fdc-4228-ae21-782e1d0b284a'}
+2026-05-09 23:02:19,862 INFO Client connected
+2026-05-09 23:02:22,832 INFO Client disconnected - 
+2026-05-09 23:02:24,453 INFO Client connected
+2026-05-09 23:02:24,459 INFO {'sid': 'QltQyCzYI8mHFeeuAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356944.4592254, 'last_activity': 1778356944.459226, 'unique_file_id': '235d2a55-5b76-4570-b7b8-978cf5744d7a'}
+2026-05-09 23:02:24,460 INFO Client connected
+2026-05-09 23:02:46,466 INFO Client disconnected - 
+2026-05-09 23:02:48,777 INFO Client connected
+2026-05-09 23:02:48,778 INFO {'sid': 'Sxid5OMB6x7mdvrgAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778356968.7783604, 'last_activity': 1778356968.7783606, 'unique_file_id': 'aa27d32d-c708-4654-9444-9c4e06f3b5a5'}
+2026-05-09 23:02:48,782 INFO Client connected
+2026-05-13 11:04:52,128 INFO Client connected
+2026-05-13 11:04:52,132 INFO {'sid': 'Y53S0EebUt9XoQIVAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778659492.1322997, 'last_activity': 1778659492.1323004, 'unique_file_id': '6c1f1b21-58bb-4c76-b879-2f9c41e47216'}
+2026-05-13 11:04:52,132 INFO Client connected
+2026-05-13 11:04:58,524 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 11:04:59,655 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 11:05:04,962 INFO Compressed Tile STL size: 0.235 MB (246738 bytes)
+2026-05-13 11:05:13,445 INFO Compressed Tile STL size: 0.235 MB (246517 bytes)
+2026-05-13 11:05:23,682 INFO Compressed Tile STL size: 0.710 MB (744295 bytes)
+2026-05-13 11:05:30,009 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 11:06:55,698 INFO Client disconnected - 
+2026-05-13 11:06:57,782 INFO Client connected
+2026-05-13 11:06:57,784 INFO {'sid': 'MyuaUc5SEmSpOhYTAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778659617.7839878, 'last_activity': 1778659617.7839885, 'unique_file_id': 'c846ffc6-ce7e-4e1a-96ab-34e81cda1cea'}
+2026-05-13 11:06:57,785 INFO Client connected
+2026-05-13 11:07:03,665 INFO Compressed Tile STL size: 0.034 MB (35531 bytes)
+2026-05-13 11:23:03,986 INFO Client disconnected - 
+2026-05-13 11:25:44,807 INFO Client connected
+2026-05-13 11:25:44,808 INFO {'sid': 'U7YYaMXadCdngZC_AAAG', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778660744.808693, 'last_activity': 1778660744.8086932, 'unique_file_id': '4a2f50e6-61d0-4dd1-8c87-d609d9e068d0'}
+2026-05-13 11:25:44,809 INFO Client connected
+2026-05-13 11:26:35,951 INFO Client disconnected - 
+2026-05-13 11:26:37,159 INFO Client connected
+2026-05-13 11:26:37,162 INFO {'sid': 'T6_OHhirsZ-xmF-JAAAI', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778660797.162784, 'last_activity': 1778660797.1627843, 'unique_file_id': 'dea7f58c-ca35-4c08-bced-7721c4ac1c91'}
+2026-05-13 11:26:37,163 INFO Client connected
+2026-05-13 11:26:40,098 INFO Compressed Tile STL size: 0.033 MB (34879 bytes)
+2026-05-13 11:28:57,209 INFO Client disconnected - 
+2026-05-13 11:28:58,514 INFO Client connected
+2026-05-13 11:28:58,516 INFO {'sid': 'B_IokyXzbtD2Lj0NAAAK', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778660938.5161734, 'last_activity': 1778660938.5161734, 'unique_file_id': '436f30db-a6d1-4f97-b293-a884e8ba7f07'}
+2026-05-13 11:28:58,517 INFO Client connected
+2026-05-13 11:29:04,232 INFO Compressed Tile STL size: 0.034 MB (35547 bytes)
+2026-05-13 11:29:10,973 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 11:29:16,846 INFO Compressed Tile STL size: 0.235 MB (245903 bytes)
+2026-05-13 11:29:22,308 INFO Compressed Tile STL size: 0.234 MB (244951 bytes)
+2026-05-13 11:29:26,175 INFO Compressed Tile STL size: 0.710 MB (744295 bytes)
+2026-05-13 11:29:34,332 INFO Compressed Tile STL size: 0.718 MB (753048 bytes)
+2026-05-13 11:29:40,249 INFO Compressed Tile STL size: 0.716 MB (750418 bytes)
+2026-05-13 11:29:43,985 INFO Compressed Tile STL size: 0.716 MB (750591 bytes)
+2026-05-13 11:29:48,207 INFO Compressed Tile STL size: 1.155 MB (1211095 bytes)
+2026-05-13 11:29:48,240 INFO Compressed Tile STL size: 1.155 MB (1211095 bytes)
+2026-05-13 11:29:53,497 INFO Client disconnected - 
+2026-05-13 11:29:55,207 INFO Client connected
+2026-05-13 11:29:55,208 INFO {'sid': 'zYijF4VKMcisoyZUAAAM', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778660995.2088745, 'last_activity': 1778660995.208875, 'unique_file_id': '3a39ae46-a6e5-45ea-9132-1d541dce9345'}
+2026-05-13 11:29:55,209 INFO Client connected
+2026-05-13 11:32:45,651 INFO Client connected
+2026-05-13 11:32:45,652 INFO {'sid': 'LobaPt9qJla7lGYmAAAO', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661165.652759, 'last_activity': 1778661165.6527593, 'unique_file_id': 'a4a741fa-5aca-47bf-acc1-da3cfabacbd8'}
+2026-05-13 11:32:45,653 INFO Client connected
+2026-05-13 11:32:46,033 INFO Client disconnected - 
+2026-05-13 11:32:46,039 INFO Client disconnected - 
+2026-05-13 11:32:47,511 INFO Client connected
+2026-05-13 11:32:47,512 INFO {'sid': 'VEFKoBPGl2HFZEMGAAAQ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661167.5123236, 'last_activity': 1778661167.5123239, 'unique_file_id': '774f1dd1-d2f5-47b8-88e8-2f0e7a7b9903'}
+2026-05-13 11:32:47,513 INFO Client connected
+2026-05-13 11:33:42,942 INFO Client disconnected - 
+2026-05-13 11:33:44,808 INFO Client connected
+2026-05-13 11:33:44,810 INFO {'sid': '9i1h2iOy3HOYHLD6AAAS', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661224.8105924, 'last_activity': 1778661224.8105924, 'unique_file_id': 'caafe007-5f39-444a-9111-d35483f09359'}
+2026-05-13 11:33:44,811 INFO Client connected
+2026-05-13 11:33:51,115 INFO Compressed Tile STL size: 0.034 MB (35375 bytes)
+2026-05-13 11:33:51,159 INFO Compressed Tile STL size: 0.710 MB (744295 bytes)
+2026-05-13 11:33:51,846 INFO Compressed Tile STL size: 0.034 MB (35628 bytes)
+2026-05-13 11:34:58,423 INFO Client disconnected - 
+2026-05-13 11:35:00,136 INFO Client connected
+2026-05-13 11:35:00,137 INFO {'sid': 'zoFXIPTJLe7FWV55AAAU', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661300.1376407, 'last_activity': 1778661300.137641, 'unique_file_id': '7a06630b-34b6-4ca8-a8a4-bb7a457263cf'}
+2026-05-13 11:35:00,138 INFO Client connected
+2026-05-13 11:35:03,239 INFO [1] get the STL: as1_pe_203.igs
+2026-05-13 11:35:03,241 ERROR Failed to base64-decode incoming STL
+Traceback (most recent call last):
+  File "C:\Users\yaniv\Uni\Sem 6\Lattice Project\lattice-website\main.py", line 765, in handle_calculate
+    stl_bytes = base64.b64decode(stl_b64)
+  File "C:\Users\yaniv\AppData\Local\Programs\Python\Python314\Lib\base64.py", line 85, in b64decode
+    return binascii.a2b_base64(s, strict_mode=validate)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+binascii.Error: Incorrect padding
+2026-05-13 11:36:32,313 INFO Client connected
+2026-05-13 11:36:32,314 INFO {'sid': 'CQgmxA1Yrjwd2UxcAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661392.3147576, 'last_activity': 1778661392.3147578, 'unique_file_id': '18e5c528-4bda-476c-a6a2-b84b93bdd7d3'}
+2026-05-13 11:36:32,315 INFO Client connected
+2026-05-13 11:36:35,986 INFO Client disconnected - 
+2026-05-13 11:36:37,708 INFO Client connected
+2026-05-13 11:36:37,710 INFO {'sid': 'yZ9dAzro9rYOWvxVAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661397.7101848, 'last_activity': 1778661397.7101853, 'unique_file_id': '3d297ca6-8245-4de6-aeb3-d77d48382eef'}
+2026-05-13 11:36:37,711 INFO Client connected
+2026-05-13 11:36:46,901 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:36:46,901 ERROR No IGS payload in request
+2026-05-13 11:37:26,289 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:37:26,291 ERROR No IGS payload in request
+2026-05-13 11:37:31,449 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:37:31,450 ERROR No IGS payload in request
+2026-05-13 11:37:43,946 INFO Client disconnected - 
+2026-05-13 11:37:45,376 INFO Client connected
+2026-05-13 11:37:45,377 INFO {'sid': '_Tr_IJIHeJ5J_hbmAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661465.3776522, 'last_activity': 1778661465.3776524, 'unique_file_id': '2d75b4a0-1273-4c38-9ffd-1d665db352fb'}
+2026-05-13 11:37:45,378 INFO Client connected
+2026-05-13 11:37:52,236 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:37:52,237 ERROR No IGS payload in request
+2026-05-13 11:38:35,584 INFO Client disconnected - 
+2026-05-13 11:38:37,466 INFO Client connected
+2026-05-13 11:38:37,470 INFO {'sid': '_wO_z6toAfeNQ_vpAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661517.4701982, 'last_activity': 1778661517.4701986, 'unique_file_id': '1732943a-ea09-4d3f-aef1-e7533b047557'}
+2026-05-13 11:38:37,471 INFO Client connected
+2026-05-13 11:38:43,105 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:38:43,105 ERROR No IGS payload in request
+2026-05-13 11:39:25,001 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:39:25,002 ERROR No IGS payload in request
+2026-05-13 11:39:25,832 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:39:25,833 ERROR No IGS payload in request
+2026-05-13 11:39:26,347 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:39:26,347 ERROR No IGS payload in request
+2026-05-13 11:39:29,741 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:39:29,742 ERROR No IGS payload in request
+2026-05-13 11:40:36,539 INFO Client disconnected - 
+2026-05-13 11:40:38,016 INFO Client connected
+2026-05-13 11:40:38,017 INFO {'sid': 'J3ydEyY443pWlgHzAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661638.017579, 'last_activity': 1778661638.0175796, 'unique_file_id': '14bddbf3-0e26-43fc-9c5d-bdabc5fcf28d'}
+2026-05-13 11:40:38,018 INFO Client connected
+2026-05-13 11:40:41,085 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:40:41,086 ERROR No IGS payload in request
+2026-05-13 11:43:05,790 INFO Client connected
+2026-05-13 11:43:05,791 INFO {'sid': '5rYHKg2RE885796uAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661785.791838, 'last_activity': 1778661785.7918382, 'unique_file_id': '33e11088-1d7f-4dd9-854b-eccc38c80ed9'}
+2026-05-13 11:43:05,792 INFO Client connected
+2026-05-13 11:43:08,463 INFO Client disconnected - 
+2026-05-13 11:43:11,276 INFO Client connected
+2026-05-13 11:43:11,278 INFO {'sid': 'phSakAyhpOBy5SkOAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661791.278749, 'last_activity': 1778661791.2787495, 'unique_file_id': '3a30196a-e08c-48fd-9f4b-2478bf188ea9'}
+2026-05-13 11:43:11,279 INFO Client connected
+2026-05-13 11:43:15,517 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:43:15,520 ERROR Failed to base64-decode incoming IGS
+Traceback (most recent call last):
+  File "C:\Users\yaniv\Uni\Sem 6\Lattice Project\lattice-website\main.py", line 764, in handle_calculate
+    igs_bytes = base64.b64decode(igs_b64)
+  File "C:\Users\yaniv\AppData\Local\Programs\Python\Python314\Lib\base64.py", line 85, in b64decode
+    return binascii.a2b_base64(s, strict_mode=validate)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+binascii.Error: Incorrect padding
+2026-05-13 11:44:34,672 INFO Client disconnected - 
+2026-05-13 11:44:36,096 INFO Client connected
+2026-05-13 11:44:36,098 INFO {'sid': 'dDKnvDhdFRESzGNhAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778661876.098048, 'last_activity': 1778661876.0980482, 'unique_file_id': '3358d490-12b4-415f-9af0-4e7d87d6f6e1'}
+2026-05-13 11:44:36,098 INFO Client connected
+2026-05-13 11:44:40,121 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:44:40,125 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-13 11:44:40,130 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-13 11:44:40,132 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-13 11:45:01,531 INFO [3] Compression: gzipping processed IGS
+2026-05-13 11:45:03,140 INFO Compressed IGS size: 11.017 MB (11552246 bytes)
+2026-05-13 11:45:03,140 INFO [4] Sending: emitting compressed IGS to client
+2026-05-13 11:45:03,217 INFO Finished sending as1_pe_203.igs. Timings: {'client_to_server_ms': 37.67041015625, 'time_parsed_ms': 1608.9820861816406, 'time_processed_ms': 21397.432565689087, 'time_compress_ms': 1608.9818477630615, 'overall_ms': 23063.87424468994}
+2026-05-13 11:48:27,541 INFO Client disconnected - 
+2026-05-13 11:48:28,963 INFO Client connected
+2026-05-13 11:48:28,965 INFO {'sid': '5exjVoSFCzDtiUyYAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662108.9652033, 'last_activity': 1778662108.9652035, 'unique_file_id': '4da7e279-1d9a-4498-9e97-c681fabeb5a3'}
+2026-05-13 11:48:28,965 INFO Client connected
+2026-05-13 11:48:33,019 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:48:33,023 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-13 11:48:33,028 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-13 11:48:33,029 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-13 11:48:51,102 INFO [3] Compression: gzipping processed IGS
+2026-05-13 11:48:52,677 INFO Compressed IGS size: 11.017 MB (11552246 bytes)
+2026-05-13 11:48:52,677 INFO [4] Sending: emitting compressed IGS to client
+2026-05-13 11:48:52,753 INFO Finished sending as1_pe_203.igs. Timings: {'client_to_server_ms': 34.285400390625, 'time_parsed_ms': 1575.3200054168701, 'time_processed_ms': 18071.982622146606, 'time_compress_ms': 1575.319766998291, 'overall_ms': 19701.744556427002}
+2026-05-13 11:50:50,524 INFO Client disconnected - 
+2026-05-13 11:50:52,527 INFO Client connected
+2026-05-13 11:50:52,528 INFO {'sid': 'o1wDIQa1q95TqR1aAAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662252.528689, 'last_activity': 1778662252.5286894, 'unique_file_id': 'fa0eb6d7-4cb8-4a82-995b-78f0f1ba2680'}
+2026-05-13 11:50:52,529 INFO Client connected
+2026-05-13 11:50:55,534 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:50:55,537 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-13 11:50:55,542 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-13 11:50:55,545 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-13 11:51:06,661 INFO Client disconnected - 
+2026-05-13 11:51:08,018 INFO Client connected
+2026-05-13 11:51:08,020 INFO {'sid': 'RuSNkDZP-F3lKq0_AAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662268.0203354, 'last_activity': 1778662268.0203357, 'unique_file_id': 'd1a12dc0-2ea4-4784-a698-d61ebe7cf449'}
+2026-05-13 11:51:08,021 INFO Client connected
+2026-05-13 11:51:14,736 INFO Client disconnected - 
+2026-05-13 11:51:16,077 INFO Client connected
+2026-05-13 11:51:16,079 INFO {'sid': 'MkJUalytN3pzWpZUAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662276.0795105, 'last_activity': 1778662276.0795105, 'unique_file_id': '16d267d1-9575-4a7b-acde-c48e00fd84c4'}
+2026-05-13 11:51:16,080 INFO Client connected
+2026-05-13 11:51:18,039 INFO Client disconnected - 
+2026-05-13 11:51:19,206 INFO Client connected
+2026-05-13 11:51:19,207 INFO {'sid': 'MNK9Hxe3IKvFx0nNAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662279.2070832, 'last_activity': 1778662279.2070835, 'unique_file_id': '7611dbb8-d497-48ed-88ec-a3a4a230c9a4'}
+2026-05-13 11:51:19,207 INFO Client connected
+2026-05-13 11:51:28,152 INFO Client disconnected - 
+2026-05-13 11:51:29,456 INFO Client connected
+2026-05-13 11:51:29,459 INFO {'sid': 'AHMUbaisj5mnbaQ6AAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662289.4596708, 'last_activity': 1778662289.459671, 'unique_file_id': '3c09bf8c-c760-4967-9e37-7ed51c5df949'}
+2026-05-13 11:51:29,460 INFO Client connected
+2026-05-13 11:51:30,950 INFO Client disconnected - 
+2026-05-13 11:51:32,177 INFO Client connected
+2026-05-13 11:51:32,179 INFO {'sid': 'F0SYnfUO8vNqmglYAAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662292.1790667, 'last_activity': 1778662292.179067, 'unique_file_id': '9874f714-fcc3-4a91-9b9a-0614acd7f850'}
+2026-05-13 11:51:32,179 INFO Client connected
+2026-05-13 11:53:09,470 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:53:09,472 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-13 11:53:09,475 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-13 11:53:09,476 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-13 11:53:29,797 INFO [3] Compression: gzipping processed IGS
+2026-05-13 11:53:31,325 INFO Compressed IGS size: 11.017 MB (11552246 bytes)
+2026-05-13 11:53:31,326 INFO [4] Sending: emitting compressed IGS to client
+2026-05-13 11:53:31,393 INFO Finished sending as1_pe_203.igs. Timings: {'client_to_server_ms': 31.802001953125, 'time_parsed_ms': 1528.2793045043945, 'time_processed_ms': 20320.52445411682, 'time_compress_ms': 1528.2790660858154, 'overall_ms': 21892.932653427124}
+2026-05-13 11:55:00,171 INFO Client disconnected - 
+2026-05-13 11:55:01,964 INFO Client connected
+2026-05-13 11:55:01,966 INFO {'sid': 'n1vfkMpf_WUmGMcBAAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778662501.966815, 'last_activity': 1778662501.966815, 'unique_file_id': '51be8457-b96d-4830-8520-cd3adfc18b99'}
+2026-05-13 11:55:01,967 INFO Client connected
+2026-05-13 11:55:04,456 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 11:55:45,474 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-13 11:55:45,477 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-13 11:55:45,482 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-13 11:55:45,485 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-13 11:56:03,400 INFO [3] Compression: gzipping processed IGS
+2026-05-13 11:56:04,867 INFO Compressed IGS size: 11.017 MB (11552246 bytes)
+2026-05-13 11:56:04,867 INFO [4] Sending: emitting compressed IGS to client
+2026-05-13 11:56:04,938 INFO Finished sending as1_pe_203.igs. Timings: {'client_to_server_ms': 51.926025390625, 'time_parsed_ms': 1467.008113861084, 'time_processed_ms': 17914.653778076172, 'time_compress_ms': 1467.0078754425049, 'overall_ms': 19431.60653114319}
+2026-05-13 12:31:10,791 INFO Client connected
+2026-05-13 12:31:10,794 INFO {'sid': '6LfiPV374Zz05iyXAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778664670.7943156, 'last_activity': 1778664670.7943163, 'unique_file_id': '35d08333-342b-42f9-8a1e-a2855c180fa0'}
+2026-05-13 12:31:10,795 INFO Client connected
+2026-05-13 12:31:31,311 INFO Client disconnected - 
+2026-05-13 12:31:36,698 INFO Client connected
+2026-05-13 12:31:36,702 INFO {'sid': 'mtusaZ79QGv7FIOYAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778664696.7020733, 'last_activity': 1778664696.7020738, 'unique_file_id': '654ede01-f4a5-491f-bfcf-1463948762d8'}
+2026-05-13 12:31:36,703 INFO Client connected
+2026-05-13 12:32:04,580 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 12:32:10,138 INFO Compressed Tile STL size: 0.710 MB (744295 bytes)
+2026-05-13 12:38:04,783 INFO Client disconnected - 
+2026-05-13 12:38:07,083 INFO Client connected
+2026-05-13 12:38:07,085 INFO {'sid': '5P6zXNaKYlRKriepAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778665087.0855052, 'last_activity': 1778665087.0855052, 'unique_file_id': 'bf2cce80-ed84-454d-bbc3-5bc57606d0fc'}
+2026-05-13 12:38:07,086 INFO Client connected
+2026-05-13 12:57:09,170 INFO Client disconnected - 
+2026-05-13 12:57:10,541 INFO Client connected
+2026-05-13 12:57:10,546 INFO {'sid': '2SqXn0B2hlWsxGjeAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778666230.546224, 'last_activity': 1778666230.5462244, 'unique_file_id': '066907a6-7f54-40d5-9508-37fc54ca1726'}
+2026-05-13 12:57:10,549 INFO Client connected
+2026-05-13 12:57:13,798 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 12:57:14,558 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 12:57:24,872 INFO Compressed Tile STL size: 0.234 MB (245679 bytes)
+2026-05-13 12:57:53,830 INFO Client disconnected - 
+2026-05-13 12:57:55,267 INFO Client connected
+2026-05-13 12:57:55,275 INFO {'sid': '_x1Cb-jtUoiBD0z6AAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778666275.2755938, 'last_activity': 1778666275.2755942, 'unique_file_id': 'e474c0cd-9437-44cb-8380-6de6d7422c1e'}
+2026-05-13 12:57:55,276 INFO Client connected
+2026-05-13 12:58:00,093 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-13 13:35:04,897 INFO Client disconnected - 
+2026-05-15 22:08:23,042 INFO Client connected
+2026-05-15 22:08:23,046 INFO {'sid': 'sQ6Z7_4xrReyXlmSAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872103.046819, 'last_activity': 1778872103.0468192, 'unique_file_id': 'ab7cbe4b-13d2-45b7-a79a-856192f2f445'}
+2026-05-15 22:08:23,047 INFO Client connected
+2026-05-15 22:16:30,972 INFO Client disconnected - 
+2026-05-15 22:16:34,164 INFO Client connected
+2026-05-15 22:16:34,166 INFO {'sid': 'zfY1Dt_qu8b4iDSzAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872594.1663406, 'last_activity': 1778872594.166341, 'unique_file_id': '3509f5a9-7b53-4dc1-8bc3-ca269ad6695b'}
+2026-05-15 22:16:34,167 INFO Client connected
+2026-05-15 22:17:44,526 INFO Client connected
+2026-05-15 22:17:44,528 INFO {'sid': 'yhhsmuqhGTByo9NvAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872664.5282211, 'last_activity': 1778872664.5282216, 'unique_file_id': 'b60e8d04-56cb-42c7-8f23-e3f3c2d1c35d'}
+2026-05-15 22:17:44,529 INFO Client connected
+2026-05-15 22:17:45,731 INFO Client connected
+2026-05-15 22:17:45,735 INFO {'sid': 'xFfGJPHYW6KvXYMTAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872665.735561, 'last_activity': 1778872665.7355616, 'unique_file_id': '3c41caf8-80b9-449b-935a-4a22c01ccdc2'}
+2026-05-15 22:17:45,737 INFO Client connected
+2026-05-15 22:18:02,272 INFO Client connected
+2026-05-15 22:18:02,273 INFO {'sid': 'yKKhRwpB-ZeAj1-iAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872682.273494, 'last_activity': 1778872682.2734945, 'unique_file_id': '4bf784b8-366f-4b77-88a2-23c31cf72ffc'}
+2026-05-15 22:18:02,273 INFO Client connected
+2026-05-15 22:18:54,451 INFO Client disconnected - 
+2026-05-15 22:18:55,983 INFO Client connected
+2026-05-15 22:18:55,984 INFO {'sid': 'fXXMBtkpw741jQb-AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872735.984749, 'last_activity': 1778872735.9847493, 'unique_file_id': 'eb0e9aa8-bb75-4c1e-9c1f-5f3aa7c77704'}
+2026-05-15 22:18:55,985 INFO Client connected
+2026-05-15 22:19:44,271 INFO Client connected
+2026-05-15 22:19:44,272 INFO {'sid': 'L4k3eyJ-twmadLGqAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872784.2728755, 'last_activity': 1778872784.2728758, 'unique_file_id': '7636bced-b77f-4eba-911d-c98d3c41ac07'}
+2026-05-15 22:19:44,273 INFO Client connected
+2026-05-15 22:21:22,780 INFO Client disconnected - 
+2026-05-15 22:21:24,960 INFO Client connected
+2026-05-15 22:21:24,962 INFO {'sid': 'QZWeyPnmEUHso3T5AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872884.962801, 'last_activity': 1778872884.9628015, 'unique_file_id': 'c592aa8a-b2c3-4325-970c-d914004a5a10'}
+2026-05-15 22:21:24,963 INFO Client connected
+2026-05-15 22:22:05,758 INFO Client connected
+2026-05-15 22:22:05,759 INFO {'sid': 'Toq7adPKVWUt3EjrAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872925.759446, 'last_activity': 1778872925.7594466, 'unique_file_id': '83aff70a-139f-41a3-9021-6314ece8d3d5'}
+2026-05-15 22:22:05,759 INFO Client connected
+2026-05-15 22:22:08,239 INFO Client disconnected - 
+2026-05-15 22:22:10,418 INFO Client connected
+2026-05-15 22:22:10,419 INFO {'sid': 'ut6g-N8MU3sDukO_AAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778872930.4197032, 'last_activity': 1778872930.4197035, 'unique_file_id': '6dd3683a-9f89-44b2-a901-df6240a812f7'}
+2026-05-15 22:22:10,420 INFO Client connected
+2026-05-15 22:22:28,237 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 22:23:25,023 INFO Client connected
+2026-05-15 22:23:25,025 INFO {'sid': 'OzdVUobZspEum45BAAAC', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873005.0253012, 'last_activity': 1778873005.0253022, 'unique_file_id': '22961184-d548-4b23-b4de-4988b8a3bbfd'}
+2026-05-15 22:23:25,025 INFO Client connected
+2026-05-15 22:23:25,207 INFO Client connected
+2026-05-15 22:23:25,208 INFO {'sid': '99xtfyalQwLBxIocAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873005.2087865, 'last_activity': 1778873005.2087872, 'unique_file_id': '1354557b-8f70-4f1c-878b-5ab40927aba2'}
+2026-05-15 22:23:25,210 INFO Client connected
+2026-05-15 22:23:29,876 INFO Client disconnected - 
+2026-05-15 22:23:29,880 INFO Client disconnected - 
+2026-05-15 22:23:32,896 INFO Client connected
+2026-05-15 22:23:32,897 INFO {'sid': 'lLBGLEUlgV87Fg5UAAAG', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873012.8979363, 'last_activity': 1778873012.8979368, 'unique_file_id': 'f340f0ad-4157-48ed-a125-aee54fe062b9'}
+2026-05-15 22:23:32,898 INFO Client connected
+2026-05-15 22:24:23,255 INFO Client connected
+2026-05-15 22:24:23,257 INFO {'sid': '8HD904a6jfs2AV9qAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873063.2571485, 'last_activity': 1778873063.257149, 'unique_file_id': '922909ae-4465-43e6-83fb-600233003da7'}
+2026-05-15 22:24:23,257 INFO Client connected
+2026-05-15 22:24:25,394 INFO Client disconnected - 
+2026-05-15 22:24:27,208 INFO Client connected
+2026-05-15 22:24:27,210 INFO {'sid': 'kxa4sX5JVYSrBYbJAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873067.2103033, 'last_activity': 1778873067.2103035, 'unique_file_id': '51fe51c6-623c-4990-ad8d-867401a2bf79'}
+2026-05-15 22:24:27,211 INFO Client connected
+2026-05-15 22:25:34,265 INFO Client connected
+2026-05-15 22:25:34,267 INFO {'sid': 'CR6HeTKXrpAsDK5SAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873134.2675421, 'last_activity': 1778873134.2675426, 'unique_file_id': '498a5311-bd05-4003-8ecc-30da6c3ce375'}
+2026-05-15 22:25:34,268 INFO Client connected
+2026-05-15 22:25:35,127 INFO Client disconnected - 
+2026-05-15 22:25:37,084 INFO Client connected
+2026-05-15 22:25:37,085 INFO {'sid': '4731XUTxCzGDlzKAAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873137.0858414, 'last_activity': 1778873137.085842, 'unique_file_id': '8cf585a9-ab32-4e5a-b13b-756566d1a120'}
+2026-05-15 22:25:37,086 INFO Client connected
+2026-05-15 22:27:33,220 INFO Client disconnected - 
+2026-05-15 22:27:35,273 INFO Client connected
+2026-05-15 22:27:35,277 INFO {'sid': 'yKEKzuAzphft2zeqAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873255.276882, 'last_activity': 1778873255.2768834, 'unique_file_id': '415b5929-0bc9-4c71-8baa-ea7fa0ebc50b'}
+2026-05-15 22:27:35,278 INFO Client connected
+2026-05-15 22:29:16,101 INFO Client connected
+2026-05-15 22:29:16,103 INFO {'sid': 'rrHOsI1UFTxm_O3hAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873356.10314, 'last_activity': 1778873356.1031406, 'unique_file_id': 'a9ba82a6-da4b-4f65-a171-59b93a37f15b'}
+2026-05-15 22:29:16,103 INFO Client connected
+2026-05-15 22:29:36,263 INFO Client connected
+2026-05-15 22:29:36,264 INFO {'sid': 'LOX5h4Z9X2JX-BVnAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873376.2648828, 'last_activity': 1778873376.2648833, 'unique_file_id': 'cd66eb40-e684-4b69-96b7-fdb40cb6e94c'}
+2026-05-15 22:29:36,265 INFO Client connected
+2026-05-15 22:29:36,959 INFO Client disconnected - 
+2026-05-15 22:29:38,799 INFO Client connected
+2026-05-15 22:29:38,802 INFO {'sid': '-PoJmBnqhVIqeHynAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873378.8024375, 'last_activity': 1778873378.8024383, 'unique_file_id': '3d64bd1c-0d21-4582-9fc8-b12446d93592'}
+2026-05-15 22:29:38,803 INFO Client connected
+2026-05-15 22:31:51,266 INFO Client connected
+2026-05-15 22:31:51,267 INFO {'sid': '4PIGWTPuvUC_91QUAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873511.2671134, 'last_activity': 1778873511.2671137, 'unique_file_id': '3c33da7b-4271-47d6-aca5-2c45c83852e8'}
+2026-05-15 22:31:51,267 INFO Client connected
+2026-05-15 22:35:04,930 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 22:35:32,010 INFO Client disconnected - 
+2026-05-15 22:35:33,861 INFO Client connected
+2026-05-15 22:35:33,863 INFO {'sid': 'Cu2Ksyt7OQ8tpWuMAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873733.8632236, 'last_activity': 1778873733.863224, 'unique_file_id': 'fd3fb326-f98d-4f61-b6b3-d76b4bcc3169'}
+2026-05-15 22:35:33,864 INFO Client connected
+2026-05-15 22:35:36,555 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 22:36:00,985 INFO Client disconnected - 
+2026-05-15 22:36:02,149 INFO Client connected
+2026-05-15 22:36:02,151 INFO {'sid': 'yedCtXiLnziexUmBAAAF', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778873762.151948, 'last_activity': 1778873762.1519482, 'unique_file_id': '7a03f4b6-9a27-49b7-ae34-6f940124fe7d'}
+2026-05-15 22:36:02,152 INFO Client connected
+2026-05-15 22:36:31,834 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 22:42:01,715 INFO Client disconnected - 
+2026-05-15 22:42:30,970 INFO Client connected
+2026-05-15 22:42:30,970 INFO {'sid': 'gIq1fq2z4aas4dGeAAAH', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778874150.9709108, 'last_activity': 1778874150.9709108, 'unique_file_id': '3437a61d-2ebe-4ed9-a1d6-636b70d524de'}
+2026-05-15 22:42:30,971 INFO Client connected
+2026-05-15 22:42:48,442 INFO Client disconnected - 
+2026-05-15 22:42:49,136 INFO Client connected
+2026-05-15 22:42:49,141 INFO {'sid': 'fktueiJ_Grb5KaJ4AAAJ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778874169.1410842, 'last_activity': 1778874169.1410844, 'unique_file_id': '06b63ade-db81-42c9-a8c8-a358294f4a3a'}
+2026-05-15 22:42:49,141 INFO Client connected
+2026-05-15 22:51:34,359 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 22:52:29,488 INFO Client disconnected - 
+2026-05-15 22:52:31,209 INFO Client connected
+2026-05-15 22:52:31,211 INFO {'sid': 'iQffvMyDwOARdz9bAAAL', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778874751.2113564, 'last_activity': 1778874751.211357, 'unique_file_id': '43d7d7fb-2785-43f4-91ae-208ee1e85b2c'}
+2026-05-15 22:52:31,212 INFO Client connected
+2026-05-15 22:52:52,024 INFO Client disconnected - 
+2026-05-15 22:52:53,179 INFO Client connected
+2026-05-15 22:52:53,180 INFO {'sid': '5yzv2TFbSI7LFTBKAAAN', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778874773.1802263, 'last_activity': 1778874773.1802266, 'unique_file_id': '69dfd7c0-0a36-4c19-ab7c-b2e6a8158b5d'}
+2026-05-15 22:52:53,180 INFO Client connected
+2026-05-15 22:53:24,178 INFO Client disconnected - 
+2026-05-15 22:53:25,740 INFO Client connected
+2026-05-15 22:53:25,741 INFO {'sid': 'DnHnd2wRppe_HKalAAAP', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778874805.7415035, 'last_activity': 1778874805.7415037, 'unique_file_id': 'ff152713-ffc3-4a52-a796-f6899481322a'}
+2026-05-15 22:53:25,742 INFO Client connected
+2026-05-15 22:57:00,239 INFO Client disconnected - 
+2026-05-15 22:57:01,320 INFO Client connected
+2026-05-15 22:57:01,321 INFO {'sid': 'JVf2IAnZFD9BZtxfAAAR', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875021.3218312, 'last_activity': 1778875021.3218315, 'unique_file_id': '811ae915-8c1b-4205-86e6-32199f7ec772'}
+2026-05-15 22:57:01,323 INFO Client connected
+2026-05-15 22:57:10,604 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 23:00:59,153 INFO Client disconnected - 
+2026-05-15 23:01:00,325 INFO Client connected
+2026-05-15 23:01:00,328 INFO {'sid': 'aN5BkX6VgZ1NxR2uAAAT', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875260.3288481, 'last_activity': 1778875260.3288484, 'unique_file_id': 'b1a18c6c-a457-4410-b395-d2928e950563'}
+2026-05-15 23:01:00,329 INFO Client connected
+2026-05-15 23:02:27,777 INFO Client disconnected - 
+2026-05-15 23:02:29,013 INFO Client connected
+2026-05-15 23:02:29,015 INFO {'sid': 'UvQJYFFDcdZUp-hpAAAV', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875349.0157003, 'last_activity': 1778875349.0157006, 'unique_file_id': 'ae69b129-d336-4bf5-890b-07a2f9e13195'}
+2026-05-15 23:02:29,016 INFO Client connected
+2026-05-15 23:02:41,205 INFO Client disconnected - 
+2026-05-15 23:02:42,325 INFO Client connected
+2026-05-15 23:02:42,327 INFO {'sid': 'vaegNmEtBrYiuUVrAAAX', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875362.3275776, 'last_activity': 1778875362.327578, 'unique_file_id': 'afba26a6-4559-4b0f-a283-97a935c8e291'}
+2026-05-15 23:02:42,328 INFO Client connected
+2026-05-15 23:02:59,959 INFO Client disconnected - 
+2026-05-15 23:03:01,122 INFO Client connected
+2026-05-15 23:03:01,124 INFO {'sid': 'etUUKxwmJm6l9M6nAAAZ', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875381.1243382, 'last_activity': 1778875381.1243384, 'unique_file_id': '6e00d83a-acaa-41e9-8a1a-3682c7163499'}
+2026-05-15 23:03:01,125 INFO Client connected
+2026-05-15 23:03:13,329 INFO Client disconnected - 
+2026-05-15 23:03:14,384 INFO Client connected
+2026-05-15 23:03:14,386 INFO {'sid': 'eaILhvLBHDQIx3c9AAAb', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875394.3860981, 'last_activity': 1778875394.3860981, 'unique_file_id': 'b8dfea03-622f-4fab-8495-744f475085d3'}
+2026-05-15 23:03:14,386 INFO Client connected
+2026-05-15 23:03:37,836 INFO Client disconnected - 
+2026-05-15 23:03:39,007 INFO Client connected
+2026-05-15 23:03:39,011 INFO {'sid': 'D6LT5cuGv36ZW26PAAAd', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875419.0113494, 'last_activity': 1778875419.0113497, 'unique_file_id': '1c37098d-126a-4d1d-a838-6a541a9de6ad'}
+2026-05-15 23:03:39,012 INFO Client connected
+2026-05-15 23:03:54,399 INFO Client disconnected - 
+2026-05-15 23:03:55,532 INFO Client connected
+2026-05-15 23:03:55,534 INFO {'sid': 'k5j2GDcw-mR9YZrfAAAf', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875435.534059, 'last_activity': 1778875435.5340593, 'unique_file_id': '4a81c3f2-1c05-4c58-aa32-3df3db9c09ee'}
+2026-05-15 23:03:55,534 INFO Client connected
+2026-05-15 23:04:20,309 INFO Client disconnected - 
+2026-05-15 23:04:21,388 INFO Client connected
+2026-05-15 23:04:21,392 INFO {'sid': 'dRSXEAxxuUMAIgJuAAAh', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875461.39201, 'last_activity': 1778875461.3920105, 'unique_file_id': '4b64cdf1-e78a-46bc-8eb3-ad79f1acad09'}
+2026-05-15 23:04:21,393 INFO Client connected
+2026-05-15 23:08:09,798 INFO Client disconnected - 
+2026-05-15 23:08:11,074 INFO Client connected
+2026-05-15 23:08:11,075 INFO {'sid': '8lTQ2PocARcW5KE2AAAj', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875691.0759027, 'last_activity': 1778875691.0759027, 'unique_file_id': 'c9f3915e-eccb-4971-a8bc-ccdd04b1a376'}
+2026-05-15 23:08:11,076 INFO Client connected
+2026-05-15 23:08:34,255 INFO Client disconnected - 
+2026-05-15 23:08:35,394 INFO Client connected
+2026-05-15 23:08:35,395 INFO {'sid': '5N7o0UAgIGnUVNz-AAAl', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875715.395339, 'last_activity': 1778875715.3953395, 'unique_file_id': 'ce0a83d0-daee-44c9-9b5b-e6730c78fb20'}
+2026-05-15 23:08:35,395 INFO Client connected
+2026-05-15 23:08:41,274 INFO Client disconnected - 
+2026-05-15 23:08:42,350 INFO Client connected
+2026-05-15 23:08:42,352 INFO {'sid': 'JNF7ttb-srzGObCdAAAn', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875722.3525138, 'last_activity': 1778875722.3525143, 'unique_file_id': '0659678b-169b-4dd2-9aa3-bd05ecc78cd1'}
+2026-05-15 23:08:42,353 INFO Client connected
+2026-05-15 23:09:06,246 INFO Client disconnected - 
+2026-05-15 23:09:07,408 INFO Client connected
+2026-05-15 23:09:07,413 INFO {'sid': '1EoOBTGiCxLRvIJjAAAp', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875747.4136484, 'last_activity': 1778875747.4136484, 'unique_file_id': 'cb33842a-c4cb-4d04-a7b5-e0ad58c9a7c3'}
+2026-05-15 23:09:07,414 INFO Client connected
+2026-05-15 23:10:10,175 INFO Client disconnected - 
+2026-05-15 23:10:11,293 INFO Client connected
+2026-05-15 23:10:11,295 INFO {'sid': 'V4Cr6szfqRiS6HxGAAAr', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778875811.2951798, 'last_activity': 1778875811.29518, 'unique_file_id': '6206e4e1-21a7-4b39-bf40-7f499ddeb6fa'}
+2026-05-15 23:10:11,296 INFO Client connected
+2026-05-15 23:10:20,243 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 23:10:58,246 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 23:11:06,996 INFO Compressed Tile STL size: 0.034 MB (35375 bytes)
+2026-05-15 23:14:29,862 INFO Client disconnected - 
+2026-05-15 23:14:31,042 INFO Client connected
+2026-05-15 23:14:31,044 INFO {'sid': 'XA8Oh7N_UkY2T-7NAAAt', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1778876071.0447598, 'last_activity': 1778876071.04476, 'unique_file_id': 'b1506b07-d2ab-409c-a0a0-878cf8051209'}
+2026-05-15 23:14:31,045 INFO Client connected
+2026-05-15 23:14:35,372 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 23:17:00,046 INFO Compressed Tile STL size: 0.234 MB (245199 bytes)
+2026-05-15 23:17:08,193 INFO Compressed Tile STL size: 0.234 MB (245230 bytes)
+2026-05-17 15:14:30,299 INFO Client connected
+2026-05-17 15:14:30,302 INFO {'sid': 'zFNmNYBWnGiMcB4iAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1779020070.3021092, 'last_activity': 1779020070.3021097, 'unique_file_id': 'bcdec614-b75a-49b4-bfc7-b2ed6536769d'}
+2026-05-17 15:14:30,303 INFO Client connected
+2026-05-17 15:15:06,292 INFO Compressed Tile STL size: 0.034 MB (36027 bytes)
+2026-05-17 15:15:10,231 INFO Compressed Tile STL size: 0.034 MB (35532 bytes)
+2026-05-17 15:15:14,747 INFO Compressed Tile STL size: 0.034 MB (35948 bytes)
+2026-05-17 15:20:42,387 INFO Client disconnected - 
+2026-05-17 15:20:43,834 INFO Client connected
+2026-05-17 15:20:43,835 INFO {'sid': 'HcgJ6c1Vq90fA-5gAAAD', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5173/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1779020443.8356242, 'last_activity': 1779020443.8356247, 'unique_file_id': '62fde4d6-72ea-4624-9ef0-a14c54cf0e93'}
+2026-05-17 15:20:43,836 INFO Client connected
+2026-05-17 15:20:46,514 INFO [1] get the IGS: as1_pe_203.igs
+2026-05-17 15:20:46,517 INFO Original IGS size: 0.595 MB (624020 bytes)
+2026-05-17 15:20:46,521 INFO Saved ASCII IGS to client_data\as1_pe_203.igs
+2026-05-17 15:20:46,524 INFO Saved JSON metadata to client_data\as1_pe_203.json
+2026-05-17 15:21:06,697 INFO [3] Compression: gzipping processed IGS
+2026-05-17 15:21:09,721 INFO Compressed IGS size: 11.017 MB (11552246 bytes)
+2026-05-17 15:21:09,721 INFO [4] Sending: emitting compressed IGS to client
+2026-05-17 15:21:09,840 INFO Finished sending as1_pe_203.igs. Timings: {'client_to_server_ms': 41.14208984375, 'time_parsed_ms': 3023.210287094116, 'time_processed_ms': 20172.78552055359, 'time_compress_ms': 3023.209810256958, 'overall_ms': 23266.117572784424}

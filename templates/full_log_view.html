@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Full Log Viewer: {{ log_file }}</title>
+    <style>
+        body { font-family: monospace; background-color: #282c34; color: #abb2bf; margin: 0; padding: 20px; }
+        h1 { color: #50fa7b; text-align: center; margin-bottom: 30px; }
+        .log-container {
+            background-color: #3e4451;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 85vh;
+            overflow: auto; /* Allows scrolling if the log is too long */
+            border: 1px solid #5c6370;
+        }
+        /* The <pre> tag preserves all line breaks and spacing from the log file */
+        .log-container pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Full Log Content: {{ log_file }}</h1>
+    <div class="log-container">
+        <pre>{{ log_content }}</pre>
+    </div>
+</body>
+</html>
