@@ -139,7 +139,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
               <directionalLight position={[3, 4, 3]} intensity={0.8} />
               <directionalLight position={[-3, -2, -3]} intensity={0.2} />
 
-              <React.Suspense fallback={<PlaceholderMesh color={meshColor} />}>
+              <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
                 {modelUrl
                   ? <STLModel url={modelUrl} color={meshColor} />
                   : <PlaceholderMesh color={meshColor} />
@@ -179,11 +179,16 @@ function STLModel({ url, color }: { url: string; color: string }) {
   const ref = React.useRef<THREE.Mesh>(null)
   React.useLayoutEffect(() => {
     if (!ref.current) return
+    // Reset to identity first so accumulated scale/position from previous
+    // geometries don't skew the bounding box measurement.
+    ref.current.position.set(0, 0, 0)
+    ref.current.scale.setScalar(1)
     const box = new THREE.Box3().setFromObject(ref.current)
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
-    ref.current.position.sub(center)
+    if (maxDim === 0) return
+    ref.current.position.set(-center.x, -center.y, -center.z)
     ref.current.scale.setScalar(2 / maxDim)
   }, [geometry])
 

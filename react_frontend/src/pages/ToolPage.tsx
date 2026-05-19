@@ -36,7 +36,7 @@ export function ToolPage() {
 
   /* ── UI state ── */
   const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(true)
-  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(false)
+  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(true)
   const [zoom, setZoom]                           = React.useState(100)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
 
@@ -63,6 +63,17 @@ export function ToolPage() {
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
+
+  /* ── Fire calculateTile once on mount so preview is ready when TileMenu opens ── */
+  React.useEffect(() => {
+    const padded: [number, number, number] = [
+      tileSliderValues[0] ?? 0,
+      tileSliderValues[1] ?? 0,
+      tileSliderValues[2] ?? 0,
+    ]
+    socket.calculateTile({ type: tileType, values: padded })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
