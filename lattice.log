@@ -1,6 +1,0 @@
-2026-04-08 12:11:36,933 INFO Client connected
-2026-04-08 12:11:36,939 INFO {'sid': 'Jc4K_O8y4lNqNqsPAAAB', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5003/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1775639496.9392843, 'last_activity': 1775639496.939285, 'unique_file_id': '71352f79-639f-4fb2-8aee-1bce01c9e1af'}
-2026-04-08 12:11:36,940 INFO Client connected
-2026-04-08 12:18:04,436 INFO Client connected
-2026-04-08 12:18:04,439 INFO {'sid': 'AsToMhFvvnrVtQOTAAAC', 'ip_address_reported': '127.0.0.1', 'real_ip_guess': '127.0.0.1', 'user_agent': 'Unknown', 'referrer': 'http://localhost:5003/', 'language': 'en-US', 'protocol': 'http', 'connected_time': 1775639884.4397085, 'last_activity': 1775639884.4397087, 'unique_file_id': '60ca114b-ad16-4f4d-9850-2c9676042429'}
-2026-04-08 12:18:04,440 INFO Client connected
