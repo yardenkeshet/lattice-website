@@ -40,6 +40,11 @@ export interface TileCardProps {
    * Disabled by default for small cards so click-to-select works cleanly.
    */
   enableOrbit?: boolean
+  /**
+   * Static image URL (e.g. imported PNG). When provided for non-large sizes,
+   * renders an <img> instead of the Three.js canvas.
+   */
+  imageUrl?: string
 }
 
 // Note: ref is forwarded to the outer wrapper div.
@@ -57,6 +62,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       'aria-label': ariaLabel,
       meshColor = '#c8c8c8',
       enableOrbit = false,
+      imageUrl,
     },
     ref
   ) => {
@@ -108,31 +114,48 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
           }
         }}
       >
-        {/* Three.js canvas — leaves room for the label when present */}
-        <Canvas
-          style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
-          camera={{ position: [0, 0, 3], fov: 45 }}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[3, 4, 3]} intensity={0.8} />
-          <directionalLight position={[-3, -2, -3]} intensity={0.2} />
-
-          <React.Suspense fallback={<PlaceholderMesh color={meshColor} />}>
-            {modelUrl
-              ? <STLModel url={modelUrl} color={meshColor} />
-              : <PlaceholderMesh color={meshColor} />
-            }
-          </React.Suspense>
-
-          {enableOrbit && (
-            <OrbitControls
-              enablePan={false}
-              enableZoom={false}
-              makeDefault
+        {/* Static image — used for tile selector cards with a known PNG */}
+        {imageUrl && size !== 'large'
+          ? (
+            <img
+              src={imageUrl}
+              alt=""
+              aria-hidden="true"
+              style={{
+                width: '100%',
+                height: label && size === 'small' ? 'calc(100% - 20px)' : '100%',
+                objectFit: 'contain',
+              }}
             />
-          )}
-        </Canvas>
+          )
+          : (
+            /* Three.js canvas — leaves room for the label when present */
+            <Canvas
+              style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
+              camera={{ position: [0, 0, 3], fov: 45 }}
+              gl={{ antialias: true, alpha: true }}
+            >
+              <ambientLight intensity={0.7} />
+              <directionalLight position={[3, 4, 3]} intensity={0.8} />
+              <directionalLight position={[-3, -2, -3]} intensity={0.2} />
+
+              <React.Suspense fallback={<PlaceholderMesh color={meshColor} />}>
+                {modelUrl
+                  ? <STLModel url={modelUrl} color={meshColor} />
+                  : <PlaceholderMesh color={meshColor} />
+                }
+              </React.Suspense>
+
+              {enableOrbit && (
+                <OrbitControls
+                  enablePan={false}
+                  enableZoom={false}
+                  makeDefault
+                />
+              )}
+            </Canvas>
+          )
+        }
 
         {/* Label — small size only (mini and large have no label) */}
         {label && size === 'small' && (

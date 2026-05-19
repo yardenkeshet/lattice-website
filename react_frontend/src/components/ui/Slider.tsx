@@ -22,6 +22,8 @@ export interface SliderProps
   getValueText?: (value: number) => string
   /** Called when the user finishes interacting (mouse up / key up / badge commit). */
   onValueCommit?: (value: number[]) => void
+  /** Override the label font size (defaults to var(--text-size-body)). */
+  fontSize?: string | number
 }
 
 // Note: ref is forwarded to SliderPrimitive.Root (the focusable/interactive
@@ -39,6 +41,7 @@ const Slider = React.forwardRef<
       label,
       asChild = false,
       length,
+      fontSize,
       min = 0,
       max = 1,
       step = 0.01,
@@ -115,7 +118,7 @@ const Slider = React.forwardRef<
           style={{ ...wrapperStyle, width: wrapperWidth }}
         >
           {label && (
-            <span id={labelId} style={labelStyle}>
+            <span id={labelId} style={{ ...labelStyle, ...(fontSize != null ? { fontSize } : {}) }}>
               {label}
             </span>
           )}

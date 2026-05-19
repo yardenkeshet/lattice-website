@@ -144,6 +144,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={[g1]}
             showValue
             valuePrecision={2}
+            fontSize={12}
             onValueChange={([v]) => onG1Change(v)}
           />
           <Slider
@@ -154,6 +155,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={[g2]}
             showValue
             valuePrecision={2}
+            fontSize={12}
             onValueChange={([v]) => onG2Change(v)}
           />
         </div>
@@ -162,7 +164,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         {/* ── Calculation mode ── */}
         <div style={sectionStyle}>
-          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
+          <span style={sectionLabelStyle}>Calculation Mode</span>
           <Dropdown
             options={CALC_MODE_OPTIONS}
             value={calculationMode}
@@ -233,11 +235,11 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-sm)',
-  width: 196,
+  width: 235,
   backgroundColor: 'var(--bg-primary)',
   borderRadius: 14,
   boxShadow: '1px 2px 9px 0px rgba(0,0,0,0.10)',
-  padding: '15px 0 13px',
+  padding: '19px 0 16px',
   overflowY: 'auto',
   maxHeight: '100%',
 }
@@ -282,7 +284,7 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
+  fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
 }
