@@ -26,6 +26,12 @@ export interface ViewerSceneProps {
   onFileDrop?: (file: File) => void
   /** Called when the user scrolls over the viewer to zoom. */
   onZoomChange?: (zoom: number) => void
+  /**
+   * Opaque string controlled by the parent. When this key changes the camera
+   * resets to its default position. Unchanged on tile-param recalculations so
+   * the user's orbit/zoom is preserved across param tweaks.
+   */
+  cameraResetKey?: string
   className?: string
   style?: React.CSSProperties
 }
@@ -41,6 +47,7 @@ export function ViewerScene({
   resultStlGzB64 = null,
   cameraMode = 'perspective',
   zoom = 100,
+  cameraResetKey,
   onFileDrop,
   onZoomChange,
   className,
@@ -153,6 +160,9 @@ export function ViewerScene({
         {/* Camera zoom controller */}
         <CameraZoom zoom={zoom} mode={cameraMode} />
 
+        {/* Reset camera when parent signals a meaningful model change */}
+        <CameraReset resetKey={cameraResetKey ?? 'initial'} />
+
         {/* Mesh */}
         <React.Suspense fallback={null}>
           {activeUrl && <STLMesh url={activeUrl} />}
@@ -162,6 +172,20 @@ export function ViewerScene({
       </Canvas>
     </div>
   )
+}
+
+/* ─── Camera reset on model change ─── */
+
+function CameraReset({ resetKey }: { resetKey: string }) {
+  const { camera } = useThree()
+  const controls = useThree(s => s.controls) as any  // reactive: re-fires when controls register
+  React.useEffect(() => {
+    camera.position.set(0, 0, 5)
+    camera.lookAt(0, 0, 0)
+    controls?.target?.set(0, 0, 0)
+    controls?.update?.()
+  }, [resetKey, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
 }
 
 /* ─── Camera zoom controller ─── */

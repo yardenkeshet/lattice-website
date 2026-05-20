@@ -98,6 +98,8 @@ const Slider = React.forwardRef<
 
     // [C2] State-driven hover — no direct DOM mutation.
     const [hoveredThumb, setHoveredThumb] = React.useState<number | null>(null)
+    const [badgeHovered, setBadgeHovered] = React.useState(false)
+    const [badgeFocused, setBadgeFocused] = React.useState(false)
 
     // [R1] Associate the visible label with the Radix root via aria-labelledby.
     const labelId = React.useId()
@@ -161,11 +163,20 @@ const Slider = React.forwardRef<
 
             {showValue && displayValue.length === 1 && (
               <input
-                style={badgeInputStyle}
+                style={{
+                  ...badgeInputStyle,
+                  borderColor: badgeFocused
+                    ? 'var(--border-focus)'
+                    : badgeHovered
+                    ? 'var(--border-base)'
+                    : 'transparent',
+                }}
                 value={inputStr}
                 onChange={e => setInputStr(e.target.value)}
-                onFocus={e => { inputFocused.current = true; e.target.select() }}
-                onBlur={() => { inputFocused.current = false; commitInput() }}
+                onMouseEnter={() => setBadgeHovered(true)}
+                onMouseLeave={() => setBadgeHovered(false)}
+                onFocus={e => { inputFocused.current = true; setBadgeFocused(true); e.target.select() }}
+                onBlur={() => { inputFocused.current = false; setBadgeFocused(false); commitInput() }}
                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                 aria-label={label ? `${label} value` : 'slider value'}
               />
@@ -275,12 +286,13 @@ const badgeRangeStyle: React.CSSProperties = {
 
 const badgeInputStyle: React.CSSProperties = {
   ...badgeStyle,
-  background: 'transparent',
-  border: 'none',
+  border: '1px solid transparent',
   outline: 'none',
   cursor: 'text',
   textAlign: 'center',
   padding: '0 4px',
+  boxSizing: 'border-box',
+  transition: 'border-color 150ms ease',
 }
 
 export { Slider }

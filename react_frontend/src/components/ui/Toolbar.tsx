@@ -144,7 +144,6 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
             variant="secondary"
             disabled={isCalculating}
             onClick={onCalculate}
-            style={{ boxShadow: 'none', height: 31 }}
           >
             {isCalculating ? 'Calculating…' : 'Calculate'}
           </Button>

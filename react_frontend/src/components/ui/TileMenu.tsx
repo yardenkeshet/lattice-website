@@ -125,6 +125,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
             size="large"
             modelUrl={previewUrl}
             enableOrbit
+            cameraResetKey={tileType}
             aria-label="Tile live preview"
           />
         </div>

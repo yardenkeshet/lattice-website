@@ -39,6 +39,10 @@ export function ToolPage() {
   const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(true)
   const [zoom, setZoom]                           = React.useState(100)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
+  const [viewerResetKey, setViewerResetKey]       = React.useState('initial')
+  /* Tracks what kind of action triggered the last backend call so the result
+     handler knows whether to reset the viewer camera. null = no reset. */
+  const pendingResetKey = React.useRef<string | null>(null)
 
   /* ── Tile state ── */
   const [tileType, setTileType]           = React.useState<TileType>('diagonal')
@@ -81,7 +85,11 @@ export function ToolPage() {
       setIsCalculating(false)
       if (payload.kind === 'stl') {
         setResultGzB64(payload.stl_gz_b64)
-        setTilePreviewGzB64(payload.stl_gz_b64) // also update tile preview
+        setTilePreviewGzB64(payload.stl_gz_b64)
+        if (pendingResetKey.current !== null) {
+          setViewerResetKey(pendingResetKey.current)
+          pendingResetKey.current = null
+        }
       } else {
         setDownloadToken(payload.download_token)
       }
@@ -98,13 +106,15 @@ export function ToolPage() {
     setTileSliderValues(values)
   }, [])
 
-  /* ── Tile param commit (mouse-up or badge Enter) → calculateTile ── */
+  /* ── Tile param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
+    pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
     socket.calculateTile({ type: tileType, values: padded })
   }, [socket, tileType])
 
   const handleTileTypeChange = (type: TileType) => {
+    pendingResetKey.current = type  // camera resets to match new tile type
     setTileType(type)
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
@@ -114,6 +124,7 @@ export function ToolPage() {
 
   /* ── File upload ── */
   const handleFileAdd = async (file: File) => {
+    setViewerResetKey('file-' + Date.now())   // reset camera immediately for uploaded file
     setUploadedFile(file)
     setResultGzB64(null)      // clear previous result
     setDownloadToken(null)
@@ -132,6 +143,7 @@ export function ToolPage() {
       setErrorMsg('Please upload a 3D file first')
       return
     }
+    pendingResetKey.current = 'calc-' + Date.now()  // full lattice result → reset camera
     setIsCalculating(true)
     setResultGzB64(null)
     setDownloadToken(null)
@@ -210,6 +222,7 @@ export function ToolPage() {
               resultStlGzB64={resultGzB64}
               cameraMode={cameraMode}
               zoom={zoom}
+              cameraResetKey={viewerResetKey}
               onZoomChange={setZoom}
               onFileDrop={handleFileAdd}
             />
@@ -249,7 +262,6 @@ const pageStyle: React.CSSProperties = {
 const workspaceStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
-  alignItems: 'flex-start',
   gap: 0,
   backgroundColor: '#e3e3e3',
   padding: 0,
@@ -269,6 +281,8 @@ const centerStyle: React.CSSProperties = {
   gap: 8,
   padding: 20,
   minWidth: 0,
+  minHeight: 0,
+  maxHeight: '395',
 }
 
 const toolbarRowStyle: React.CSSProperties = {
@@ -278,7 +292,7 @@ const toolbarRowStyle: React.CSSProperties = {
 
 const viewerStyle: React.CSSProperties = {
   flex: 1,
-  minHeight: 500,
+  minHeight: 0,
   borderRadius: 12,
   overflow: 'hidden',
 }
@@ -286,7 +300,6 @@ const viewerStyle: React.CSSProperties = {
 const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
   padding: '20px 20px 20px 0',
-  alignSelf: 'flex-start',
 }
 
 const errorStyle: React.CSSProperties = {

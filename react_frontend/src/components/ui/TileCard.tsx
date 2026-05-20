@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Center, Environment } from '@react-three/drei'
+import { OrbitControls, Center } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
@@ -36,10 +36,16 @@ export interface TileCardProps {
    */
   meshColor?: string
   /**
-   * Allow camera orbit interaction (drag to rotate).
+   * Allow camera orbit interaction (drag to rotate and scroll to zoom).
    * Disabled by default for small cards so click-to-select works cleanly.
    */
   enableOrbit?: boolean
+  /**
+   * When this key changes the camera resets to its default position.
+   * Pass `tileType` so the view resets on tile-type change but not on
+   * parameter recalculation (which updates modelUrl but not the key).
+   */
+  cameraResetKey?: string
   /**
    * Static image URL (e.g. imported PNG). When provided for non-large sizes,
    * renders an <img> instead of the Three.js canvas.
@@ -62,6 +68,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       'aria-label': ariaLabel,
       meshColor = '#c8c8c8',
       enableOrbit = false,
+      cameraResetKey,
       imageUrl,
     },
     ref
@@ -147,11 +154,14 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
               </React.Suspense>
 
               {enableOrbit && (
-                <OrbitControls
-                  enablePan={false}
-                  enableZoom={false}
-                  makeDefault
-                />
+                <>
+                  <OrbitControls
+                    enablePan={false}
+                    enableZoom={true}
+                    makeDefault
+                  />
+                  <TileCardCameraReset resetKey={cameraResetKey ?? ''} />
+                </>
               )}
             </Canvas>
           )
@@ -197,6 +207,20 @@ function STLModel({ url, color }: { url: string; color: string }) {
       <meshStandardMaterial color={color} roughness={0.55} metalness={0.1} />
     </mesh>
   )
+}
+
+/* ─── Reset camera when tile type changes (not on param recalc) ─── */
+
+function TileCardCameraReset({ resetKey }: { resetKey: string }) {
+  const { camera } = useThree()
+  const controls = useThree(s => s.controls) as any  // reactive: re-fires when controls register
+  React.useEffect(() => {
+    camera.position.set(0, 0, 3)
+    camera.lookAt(0, 0, 0)
+    controls?.target?.set(0, 0, 0)
+    controls?.update?.()
+  }, [resetKey, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
 }
 
 /* ─── Fallback geometry rendered when no modelUrl is provided ─── */
