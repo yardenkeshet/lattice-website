@@ -7,10 +7,11 @@ import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
+import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults } from '../api/httpClient'
 import { useStlBlobUrl } from '../lib/stl'
-import type { TileType } from '../api/types'
+import type { TileType, CalcMode } from '../api/types'
 
 /* ─── File reading utility ─── */
 
@@ -55,7 +56,7 @@ export function ToolPage() {
   const [nt3, setNt3]               = React.useState(1)
   const [g1, setG1]                 = React.useState(0.57)
   const [g2, setG2]                 = React.useState(0.83)
-  const [calcMode, setCalcMode]     = React.useState<'extrusion' | 'revolution'>('extrusion')
+  const [calcMode, setCalcMode]     = React.useState<CalcMode>('extrusion')
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
@@ -64,6 +65,16 @@ export function ToolPage() {
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
+
+  /* ── Second file slot for ruling mode ── */
+  const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
+
+  /* Ref so socket callbacks always see the current calcMode without a stale closure */
+  const calcModeRef = React.useRef<CalcMode>(calcMode)
+  React.useEffect(() => { calcModeRef.current = calcMode }, [calcMode])
+
+  /* True while a full lattice `calculate` result is in-flight; false for tile results */
+  const pendingResultIsLattice = React.useRef<boolean>(false)
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
@@ -82,15 +93,25 @@ export function ToolPage() {
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
     const unsubResult = socket.onResult(payload => {
-      setIsCalculating(false)
       if (payload.kind === 'stl') {
-        setResultGzB64(payload.stl_gz_b64)
+        setIsCalculating(false)
+        const isLattice = pendingResultIsLattice.current
+        pendingResultIsLattice.current = false
+
+        // Always update the tile mini-preview (LatticeMenu + TileMenu)
         setTilePreviewGzB64(payload.stl_gz_b64)
-        if (pendingResetKey.current !== null) {
-          setViewerResetKey(pendingResetKey.current)
-          pendingResetKey.current = null
+
+        // Only push into the main viewer if this is a full lattice result,
+        // OR we are not in ruling mode (tiles are shown in the main viewer in non-ruling modes)
+        if (isLattice || calcModeRef.current !== 'ruling') {
+          setResultGzB64(payload.stl_gz_b64)
+          if (pendingResetKey.current !== null) {
+            setViewerResetKey(pendingResetKey.current)
+            pendingResetKey.current = null
+          }
         }
       } else {
+        setIsCalculating(false)
         setDownloadToken(payload.download_token)
       }
     })
@@ -122,34 +143,87 @@ export function ToolPage() {
     socket.calculateTile({ type, values: padded })
   }
 
-  /* ── File upload ── */
-  const handleFileAdd = async (file: File) => {
-    setViewerResetKey('file-' + Date.now())   // reset camera immediately for uploaded file
-    setUploadedFile(file)
-    setResultGzB64(null)      // clear previous result
+  const handleCalcModeChange = (mode: CalcMode) => {
+    // Clear result and second file on every transition; keep uploadedFile (Surface 1) always
+    setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
-    try {
-      const b64 = await readFileAsB64(file)
-      setUploadedB64(b64)
-    } catch {
-      setErrorMsg('Failed to read file')
+    setUploadedFile2(null)
+    setCalcMode(mode)
+  }
+
+  /* ── File upload ── */
+  const handleFilesAdd = async (files: File[]) => {
+    setResultGzB64(null)
+    setDownloadToken(null)
+    setErrorMsg(null)
+
+    if (calcMode === 'ruling') {
+      if (files.length >= 2) {
+        // Two files chosen: replace both slots immediately
+        setViewerResetKey('file-' + Date.now())
+        setUploadedFile(files[0])
+        setUploadedFile2(files[1])
+        try { setUploadedB64(await readFileAsB64(files[0])) }
+        catch { setErrorMsg('Failed to read file') }
+      } else {
+        // One file: smart-fill next empty slot
+        const file = files[0]
+        if (!uploadedFile) {
+          setViewerResetKey('file-' + Date.now())
+          setUploadedFile(file)
+          try { setUploadedB64(await readFileAsB64(file)) }
+          catch { setErrorMsg('Failed to read file') }
+        } else if (!uploadedFile2) {
+          setUploadedFile2(file)
+        } else {
+          // Both full — cycle back and replace Surface 1
+          setViewerResetKey('file-' + Date.now())
+          setUploadedFile(file)
+          try { setUploadedB64(await readFileAsB64(file)) }
+          catch { setErrorMsg('Failed to read file') }
+        }
+      }
+    } else {
+      // Non-ruling: single file, same as original handleFileAdd
+      const file = files[0]
+      setViewerResetKey('file-' + Date.now())
+      setUploadedFile(file)
+      try { setUploadedB64(await readFileAsB64(file)) }
+      catch { setErrorMsg('Failed to read file') }
     }
   }
 
   /* ── Calculate ── */
   const handleCalculate = () => {
-    if (!uploadedFile || !uploadedB64) {
-      setErrorMsg('Please upload a 3D file first')
-      return
+    if (calcMode === 'ruling') {
+      if (!uploadedFile && !uploadedFile2) {
+        setErrorMsg('Please upload both surface files')
+        return
+      }
+      if (!uploadedFile) {
+        setErrorMsg('Please upload Surface 1')
+        return
+      }
+      if (!uploadedFile2) {
+        setErrorMsg('Please upload Surface 2')
+        return
+      }
+    } else {
+      if (!uploadedFile || !uploadedB64) {
+        setErrorMsg('Please upload a 3D file first')
+        return
+      }
     }
+    pendingResultIsLattice.current = true
+    pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
     socket.calculate({
-      filename: uploadedFile.name,
-      stl_text_b64: uploadedB64,
+      filename: uploadedFile!.name,
+      stl_text_b64: uploadedB64!,
       client_ts: performance.now(),
       args: { tileType, nt1, nt2, nt3, g1, g2 },
     })
@@ -181,7 +255,7 @@ export function ToolPage() {
             isOpen={isLatticeMenuOpen}
             onNt1Change={setNt1} onNt2Change={setNt2} onNt3Change={setNt3}
             onG1Change={setG1} onG2Change={setG2}
-            onCalculationModeChange={setCalcMode}
+            onCalculationModeChange={handleCalcModeChange}
             onOpenTileMenu={() => setIsTileMenuOpen(true)}
             onExport={handleExport}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
@@ -192,12 +266,13 @@ export function ToolPage() {
         <div style={centerStyle}>
           <div style={toolbarRowStyle}>
             <Toolbar
+              calcMode={calcMode}
               zoom={zoom}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
               onZoomChange={setZoom}
               onCameraModeChange={setCameraMode}
-              onFileAdd={handleFileAdd}
+              onFilesAdd={handleFilesAdd}
               onCalculate={handleCalculate}
             />
           </div>
@@ -216,15 +291,31 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            <ViewerScene
-              uploadedFile={uploadedFile}
-              resultStlGzB64={resultGzB64}
-              cameraMode={cameraMode}
-              zoom={zoom}
-              cameraResetKey={viewerResetKey}
-              onZoomChange={setZoom}
-              onFileDrop={handleFileAdd}
-            />
+            {calcMode === 'ruling' && !resultGzB64
+              ? (
+                <DualViewerLayout
+                  file1={uploadedFile}
+                  file2={uploadedFile2}
+                  onFile1Drop={f => { setUploadedFile(f); setResultGzB64(null) }}
+                  onFile2Drop={f => { setUploadedFile2(f); setResultGzB64(null) }}
+                  cameraMode={cameraMode}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  style={{ height: '100%' }}
+                />
+              )
+              : (
+                <ViewerScene
+                  uploadedFile={uploadedFile}
+                  resultStlGzB64={resultGzB64}
+                  cameraMode={cameraMode}
+                  zoom={zoom}
+                  cameraResetKey={viewerResetKey}
+                  onZoomChange={setZoom}
+                  onFileDrop={f => handleFilesAdd([f])}
+                />
+              )
+            }
           </div>
         </div>
 
