@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Canvas, useThree, useLoader } from '@react-three/fiber'
-import { OrbitControls, Center } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
 import { useStlBlobUrl } from '../lib/stl'
@@ -213,6 +213,7 @@ function CameraZoom({
 
   React.useEffect(() => {
     const factor = zoom / 100
+    if (factor <= 0) return  // guard: zoom must be positive
     if (mode === 'orthographic') {
       // baseOrthoZoom = camera.zoom at zoom=100 (set by auto-fit).
       // Multiplying by factor lets the user zoom in/out from the fitted position.
@@ -289,16 +290,16 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
         camera.lookAt(0, 0, 0)
         controls?.target?.set(0, 0, 0)
         controls?.update?.()
-        onFitDistance?.(d)
+        if (d > 0) onFitDistance?.(d)
       } else if (camera instanceof THREE.OrthographicCamera) {
         const z = orthographicFitZoom(r, Math.abs(camera.right), Math.abs(camera.top))
         camera.zoom = z
         camera.updateProjectionMatrix()
         controls?.update?.()
-        onFitOrthoZoom?.(z)
+        if (z > 0) onFitOrthoZoom?.(z)
       }
     }
-  }, [geometry, fitKey, controls]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
+  }, [geometry, fitKey, controls, onFitDistance, onFitOrthoZoom]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
