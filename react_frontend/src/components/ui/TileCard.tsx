@@ -235,7 +235,7 @@ function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?:
         controls?.update?.()
       }
     }
-  }, [geometry, fitKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [geometry, fitKey, controls]) // camera is stable in R3F (never replaced)
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>
