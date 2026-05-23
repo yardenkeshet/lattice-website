@@ -2,6 +2,8 @@
 
 export type TileType = 'cross' | 'diagonal' | 'cross_diagonal';
 
+export type CalcMode = 'extrusion' | 'revolution' | 'ruling';
+
 // ─── calculate event ─────────────────────────────────────────────────────────
 
 export interface CalculateArgs {
