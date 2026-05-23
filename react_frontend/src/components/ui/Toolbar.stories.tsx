@@ -32,7 +32,7 @@ export const Default: Story = {
         cameraMode={mode}
         onZoomChange={setZoom}
         onCameraModeChange={setMode}
-        onFileAdd={f => alert(`File selected: ${f.name}`)}
+        onFilesAdd={files => alert(`Files selected: ${files.map(f => f.name).join(', ')}`)}
         onCalculate={() => alert('Calculate!')}
       />
     )

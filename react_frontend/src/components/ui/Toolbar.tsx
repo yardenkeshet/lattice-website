@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { IconButton } from './IconButton'
 import { Button } from './Button'
+import type { CalcMode } from '../../api/types'
 
 /* ─── Public API ─── */
 
@@ -12,8 +13,10 @@ export interface ToolbarProps {
 
   onZoomChange?: (zoom: number) => void
   onCameraModeChange?: (mode: 'perspective' | 'orthographic') => void
-  /** Called when user picks a file via the Add button. Receives the raw File. */
-  onFileAdd?: (file: File) => void
+  /** Present only when in ruling mode — controls multi-file picker and routing. */
+  calcMode?: CalcMode
+  /** Called when user picks file(s) via the Add button. 1 item normally, up to 2 in ruling mode. */
+  onFilesAdd?: (files: File[]) => void
   onCalculate?: () => void
 
   className?: string
@@ -32,7 +35,8 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       isCalculating = false,
       onZoomChange,
       onCameraModeChange,
-      onFileAdd,
+      calcMode,
+      onFilesAdd,
       onCalculate,
       className,
     },
@@ -42,10 +46,11 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
     const [modeOpen, setModeOpen] = React.useState(false)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) onFileAdd?.(file)
-      // Reset input so the same file can be re-selected
-      e.target.value = ''
+      const all = Array.from(e.target.files ?? [])
+      if (all.length === 0) return
+      const limited = calcMode === 'ruling' ? all.slice(0, 2) : [all[0]]
+      onFilesAdd?.(limited)
+      e.target.value = ''  // reset so the same file can be re-selected
     }
 
     return (
@@ -55,6 +60,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
           ref={fileInputRef}
           type="file"
           accept={ACCEPTED_3D}
+          multiple={calcMode === 'ruling'}
           style={{ display: 'none' }}
           onChange={handleFileChange}
           aria-hidden="true"
