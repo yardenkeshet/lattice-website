@@ -147,13 +147,6 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
               <directionalLight position={[3, 4, 3]} intensity={0.8} />
               <directionalLight position={[-3, -2, -3]} intensity={0.2} />
 
-              <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
-                {modelUrl
-                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} />
-                  : <PlaceholderMesh color={meshColor} />
-                }
-              </React.Suspense>
-
               {enableOrbit && (
                 <OrbitControls
                   enablePan={false}
@@ -161,6 +154,13 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
                   makeDefault
                 />
               )}
+
+              <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
+                {modelUrl
+                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} />
+                  : <PlaceholderMesh color={meshColor} />
+                }
+              </React.Suspense>
             </Canvas>
           )
         }

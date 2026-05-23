@@ -211,7 +211,7 @@ function CameraZoom({
 }) {
   const { camera } = useThree()
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const factor = zoom / 100
     if (factor <= 0) return  // guard: zoom must be positive
     if (mode === 'orthographic') {
