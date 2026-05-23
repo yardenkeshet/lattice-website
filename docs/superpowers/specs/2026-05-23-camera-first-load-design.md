@@ -97,6 +97,10 @@ controls?.update()
 
 Using `min(halfFovV, halfFovH)` ensures wide and tall models both fit regardless of viewport aspect ratio. The 0.65 factor means 35% empty margin around the model.
 
+**Orthographic guard:** `camera.fov` is undefined on an `OrthographicCamera`. Before running the algorithm, check `camera instanceof THREE.PerspectiveCamera`; if false, skip auto-fit entirely (orthographic fit is out of scope).
+
+**OrbitControls timing:** Controls are `null` on first render and register a frame later via `makeDefault`. The `controls?.update()` call is safe when null. OrbitControls re-reads the camera position when it mounts, so the fit position is picked up automatically — no need to add `controls` to `useLayoutEffect` dependencies.
+
 ### 3. Normalization fix
 
 **Current bug in `STLMesh`:** bounding box is measured with the previous frame's transform still applied (position and scale are not reset first). `STLModel` resets first but uses a formula that only centres correctly when `localCenter = 0`.
