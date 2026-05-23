@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
-import type { TileType } from '../../api/types'
+import type { TileType, CalcMode } from '../../api/types'
 import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
@@ -22,7 +22,7 @@ export interface LatticeMenuProps {
   nt3: number
   g1: number
   g2: number
-  calculationMode: 'extrusion' | 'revolution'
+  calculationMode: CalcMode
 
   /** Whether a download token is available (enables Export button). */
   canExport?: boolean
@@ -34,7 +34,7 @@ export interface LatticeMenuProps {
   onNt3Change: (v: number) => void
   onG1Change: (v: number) => void
   onG2Change: (v: number) => void
-  onCalculationModeChange: (mode: 'extrusion' | 'revolution') => void
+  onCalculationModeChange: (mode: CalcMode) => void
   onOpenTileMenu: () => void
   onExport: () => void
   onToggle: () => void
@@ -45,6 +45,7 @@ export interface LatticeMenuProps {
 const CALC_MODE_OPTIONS = [
   { value: 'extrusion',  label: 'Extrusion' },
   { value: 'revolution', label: 'Revolution' },
+  { value: 'ruling',     label: 'Ruling' },
 ]
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -168,7 +169,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <Dropdown
             options={CALC_MODE_OPTIONS}
             value={calculationMode}
-            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
+            onChange={v => onCalculationModeChange(v as CalcMode)}
           />
         </div>
 
