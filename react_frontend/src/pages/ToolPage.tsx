@@ -194,6 +194,21 @@ export function ToolPage() {
     }
   }
 
+  /* Drag-drop onto DualViewerLayout panel 1 — always replaces Surface 1 */
+  const handleFile1Drop = async (file: File) => {
+    setUploadedFile(file)
+    setResultGzB64(null)
+    setUploadedB64(null)
+    try { setUploadedB64(await readFileAsB64(file)) }
+    catch { setErrorMsg('Failed to read file') }
+  }
+
+  /* Drag-drop onto DualViewerLayout panel 2 — always replaces Surface 2 */
+  const handleFile2Drop = (file: File) => {
+    setUploadedFile2(file)
+    setResultGzB64(null)
+  }
+
   /* ── Calculate ── */
   const handleCalculate = () => {
     if (calcMode === 'ruling') {
@@ -296,8 +311,8 @@ export function ToolPage() {
                 <DualViewerLayout
                   file1={uploadedFile}
                   file2={uploadedFile2}
-                  onFile1Drop={f => { setUploadedFile(f); setResultGzB64(null) }}
-                  onFile2Drop={f => { setUploadedFile2(f); setResultGzB64(null) }}
+                  onFile1Drop={handleFile1Drop}
+                  onFile2Drop={handleFile2Drop}
                   cameraMode={cameraMode}
                   zoom={zoom}
                   onZoomChange={setZoom}
