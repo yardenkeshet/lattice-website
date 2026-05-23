@@ -198,12 +198,13 @@ export function ToolPage() {
   const handleFile1Drop = async (file: File) => {
     setUploadedFile(file)
     setResultGzB64(null)
-    setUploadedB64(null)
     try { setUploadedB64(await readFileAsB64(file)) }
     catch { setErrorMsg('Failed to read file') }
   }
 
-  /* Drag-drop onto DualViewerLayout panel 2 — always replaces Surface 2 */
+  /* Drag-drop onto DualViewerLayout panel 2 — always replaces Surface 2.
+     No b64 read: Surface 2 is not yet forwarded in the calculate payload
+     (backend integration deferred — see spec §7 Out of Scope). */
   const handleFile2Drop = (file: File) => {
     setUploadedFile2(file)
     setResultGzB64(null)
