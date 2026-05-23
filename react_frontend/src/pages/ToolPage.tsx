@@ -143,7 +143,6 @@ export function ToolPage() {
       setErrorMsg('Please upload a 3D file first')
       return
     }
-    pendingResetKey.current = 'calc-' + Date.now()  // full lattice result → reset camera
     setIsCalculating(true)
     setResultGzB64(null)
     setDownloadToken(null)
