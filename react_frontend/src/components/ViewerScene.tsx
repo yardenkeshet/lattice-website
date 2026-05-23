@@ -4,6 +4,7 @@ import { OrbitControls, Center } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
 import { useStlBlobUrl } from '../lib/stl'
+import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
 
 /* ─── Public API ─── */
 
@@ -55,6 +56,10 @@ export function ViewerScene({
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
+  // Dynamic camera bases — updated when auto-fit fires.
+  const [baseZ,         setBaseZ]         = React.useState(5)
+  const [baseOrthoZoom, setBaseOrthoZoom] = React.useState(1)
+
   // Ref so the wheel handler always reads the latest zoom without a stale closure.
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
@@ -71,6 +76,18 @@ export function ViewerScene({
     }
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
+  }, [onZoomChange])
+
+  // Called by STLMesh after a perspective auto-fit.
+  const handleFitDistance = React.useCallback((d: number) => {
+    setBaseZ(d)
+    onZoomChange?.(100)
+  }, [onZoomChange])
+
+  // Called by STLMesh after an orthographic auto-fit.
+  const handleFitOrthoZoom = React.useCallback((z: number) => {
+    setBaseOrthoZoom(z)
+    onZoomChange?.(100)
   }, [onZoomChange])
 
   /* Convert gz+b64 result to a Blob URL */
@@ -157,15 +174,19 @@ export function ViewerScene({
         <directionalLight position={[4, 5, 4]} intensity={0.9} />
         <directionalLight position={[-3, -2, -3]} intensity={0.25} />
 
-        {/* Camera zoom controller */}
-        <CameraZoom zoom={zoom} mode={cameraMode} />
+        {/* Camera zoom controller — scales around the auto-fit base */}
+        <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
-        {/* Reset camera when parent signals a meaningful model change */}
-        <CameraReset resetKey={cameraResetKey ?? 'initial'} />
-
-        {/* Mesh */}
+        {/* Mesh — auto-fit fires inside STLMesh when both fitKey and geometry are new */}
         <React.Suspense fallback={null}>
-          {activeUrl && <STLMesh url={activeUrl} />}
+          {activeUrl && (
+            <STLMesh
+              url={activeUrl}
+              fitKey={cameraResetKey}
+              onFitDistance={handleFitDistance}
+              onFitOrthoZoom={handleFitOrthoZoom}
+            />
+          )}
         </React.Suspense>
 
         <OrbitControls makeDefault enablePan enableZoom={false} />
@@ -174,57 +195,110 @@ export function ViewerScene({
   )
 }
 
-/* ─── Camera reset on model change ─── */
-
-function CameraReset({ resetKey }: { resetKey: string }) {
-  const { camera } = useThree()
-  const controls = useThree(s => s.controls) as any  // reactive: re-fires when controls register
-  React.useEffect(() => {
-    camera.position.set(0, 0, 5)
-    camera.lookAt(0, 0, 0)
-    controls?.target?.set(0, 0, 0)
-    controls?.update?.()
-  }, [resetKey, controls]) // eslint-disable-line react-hooks/exhaustive-deps
-  return null
-}
 
 /* ─── Camera zoom controller ─── */
 
-function CameraZoom({ zoom, mode }: { zoom: number; mode: string }) {
+function CameraZoom({
+  zoom,
+  mode,
+  baseZ,
+  baseOrthoZoom,
+}: {
+  zoom: number
+  mode: string
+  baseZ: number
+  baseOrthoZoom: number
+}) {
   const { camera } = useThree()
 
   React.useEffect(() => {
     const factor = zoom / 100
     if (mode === 'orthographic') {
-      camera.zoom = factor
+      // baseOrthoZoom = camera.zoom at zoom=100 (set by auto-fit).
+      // Multiplying by factor lets the user zoom in/out from the fitted position.
+      camera.zoom = baseOrthoZoom * factor
       camera.updateProjectionMatrix()
     } else {
-      // Perspective: move camera along Z axis; z=5 at 100%
+      // baseZ = camera.position.z at zoom=100 (set by auto-fit).
+      // Dividing by factor moves camera closer (zoom in) or further (zoom out).
       const perspCam = camera as THREE.PerspectiveCamera
-      const baseZ = 5
       perspCam.position.z = baseZ / factor
       perspCam.updateProjectionMatrix()
     }
-  }, [zoom, mode, camera])
+  }, [zoom, mode, camera, baseZ, baseOrthoZoom])
 
   return null
 }
 
 /* ─── STL mesh loader ─── */
 
-function STLMesh({ url }: { url: string }) {
+interface STLMeshProps {
+  url: string
+  fitKey?: string
+  onFitDistance?:  (d: number) => void
+  onFitOrthoZoom?: (z: number) => void
+}
+
+function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
+  const { camera }  = useThree()
+  const controls    = useThree(s => s.controls) as any
+
+  const lastFitKeyRef   = React.useRef<string | undefined>(undefined)
+  const prevGeometryRef = React.useRef<THREE.BufferGeometry | undefined>(undefined)
 
   React.useLayoutEffect(() => {
     if (!meshRef.current) return
-    const box = new THREE.Box3().setFromObject(meshRef.current)
+
+    // 1. Reset to identity so the AABB is measured in raw local space.
+    meshRef.current.position.set(0, 0, 0)
+    meshRef.current.scale.setScalar(1)
+
+    // 2. Measure raw local AABB.
+    const box    = new THREE.Box3().setFromObject(meshRef.current)
     const center = box.getCenter(new THREE.Vector3())
-    const size = box.getSize(new THREE.Vector3())
+    const size   = box.getSize(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
-    meshRef.current.position.sub(center)
-    meshRef.current.scale.setScalar(3 / maxDim)
-  }, [geometry])
+    if (maxDim === 0) return
+
+    // 3. Normalise: targetSize = 3 for main viewer.
+    //    Correct formula: position = -center * s  →  worldCenter = 0 for any geometry.
+    const s = 3 / maxDim
+    meshRef.current.scale.setScalar(s)
+    meshRef.current.position.set(-center.x * s, -center.y * s, -center.z * s)
+
+    // 4. Auto-fit only when BOTH the geometry AND the fitKey are new.
+    if (
+      fitKey !== undefined &&
+      geometry !== prevGeometryRef.current &&
+      fitKey  !== lastFitKeyRef.current
+    ) {
+      lastFitKeyRef.current   = fitKey
+      prevGeometryRef.current = geometry
+
+      // Bounding sphere of the normalised mesh.
+      const normBox = new THREE.Box3().setFromObject(meshRef.current)
+      const sphere  = new THREE.Sphere()
+      normBox.getBoundingSphere(sphere)
+      const r = sphere.radius
+
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const d = perspectiveFitDistance(r, camera.fov, camera.aspect)
+        camera.position.set(0, 0, d)
+        camera.lookAt(0, 0, 0)
+        controls?.target?.set(0, 0, 0)
+        controls?.update?.()
+        onFitDistance?.(d)
+      } else if (camera instanceof THREE.OrthographicCamera) {
+        const z = orthographicFitZoom(r, Math.abs(camera.right), Math.abs(camera.top))
+        camera.zoom = z
+        camera.updateProjectionMatrix()
+        controls?.update?.()
+        onFitOrthoZoom?.(z)
+      }
+    }
+  }, [geometry, fitKey, controls]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
