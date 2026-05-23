@@ -97,9 +97,26 @@ controls?.update()
 
 Using `min(halfFovV, halfFovH)` ensures wide and tall models both fit regardless of viewport aspect ratio. The 0.65 factor means 35% empty margin around the model.
 
-**Orthographic guard:** `camera.fov` is undefined on an `OrthographicCamera`. Before running the algorithm, check `camera instanceof THREE.PerspectiveCamera`; if false, skip auto-fit entirely (orthographic fit is out of scope).
-
 **OrbitControls timing:** Controls are `null` on first render and register a frame later via `makeDefault`. The `controls?.update()` call is safe when null. OrbitControls re-reads the camera position when it mounts, so the fit position is picked up automatically — no need to add `controls` to `useLayoutEffect` dependencies.
+
+#### Orthographic branch
+
+When `camera instanceof THREE.OrthographicCamera`, use a different formula. The orthographic frustum defines a rectangular box; `camera.zoom` shrinks or expands it. A higher zoom = smaller visible area.
+
+```
+r        = normalised mesh bounding sphere radius
+halfH    = Math.abs(camera.top)           // frustum half-height at zoom = 1
+halfW    = Math.abs(camera.right)         // frustum half-width  at zoom = 1
+minHalf  = Math.min(halfH, halfW)         // most constrained axis
+
+// We want r = 0.65 × (minHalf / camera.zoom)
+targetZoom = (0.65 × minHalf) / r
+
+camera.zoom = targetZoom
+camera.updateProjectionMatrix()
+```
+
+Call `onFitOrthoZoom(targetZoom)` (a second callback — see Section 4).
 
 ### 3. Normalization fix
 
@@ -124,18 +141,26 @@ The fix: position is multiplied by `s`. This guarantees `worldCenter = 0` for an
 
 ### 4. Zoom integration (ViewerScene only)
 
-`CameraZoom` currently uses a hardcoded `baseZ = 5`. After auto-fit, the base must equal `fitDistance`.
+`CameraZoom` currently uses hardcoded values (`baseZ = 5` for perspective, `factor` directly for orthographic). After auto-fit, both bases must be dynamic.
 
 Changes to `ViewerScene`:
-- Add `baseZ` state (default 5).
-- `STLMesh` receives `onFit(distance)` callback; calls it after every auto-fit.
-- `ViewerScene.onFit` does: `setBaseZ(distance)` and `onZoomChange?.(100)`.
-- `CameraZoom` receives `baseZ` prop; uses it instead of the hardcoded constant:  
-  `camera.z = baseZ / (zoom / 100)`
+- Add `baseZ` state (default 5) — perspective camera distance at zoom = 100.
+- Add `baseOrthoZoom` state (default 1) — orthographic camera.zoom at user zoom = 100.
+- `STLMesh` receives two optional callbacks:
+  - `onFitDistance(distance)` — called after a perspective auto-fit
+  - `onFitOrthoZoom(zoom)` — called after an orthographic auto-fit
+- Both handlers in `ViewerScene` also call `onZoomChange?.(100)` to reset the slider.
+- `CameraZoom` receives both `baseZ` and `baseOrthoZoom` as props:
 
-At zoom = 100 the camera sits exactly at the fit distance. The zoom slider scales linearly from there.
+```
+perspective:   camera.position.z = baseZ / (zoom / 100)
+orthographic:  camera.zoom       = baseOrthoZoom * (zoom / 100)
+               camera.updateProjectionMatrix()
+```
 
-TileCard has no external zoom slider — OrbitControls' built-in scroll zoom is self-contained. No zoom callback needed there.
+**Mode switch auto-fit:** When the user toggles perspective ↔ orthographic, the Canvas remounts (it has `key={cameraMode}`). `STLMesh` remounts too, resetting both refs. Because the geometry is served from the `useLoader` cache, it resolves immediately, the guard condition (`geometry ≠ prev AND fitKey ≠ lastFitKey`) is met, and auto-fit fires in the new mode automatically — no extra logic needed.
+
+TileCard has no external zoom slider — OrbitControls' built-in scroll zoom is self-contained. No zoom callback needed there. TileCard is always perspective; no orthographic handling required.
 
 ### 5. ToolPage change (one line)
 
@@ -158,7 +183,7 @@ All other `viewerResetKey` logic in ToolPage is already correct and unchanged:
 
 | File | Change |
 |---|---|
-| `react_frontend/src/components/ViewerScene.tsx` | Fix `STLMesh` normalization; add `fitKey` + `onFit` props; add auto-fit logic; add `baseZ` state; update `CameraZoom`; remove `CameraReset` component |
+| `react_frontend/src/components/ViewerScene.tsx` | Fix `STLMesh` normalization; add `fitKey`, `onFitDistance`, `onFitOrthoZoom` props; add perspective + orthographic auto-fit logic; add `baseZ` + `baseOrthoZoom` state; update `CameraZoom`; remove `CameraReset` component |
 | `react_frontend/src/components/ui/TileCard.tsx` | Fix `STLModel` normalization; add `fitKey` prop; add auto-fit logic; remove `TileCardCameraReset` component |
 | `react_frontend/src/pages/ToolPage.tsx` | Remove `pendingResetKey.current = 'calc-' + Date.now()` from `handleCalculate` |
 
@@ -167,5 +192,4 @@ All other `viewerResetKey` logic in ToolPage is already correct and unchanged:
 ## Out of Scope
 
 - The mini tile preview in `LatticeMenu` (45.5 px, no orbit, no zoom) — too small to benefit from auto-fit.
-- Orthographic camera auto-fit — orthographic uses a different zoom model (`camera.zoom`) and is a separate concern.
 - The `CameraZoom` scroll-wheel handler — unchanged; it continues to call `onZoomChange` which now resets to the fit base.
