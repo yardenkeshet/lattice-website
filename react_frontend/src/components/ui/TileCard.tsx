@@ -5,6 +5,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
 import * as THREE from 'three'
+import { perspectiveFitDistance } from '../../lib/cameraFit'
 
 /* ─── Public API ─── */
 
@@ -148,20 +149,17 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
 
               <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
                 {modelUrl
-                  ? <STLModel url={modelUrl} color={meshColor} />
+                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} />
                   : <PlaceholderMesh color={meshColor} />
                 }
               </React.Suspense>
 
               {enableOrbit && (
-                <>
-                  <OrbitControls
-                    enablePan={false}
-                    enableZoom={true}
-                    makeDefault
-                  />
-                  <TileCardCameraReset resetKey={cameraResetKey ?? ''} />
-                </>
+                <OrbitControls
+                  enablePan={false}
+                  enableZoom={true}
+                  makeDefault
+                />
               )}
             </Canvas>
           )
@@ -182,45 +180,68 @@ TileCard.displayName = 'TileCard'
 
 /* ─── STL model loader ─── */
 
-function STLModel({ url, color }: { url: string; color: string }) {
+function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?: string }) {
   const geometry = useLoader(STLLoader, url)
-
-  // Center and normalise scale so any STL fits the card.
   const ref = React.useRef<THREE.Mesh>(null)
+  const { camera }  = useThree()
+  const controls    = useThree(s => s.controls) as any
+
+  const lastFitKeyRef   = React.useRef<string | undefined>(undefined)
+  const prevGeometryRef = React.useRef<THREE.BufferGeometry | undefined>(undefined)
+
   React.useLayoutEffect(() => {
     if (!ref.current) return
-    // Reset to identity first so accumulated scale/position from previous
-    // geometries don't skew the bounding box measurement.
+
+    // 1. Reset to identity so the AABB is measured in raw local space.
     ref.current.position.set(0, 0, 0)
     ref.current.scale.setScalar(1)
-    const box = new THREE.Box3().setFromObject(ref.current)
+
+    // 2. Measure raw local AABB.
+    const box    = new THREE.Box3().setFromObject(ref.current)
     const center = box.getCenter(new THREE.Vector3())
-    const size = box.getSize(new THREE.Vector3())
+    const size   = box.getSize(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
     if (maxDim === 0) return
-    ref.current.position.set(-center.x, -center.y, -center.z)
-    ref.current.scale.setScalar(2 / maxDim)
-  }, [geometry])
+
+    // 3. Normalise: targetSize = 2 for tile card.
+    //    Correct formula: position = -center * s so worldCenter = 0 for any geometry.
+    const s = 2 / maxDim
+    ref.current.scale.setScalar(s)
+    ref.current.position.set(-center.x * s, -center.y * s, -center.z * s)
+
+    // 4. Auto-fit only when BOTH the geometry AND the fitKey are new.
+    //    This prevents fitting to an old model when only the key changes (key
+    //    arrives before the new geometry), and prevents re-fitting on param recalcs
+    //    (geometry changes but key stays the same).
+    if (
+      fitKey !== undefined &&
+      geometry !== prevGeometryRef.current &&
+      fitKey  !== lastFitKeyRef.current
+    ) {
+      lastFitKeyRef.current   = fitKey
+      prevGeometryRef.current = geometry
+
+      // Bounding sphere of the normalised mesh.
+      const normBox = new THREE.Box3().setFromObject(ref.current)
+      const sphere  = new THREE.Sphere()
+      normBox.getBoundingSphere(sphere)
+
+      // TileCard is always perspective — no orthographic branch needed.
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const d = perspectiveFitDistance(sphere.radius, camera.fov, camera.aspect)
+        camera.position.set(0, 0, d)
+        camera.lookAt(0, 0, 0)
+        controls?.target?.set(0, 0, 0)
+        controls?.update?.()
+      }
+    }
+  }, [geometry, fitKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>
       <meshStandardMaterial color={color} roughness={0.55} metalness={0.1} />
     </mesh>
   )
-}
-
-/* ─── Reset camera when tile type changes (not on param recalc) ─── */
-
-function TileCardCameraReset({ resetKey }: { resetKey: string }) {
-  const { camera } = useThree()
-  const controls = useThree(s => s.controls) as any  // reactive: re-fires when controls register
-  React.useEffect(() => {
-    camera.position.set(0, 0, 3)
-    camera.lookAt(0, 0, 0)
-    controls?.target?.set(0, 0, 0)
-    controls?.update?.()
-  }, [resetKey, controls]) // eslint-disable-line react-hooks/exhaustive-deps
-  return null
 }
 
 /* ─── Fallback geometry rendered when no modelUrl is provided ─── */
