@@ -12,6 +12,7 @@ export const FILL_FRACTION = 0.65
  * @param fovDeg Vertical FOV in degrees (PerspectiveCamera.fov).
  * @param aspect Canvas width ÷ height (PerspectiveCamera.aspect).
  * @param fill   Desired fill fraction (default 0.65).
+ * @requires r > 0 and fill > 0; returns 0 for degenerate inputs.
  */
 export function perspectiveFitDistance(
   r: number,
@@ -19,6 +20,7 @@ export function perspectiveFitDistance(
   aspect: number,
   fill = FILL_FRACTION,
 ): number {
+  if (r <= 0 || fill <= 0) return 0
   const halfFovV = (fovDeg / 2) * (Math.PI / 180)
   const halfFovH = Math.atan(Math.tan(halfFovV) * aspect)
   const halfFov  = Math.min(halfFovV, halfFovH)
@@ -36,6 +38,7 @@ export function perspectiveFitDistance(
  * @param frustumHalfW  Math.abs(camera.right)  at zoom = 1.
  * @param frustumHalfH  Math.abs(camera.top)    at zoom = 1.
  * @param fill          Desired fill fraction (default 0.65).
+ * @requires r > 0 and fill > 0; returns 0 for degenerate inputs.
  */
 export function orthographicFitZoom(
   r: number,
@@ -43,6 +46,7 @@ export function orthographicFitZoom(
   frustumHalfH: number,
   fill = FILL_FRACTION,
 ): number {
+  if (r <= 0 || fill <= 0) return 0
   const minHalf = Math.min(frustumHalfW, frustumHalfH)
   return (fill * minHalf) / r
 }
