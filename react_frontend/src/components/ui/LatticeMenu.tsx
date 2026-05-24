@@ -81,6 +81,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
     const tileName = tileLabel ?? { cross: 'Cross', diagonal: 'Diagonal', cross_diagonal: 'Cross Diagonal' }[tileType]
     const [isTileHovered, setIsTileHovered] = React.useState(false)
+    const [isTileFocused, setIsTileFocused] = React.useState(false)
 
     return (
       <div
@@ -107,12 +108,16 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenTileMenu() } }}
           onMouseEnter={() => setIsTileHovered(true)}
           onMouseLeave={() => setIsTileHovered(false)}
+          onFocus={() => setIsTileFocused(true)}
+          onBlur={() => setIsTileFocused(false)}
           style={{
             ...sectionStyle,
             cursor: 'pointer',
             backgroundColor: isTileHovered ? 'var(--bg-tertiary)' : 'transparent',
             borderRadius: 4,
             transition: 'background-color 120ms ease',
+            outline: isTileFocused ? '2px solid var(--border-focus)' : 'none',
+            outlineOffset: 2,
           }}
         >
           <span style={sectionLabelStyle}>Lattice Tile</span>
@@ -319,7 +324,6 @@ const tileNameStyle: React.CSSProperties = {
 const plusButtonStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  cursor: 'pointer',
   color: 'var(--text-secondary)',
   padding: 2,
   display: 'flex',
