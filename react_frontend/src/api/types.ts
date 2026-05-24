@@ -98,5 +98,5 @@ export interface DownloadRequest {
  * ToolPage aggregates by source key and blocks calculate when any errors exist.
  */
 export interface ValidationError {
-  message: string
+  message: string;
 }
