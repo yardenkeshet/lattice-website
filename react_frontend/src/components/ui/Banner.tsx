@@ -61,6 +61,8 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
       ? typeof height === 'number' ? `${height}px` : height
       : 'var(--banner-height)'
 
+    const [isLogoFocused, setIsLogoFocused] = React.useState(false)
+
     const Wrapper = asChild ? Slot : 'header'
 
     return (
@@ -87,13 +89,20 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
             <button
               type="button"
               onClick={onLeftLogoClick}
+              onFocus={() => setIsLogoFocused(true)}
+              onBlur={() => setIsLogoFocused(false)}
               title="Go to home"
               aria-label="Go to home page"
-              style={labLogoButtonStyle}
+              style={{
+                ...labLogoButtonStyle,
+                outline: isLogoFocused ? '2px solid var(--border-focus)' : 'none',
+                outlineOffset: 2,
+              }}
             >
               <img
                 src={leftLogo.src}
-                alt={leftLogo.alt}
+                alt=""
+                aria-hidden="true"
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </button>
