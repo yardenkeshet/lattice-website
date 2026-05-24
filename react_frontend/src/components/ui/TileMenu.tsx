@@ -87,15 +87,18 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
     const defs = TILE_PARAMS[tileType]
 
     const innerRadiusError =
-      tileType === 'cross' && (sliderValues[1] ?? 0) >= (sliderValues[0] ?? 0)
+      tileType === 'cross' && (sliderValues[1] ?? 0) >= (sliderValues[0] ?? Infinity)
+
+    // Keep a ref to onValidationChange so the effect never needs it as a dep
+    // (avoids re-running when parent re-renders with a new inline function).
+    const onValidationChangeRef = React.useRef(onValidationChange)
+    React.useEffect(() => { onValidationChangeRef.current = onValidationChange })
 
     React.useEffect(() => {
-      if (tileType === 'cross' && innerRadiusError) {
-        onValidationChange?.('tile', [{ message: 'Inner radius must be less than outer radius' }])
-      } else {
-        onValidationChange?.('tile', [])
-      }
-    }, [innerRadiusError, tileType]) // onValidationChange intentionally omitted — stable ref expected
+      onValidationChangeRef.current?.('tile', innerRadiusError
+        ? [{ message: 'Inner radius must be less than outer radius' }]
+        : [])
+    }, [innerRadiusError, tileType])
 
     const buildNext = (index: number, value: number): number[] => {
       const next = [...sliderValues]
