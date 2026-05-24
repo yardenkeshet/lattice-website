@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { useStlBlobUrl } from '../../lib/stl'
-import type { TileType } from '../../api/types'
+import type { TileType, ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
 import crossImg from '../../assets/TileTypes/cross.png'
@@ -13,8 +13,7 @@ import crossDiagonalImg from '../../assets/TileTypes/cross-diagonal.png'
 interface SliderDef {
   label: string
   min: number
-  /** null means the max is dynamic (driven by another slider's value) */
-  max: number | null
+  max: number
   defaultValue: number
   step: number
 }
@@ -31,7 +30,7 @@ const TILE_PARAMS: Record<TileType, SliderDef[]> = {
   ],
   cross: [
     { label: 'Outer Radius', min: 0.01, max: 0.5,  defaultValue: 0.3,  step: 0.01 },
-    { label: 'Inner Radius', min: 0.0,  max: null, defaultValue: 0.15, step: 0.01 },
+    { label: 'Inner Radius', min: 0.0,  max: 0.5,  defaultValue: 0.15, step: 0.01 },
   ],
 }
 
@@ -55,6 +54,11 @@ export interface TileMenuProps {
   /** Called on slider release or badge commit — triggers model recalculation. */
   onSliderCommit?: (values: number[]) => void
   onClose: () => void
+  /**
+   * Called whenever the tile's validation state changes.
+   * source is always 'tile'. Pass [] to clear errors.
+   */
+  onValidationChange?: (source: string, errors: ValidationError[]) => void
   className?: string
 }
 
@@ -74,6 +78,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onSliderChange,
       onSliderCommit,
       onClose,
+      onValidationChange,
       className,
     },
     ref
@@ -81,12 +86,20 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
     const previewUrl = useStlBlobUrl(previewStlGzB64)
     const defs = TILE_PARAMS[tileType]
 
+    const innerRadiusError =
+      tileType === 'cross' && (sliderValues[1] ?? 0) >= (sliderValues[0] ?? 0)
+
+    React.useEffect(() => {
+      if (tileType === 'cross' && innerRadiusError) {
+        onValidationChange?.('tile', [{ message: 'Inner radius must be less than outer radius' }])
+      } else {
+        onValidationChange?.('tile', [])
+      }
+    }, [innerRadiusError, tileType]) // onValidationChange intentionally omitted — stable ref expected
+
     const buildNext = (index: number, value: number): number[] => {
       const next = [...sliderValues]
       next[index] = value
-      if (tileType === 'cross' && index === 0) {
-        next[1] = Math.min(next[1], value)
-      }
       return next
     }
 
@@ -157,18 +170,19 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
         {/* ── Dynamic sliders ── */}
         <div style={sectionStyle}>
           {defs.map((def, i) => {
-            const maxVal = def.max ?? (tileType === 'cross' ? sliderValues[0] ?? 0.5 : 0.5)
+            const isInnerRadius = tileType === 'cross' && i === 1
             return (
               <div key={def.label} style={sliderRowStyle}>
                 <Slider
                   label={def.label}
                   min={def.min}
-                  max={maxVal}
+                  max={def.max}
                   step={def.step}
                   value={[sliderValues[i] ?? def.defaultValue]}
                   showValue
                   valuePrecision={2}
                   fontSize={12}
+                  error={isInnerRadius && innerRadiusError}
                   onValueChange={([v]) => handleSliderChange(i, v)}
                   onValueCommit={([v]) => handleSliderCommit(i, v)}
                 />
