@@ -28,6 +28,11 @@ export interface BannerProps {
    * Defaults to the Technion logo.
    */
   rightLogo?: { src: string; alt: string }
+  /**
+   * When provided, the TAMC logo (left section) becomes a button that fires this callback.
+   * Intended use: navigate to home page. Omit on the home page itself.
+   */
+  onLeftLogoClick?: () => void
   /** Override banner height. Defaults to var(--banner-height) = 157px. */
   height?: number | string
   /** Render the outer element as its child (Slot / asChild pattern) */
@@ -44,6 +49,7 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
       leftLogo    = { src: defaultLabLogo,   alt: 'Technion center for Additive Manufacturing and 3D Printing' },
       centerLogo  = { src: defaultCenter,    alt: 'Lattice World' },
       rightLogo   = { src: defaultRightLogo, alt: 'Technion — Israel Institute of Technology' },
+      onLeftLogoClick,
       height,
       asChild = false,
       className,
@@ -76,12 +82,28 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
               style={circleBlobImgStyle}
             />
           </div>
-          {/* Lab logo overlaid on the circle */}
-          <img
-            src={leftLogo.src}
-            alt={leftLogo.alt}
-            style={labLogoStyle}
-          />
+          {/* Lab logo — button if onLeftLogoClick provided, plain img otherwise */}
+          {onLeftLogoClick ? (
+            <button
+              type="button"
+              onClick={onLeftLogoClick}
+              title="Go to home"
+              aria-label="Go to home page"
+              style={labLogoButtonStyle}
+            >
+              <img
+                src={leftLogo.src}
+                alt={leftLogo.alt}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </button>
+          ) : (
+            <img
+              src={leftLogo.src}
+              alt={leftLogo.alt}
+              style={labLogoStyle}
+            />
+          )}
         </div>
 
         {/* ── Centre: main wordmark ── */}
@@ -153,6 +175,20 @@ const labLogoStyle: React.CSSProperties = {
   width: '191px',
   height: '118px',
   objectFit: 'contain',
+}
+
+/* TAMC logo button (when onLeftLogoClick is provided) */
+const labLogoButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  left: '25px',
+  top: '20px',
+  width: '191px',
+  height: '118px',
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  display: 'block',
 }
 
 /* Centre section fills the remaining space */
