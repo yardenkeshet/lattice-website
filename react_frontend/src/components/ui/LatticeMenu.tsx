@@ -80,6 +80,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     }
 
     const tileName = tileLabel ?? { cross: 'Cross', diagonal: 'Diagonal', cross_diagonal: 'Cross Diagonal' }[tileType]
+    const [isTileHovered, setIsTileHovered] = React.useState(false)
 
     return (
       <div
@@ -97,8 +98,23 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-        {/* ── Lattice Tile row ── */}
-        <div style={sectionStyle}>
+        {/* ── Lattice Tile row — whole section is the click target ── */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Open tile configuration"
+          onClick={onOpenTileMenu}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenTileMenu() } }}
+          onMouseEnter={() => setIsTileHovered(true)}
+          onMouseLeave={() => setIsTileHovered(false)}
+          style={{
+            ...sectionStyle,
+            cursor: 'pointer',
+            backgroundColor: isTileHovered ? 'var(--bg-tertiary)' : 'transparent',
+            borderRadius: 4,
+            transition: 'background-color 120ms ease',
+          }}
+        >
           <span style={sectionLabelStyle}>Lattice Tile</span>
           <div style={tileSummaryRowStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -110,14 +126,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               />
               <span style={tileNameStyle}>{tileName}</span>
             </div>
-            <button
-              type="button"
-              aria-label="Open tile configuration"
-              onClick={onOpenTileMenu}
-              style={plusButtonStyle}
-            >
+            {/* PlusIcon is now decorative — click is handled by the parent div */}
+            <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
-            </button>
+            </span>
           </div>
         </div>
 
