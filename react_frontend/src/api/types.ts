@@ -89,3 +89,14 @@ export interface LogLine {
 export interface DownloadRequest {
   token: string;
 }
+
+// ─── Client-side validation ───────────────────────────────────────────────────
+
+/**
+ * A validation error raised by a UI component that blocks the calculate action.
+ * Components report errors via onValidationChange(source, errors).
+ * ToolPage aggregates by source key and blocks calculate when any errors exist.
+ */
+export interface ValidationError {
+  message: string
+}
