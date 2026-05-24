@@ -139,6 +139,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
           : (
             /* Three.js canvas — leaves room for the label when present */
             <Canvas
+              frameloop="demand"
               style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
               camera={{ position: [0, 0, 3], fov: 45 }}
               gl={{ antialias: true, alpha: true }}
@@ -183,8 +184,8 @@ TileCard.displayName = 'TileCard'
 function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?: string }) {
   const geometry = useLoader(STLLoader, url)
   const ref = React.useRef<THREE.Mesh>(null)
-  const { camera }  = useThree()
-  const controls    = useThree(s => s.controls) as any
+  const { camera, invalidate } = useThree()
+  const controls               = useThree(s => s.controls) as any
 
   const lastFitKeyRef   = React.useRef<string | undefined>(undefined)
   const prevGeometryRef = React.useRef<THREE.BufferGeometry | undefined>(undefined)
@@ -235,7 +236,8 @@ function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?:
         controls?.update?.()
       }
     }
-  }, [geometry, fitKey, controls]) // camera is stable in R3F (never replaced)
+    invalidate()  // demand mode: trigger a frame after geometry/camera changes
+  }, [geometry, fitKey, controls, invalidate]) // camera is stable in R3F (never replaced)
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>

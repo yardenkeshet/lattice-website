@@ -186,6 +186,7 @@ export function ViewerScene({
       {/* ── Three.js canvas — remounts when camera mode changes ── */}
       <Canvas
         key={cameraMode}
+        frameloop="demand"
         style={{ width: '100%', height: '100%' }}
         camera={
           cameraMode === 'perspective'
@@ -234,7 +235,7 @@ function CameraZoom({
   baseZ: number
   baseOrthoZoom: number
 }) {
-  const { camera } = useThree()
+  const { camera, invalidate } = useThree()
 
   React.useLayoutEffect(() => {
     const factor = zoom / 100
@@ -251,7 +252,8 @@ function CameraZoom({
       perspCam.position.z = baseZ / factor
       perspCam.updateProjectionMatrix()
     }
-  }, [zoom, mode, camera, baseZ, baseOrthoZoom])
+    invalidate()  // demand mode: trigger a frame after camera update
+  }, [zoom, mode, camera, baseZ, baseOrthoZoom, invalidate])
 
   return null
 }
@@ -268,8 +270,8 @@ interface STLMeshProps {
 function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
-  const { camera }  = useThree()
-  const controls    = useThree(s => s.controls) as any
+  const { camera, invalidate } = useThree()
+  const controls               = useThree(s => s.controls) as any
 
   const lastFitKeyRef   = React.useRef<string | undefined>(undefined)
   const prevGeometryRef = React.useRef<THREE.BufferGeometry | undefined>(undefined)
@@ -324,7 +326,8 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
         if (z > 0) onFitOrthoZoom?.(z)
       }
     }
-  }, [geometry, fitKey, controls, onFitDistance, onFitOrthoZoom]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
+    invalidate()  // demand mode: trigger a frame after geometry/camera changes
+  }, [geometry, fitKey, controls, onFitDistance, onFitOrthoZoom, invalidate]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
