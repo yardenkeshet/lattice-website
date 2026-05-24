@@ -136,12 +136,16 @@ export function ViewerScene({
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: 'var(--bg-secondary)',
-        outline: isDragOver
+        // Use border (not outline) so the dashed frame is part of the box model,
+        // consistent with the spec. Transparent sentinel keeps transitions smooth.
+        // Note: the clear button is at top:8/right:8 (inside) rather than -10/-10
+        // (on the frame edge) because parent containers have overflow:hidden.
+        border: isDragOver
           ? '2px dashed var(--border-focus)'
           : !isEmpty
             ? '2px dashed var(--border-base)'
-            : '2px dashed transparent',
-        transition: 'outline 150ms ease',
+            : '2px solid transparent',
+        transition: 'border-color 150ms ease',
         ...style,
       }}
       onDragOver={handleDragOver}
