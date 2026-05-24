@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
-import { Navbar } from '../components/ui/Navbar'
 import { Footer } from '../components/ui/Footer'
 import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
@@ -11,7 +10,7 @@ import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults } from '../api/httpClient'
 import { useStlBlobUrl } from '../lib/stl'
-import type { TileType, CalcMode } from '../api/types'
+import type { TileType, CalcMode, ValidationError } from '../api/types'
 
 /* ─── File reading utility ─── */
 
@@ -68,6 +67,12 @@ export function ToolPage() {
 
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
+
+  /* ── Validation errors aggregated from child components ── */
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
+  const handleValidationChange = React.useCallback((source: string, errors: ValidationError[]) => {
+    setValidationErrors(prev => ({ ...prev, [source]: errors }))
+  }, [])
 
   /* Ref so socket callbacks always see the current calcMode without a stale closure */
   const calcModeRef = React.useRef<CalcMode>(calcMode)
@@ -210,8 +215,32 @@ export function ToolPage() {
     setResultGzB64(null)
   }
 
+  /* ── Clear handlers ── */
+  const handleClearSingle = () => {
+    setUploadedFile(null)
+    setUploadedB64(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
+  }
+
+  const handleClear1 = () => {
+    setUploadedFile(null)
+    setUploadedB64(null)
+  }
+
+  const handleClear2 = () => {
+    setUploadedFile2(null)
+  }
+
   /* ── Calculate ── */
   const handleCalculate = () => {
+    // Check aggregated validation errors first
+    const allErrors = Object.values(validationErrors).flat()
+    if (allErrors.length > 0) {
+      setErrorMsg(allErrors[0].message)
+      return
+    }
+
     if (calcMode === 'ruling') {
       if (!uploadedFile && !uploadedFile2) {
         setErrorMsg('Please upload both surface files')
@@ -253,8 +282,7 @@ export function ToolPage() {
 
   return (
     <div style={pageStyle}>
-      <Banner />
-      <Navbar activePage="tool" onNavigate={page => navigate(page === 'home' ? '/' : '/tool')} />
+      <Banner onLeftLogoClick={() => navigate('/')} />
 
       {/* ── Workspace ── */}
       <div style={workspaceStyle}>
@@ -317,6 +345,8 @@ export function ToolPage() {
                   cameraMode={cameraMode}
                   zoom={zoom}
                   onZoomChange={setZoom}
+                  onClear1={handleClear1}
+                  onClear2={handleClear2}
                   style={{ height: '100%' }}
                 />
               )
@@ -329,6 +359,7 @@ export function ToolPage() {
                   cameraResetKey={viewerResetKey}
                   onZoomChange={setZoom}
                   onFileDrop={f => handleFilesAdd([f])}
+                  onClear={handleClearSingle}
                 />
               )
             }
@@ -346,6 +377,7 @@ export function ToolPage() {
               onSliderChange={handleTileSliderChange}
               onSliderCommit={handleTileSliderCommit}
               onClose={() => setIsTileMenuOpen(false)}
+              onValidationChange={handleValidationChange}
             />
           </div>
         )}
