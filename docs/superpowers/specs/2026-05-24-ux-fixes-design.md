@@ -127,7 +127,8 @@ The existing file-upload checks (`!uploadedFile`, ruling mode missing files) rem
 **`DualViewerLayout.tsx`**
 
 - New props: `onClear1?: () => void`, `onClear2?: () => void`.
-- Each panel independently shows the dashed frame + ✕ button when its file is present.
+- `DualViewerLayout` already renders two `ViewerScene` instances internally. It simply threads `onClear1` → first `ViewerScene`'s `onClear` prop, and `onClear2` → second `ViewerScene`'s `onClear` prop.
+- Each `ViewerScene` independently renders the dashed frame + ✕ button based on whether its own `uploadedFile` is non-null.
 
 ### ToolPage wiring
 
@@ -184,11 +185,15 @@ Wired to `ViewerScene onClear={handleClearSingle}` and `DualViewerLayout onClear
   <p style={ctaSubtitleStyle}>
     Upload your surface file and generate a parametric lattice in seconds.
   </p>
-  <Button variant="primary" onClick={() => navigate('/tool')} style={ctaButtonStyle}>
+  <button type="button" style={ctaButtonStyle} onClick={() => navigate('/tool')}>
     Open Lattice Maker →
-  </Button>
+  </button>
 </div>
 ```
+
+> **Note:** The CTA uses a plain `<button>` rather than the `Button` component because the `Button`
+> component's `style` prop (spread via `{...rest}`) would overwrite its computed primary colours.
+> The CTA is large enough and unique enough to warrant its own inline styling.
 
 Styles:
 
@@ -219,9 +224,15 @@ const ctaSubtitleStyle: React.CSSProperties = {
 }
 
 const ctaButtonStyle: React.CSSProperties = {
+  backgroundColor: 'var(--gray-50)',
+  color: 'var(--navy-primary)',
+  border: 'none',
+  borderRadius: 'var(--radius-button)',
   padding: '16px 48px',
+  fontFamily: 'var(--font-body)',
   fontSize: 18,
   fontWeight: 700,
+  cursor: 'pointer',
   marginTop: 8,
 }
 ```
