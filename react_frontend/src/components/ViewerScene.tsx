@@ -173,7 +173,7 @@ export function ViewerScene({
           onClick={e => { e.stopPropagation(); onClear() }}
           style={clearButtonStyle}
         >
-          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
             <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
