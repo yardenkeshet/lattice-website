@@ -6,6 +6,10 @@ export interface DualViewerLayoutProps {
   file2: File | null
   onFile1Drop: (file: File) => void
   onFile2Drop: (file: File) => void
+  /** Called when the user clears panel 1 (Surface 1). */
+  onClear1?: () => void
+  /** Called when the user clears panel 2 (Surface 2). */
+  onClear2?: () => void
   cameraMode: 'perspective' | 'orthographic'
   zoom: number
   onZoomChange: (zoom: number) => void
@@ -18,6 +22,8 @@ export function DualViewerLayout({
   file2,
   onFile1Drop,
   onFile2Drop,
+  onClear1,
+  onClear2,
   cameraMode,
   zoom,
   onZoomChange,
@@ -42,6 +48,7 @@ export function DualViewerLayout({
           zoom={zoom}
           onZoomChange={onZoomChange}
           onFileDrop={onFile1Drop}
+          onClear={onClear1}
           style={{ width: '100%', height: '100%' }}
         />
       </div>
@@ -52,6 +59,7 @@ export function DualViewerLayout({
           zoom={zoom}
           onZoomChange={onZoomChange}
           onFileDrop={onFile2Drop}
+          onClear={onClear2}
           style={{ width: '100%', height: '100%' }}
         />
       </div>
