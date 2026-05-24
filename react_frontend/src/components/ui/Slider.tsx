@@ -24,6 +24,8 @@ export interface SliderProps
   onValueCommit?: (value: number[]) => void
   /** Override the label font size (defaults to var(--text-size-body)). */
   fontSize?: string | number
+  /** When true, label and value badge text turn red to signal an invalid value. */
+  error?: boolean
 }
 
 // Note: ref is forwarded to SliderPrimitive.Root (the focusable/interactive
@@ -42,6 +44,7 @@ const Slider = React.forwardRef<
       asChild = false,
       length,
       fontSize,
+      error = false,
       min = 0,
       max = 1,
       step = 0.01,
@@ -120,7 +123,14 @@ const Slider = React.forwardRef<
           style={{ ...wrapperStyle, width: wrapperWidth }}
         >
           {label && (
-            <span id={labelId} style={{ ...labelStyle, ...(fontSize != null ? { fontSize } : {}) }}>
+            <span
+              id={labelId}
+              style={{
+                ...labelStyle,
+                ...(fontSize != null ? { fontSize } : {}),
+                ...(error ? { color: 'var(--text-error)' } : {}),
+              }}
+            >
               {label}
             </span>
           )}
@@ -170,6 +180,7 @@ const Slider = React.forwardRef<
                     : badgeHovered
                     ? 'var(--border-base)'
                     : 'transparent',
+                  ...(error ? { color: 'var(--text-error)' } : {}),
                 }}
                 value={inputStr}
                 onChange={e => setInputStr(e.target.value)}
