@@ -68,6 +68,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     },
     ref
   ) => {
+    // Hooks must be called unconditionally — before any early return.
+    const [isTileHovered, setIsTileHovered] = React.useState(false)
+    const [isTileFocused, setIsTileFocused] = React.useState(false)
+
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
       return (
@@ -80,8 +84,6 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     }
 
     const tileName = tileLabel ?? { cross: 'Cross', diagonal: 'Diagonal', cross_diagonal: 'Cross Diagonal' }[tileType]
-    const [isTileHovered, setIsTileHovered] = React.useState(false)
-    const [isTileFocused, setIsTileFocused] = React.useState(false)
 
     return (
       <div

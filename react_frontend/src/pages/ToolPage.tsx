@@ -254,6 +254,11 @@ export function ToolPage() {
         setErrorMsg('Please upload Surface 2')
         return
       }
+      // uploadedB64 is read asynchronously; guard ensures it is ready
+      if (!uploadedB64) {
+        setErrorMsg('Surface 1 is still loading — please wait a moment')
+        return
+      }
     } else {
       if (!uploadedFile || !uploadedB64) {
         setErrorMsg('Please upload a 3D file first')
@@ -420,7 +425,7 @@ const centerStyle: React.CSSProperties = {
   padding: 20,
   minWidth: 0,
   minHeight: 0,
-  maxHeight: '395',
+  maxHeight: 395,
 }
 
 const toolbarRowStyle: React.CSSProperties = {
