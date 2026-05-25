@@ -7,11 +7,13 @@ import * as THREE from 'three'
 import { useStlBlobUrl } from '../lib/stl'
 import { ACCEPTED_3D } from './ui/Toolbar'
 import { ViewerScene } from './ViewerScene';
+import type { BufferGeometry } from 'three'
+
 /* ─── Public API ─── */
 
 export interface ViewerSceneProps {
   // model.data can be a File (from upload) or a string (b64 from server or raw IGES text)
-  model: { type: 'iges' | 'stl', data: string | null }, 
+  model: BufferGeometry | null, 
   cameraMode?: 'perspective' | 'orthographic'
   zoom?: number
   onFileDrop?: (file: File) => void
@@ -25,7 +27,7 @@ const SCROLL_ZOOM_MIN = 10
 const SCROLL_ZOOM_MAX = 500
 
 export function ViewerSceneAndDrop({
-  model = { type: 'stl', data: null },
+  model = null,
   cameraMode = 'perspective',
   zoom = 100,
   onFileDrop,
@@ -34,7 +36,6 @@ export function ViewerSceneAndDrop({
   style,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
-  const [activeUrl, setActiveUrl] = React.useState<string | null>(null)
 
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
@@ -76,7 +77,7 @@ export function ViewerSceneAndDrop({
       }}
       onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
     >
-      {!activeUrl && !isDragOver && (
+      { !isDragOver && (
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>Drop a .iges or .stl file here</span>

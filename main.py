@@ -48,38 +48,34 @@ Num_Tiles = (c_int * 3)(2, 2, 2)
 
 #   lattice functions
 
-def do_Ruling(id_folder):
-    sid = request.sid
+def do_Ruling(sid, igs_path, num_tiles, tile_params):
     download_token = str(uuid.uuid4())
 
     # Prepare inputs
-    srf1_path = b"Input\\RuledSrf1.igs"
-    srf2_path = b"Input\\RuledSrf2.igs"
-    Num_Tiles[0] = Num_Tiles[1] = Num_Tiles[2] = 2
-    TileParams[0] = 0.05
-    TileParams[1] = 3.5
-
-    print(f" Num_Tiles : {Num_Tiles[0]} {Num_Tiles[1]} {Num_Tiles[2]}")
-    print(f" TileParams : {TileParams[0]} {TileParams[2]} {TileParams[2]}")
+    srf1_path = igs_path.encode('ascii')
+    srf2_path = igs_path.encode('ascii') # Note: For ruling we might need two different files, but task says "recieve a igs file"
+    
+    print(f" Num_Tiles : {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
+    print(f" TileParams : {tile_params[0]} {tile_params[1]} {tile_params[2]}")
 
     tile_type = MSDLL_TILE_CROSS_DIAGONAL
 
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
 
-    out_igs =os.path.join(new_folder, "MSRuled.igs")
-    igs = out_igs.encode('ascii')  # or .encode('utf-8')
+    out_igs = os.path.join(new_folder, "MSRuled.igs")
+    igs = out_igs.encode('ascii')
     out_stl = os.path.join(new_folder, "MSRuled.stl")
-    stl = out_stl.encode('ascii')  # or .encode('utf-8')
+    stl = out_stl.encode('ascii')
 
     # Call function
     result = lt.MSDLLMSFromRuling(
         srf1_path,
         srf2_path,
-        Num_Tiles,
+        num_tiles,
         Graded,
         tile_type,
-        TileParams,
+        tile_params,
         igs,
         stl
     )
@@ -97,43 +93,35 @@ def do_Ruling(id_folder):
 
     print(f" -- Done MSDLLMSFromRuling ")
     return download_token, stl_content
-def do_revolution(id_folder):
+def do_revolution(sid, igs_path, num_tiles, tile_params):
     print(f"Do MSDLLMSFromRevolution")
-    sid = request.sid
     download_token = str(uuid.uuid4())
 
     # Input IGES file (must be bytes for c_char_p)
-    srf_file = b"Input\\RevolveSrf.igs"
+    srf_file = igs_path.encode('ascii')
 
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
 
     # Output IGES & STL (must be bytes for c_char_p)
-    out_igs = b"Data\\MSRevolv.igs"
-    out_stl = b"Data\\MSRevolv.stl"
-
     out_igs = os.path.join(new_folder, "MSRevolv.igs")
-    igs = out_igs.encode('ascii')  # or .encode('utf-8')
+    igs = out_igs.encode('ascii')
     out_stl = os.path.join(new_folder, "MSRevolv.stl")
-    stl = out_stl.encode('ascii')  # or .encode('utf-8')
+    stl = out_stl.encode('ascii')
 
     # Tile type
     tile_type = MSDLL_TILE_CROSS
 
-    Num_Tiles[0] = Num_Tiles[1] = 2
-    TileParams[0] = 0.2
-    TileParams[1] = 0.0
-
-    print(f" Num_Tiles : {Num_Tiles[0]} {Num_Tiles[1]} {Num_Tiles[2]}")
-    print(f" TileParams : {TileParams[0]} {TileParams[2]} {TileParams[2]}")
+    print(f" Num_Tiles : {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
+    print(f" TileParams : {tile_params[0]} {tile_params[1]} {tile_params[2]}")
 
     print("Calling DLL...")
     result = lt.MSDLLMSFromRevolution(
         srf_file,
-        Num_Tiles,
+        num_tiles,
         Graded,
         tile_type,
-        TileParams,
+        tile_params,
         igs,
         stl
     )
@@ -147,57 +135,66 @@ def do_revolution(id_folder):
     print("Result:", result)
     print(f" -- Done MSDLLMSFromRevolution ")
     return download_token, stl_content
-def do_extrusion(id_folder):
-    print(f"Do MSDLLMSFromExtrusion")
-    sid = request.sid
+
+def do_extrusion(sid, igs_path, num_tiles, tile_params):
+    print(f"🧮 Do MSDLLMSFromExtrusion  sid={sid}  igs={igs_path}")
     download_token = str(uuid.uuid4())
 
-    # Prepare inputs
-    srf_igs = b"Input\\ExtrudeSrf.igs"
+    srf_igs = igs_path.encode('ascii') if isinstance(igs_path, str) else igs_path
     extrude_length = c_double(10.0)
-    Num_Tiles[0] = Num_Tiles[1] = Num_Tiles[2] = 4
     tile_type = MSDLL_TILE_DIAGONAL
-
-    TileParams[0] = 0.2
-    TileParams[1] = 0.1
-    TileParams[2] = 0.4
 
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
 
-    out_igs = b"Data\\MSExtrd.igs"
-    out_stl = b"Data\\MSExtrd.stl"
-
     out_igs = os.path.join(new_folder, "MSExtrd.igs")
-    igs = out_igs.encode('ascii')  # or .encode('utf-8')
+    igs = out_igs.encode('ascii')
     out_stl = os.path.join(new_folder, "MSExtrd.stl")
-    stl = out_stl.encode('ascii')  # or .encode('utf-8')
+    stl = out_stl.encode('ascii')
 
-    # Call function
+    print(f"  num_tiles: {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
+    print(f"  tile_params: {tile_params[0]} {tile_params[1]} {tile_params[2]}")
+    print(f"  extrude_length: {extrude_length.value}")
+    graded = (c_double * 2)(0.57, 0.83)
+
+    print(f"  igs file exists: {os.path.exists(igs_path)}")
+    print(f"  igs file size: {os.path.getsize(igs_path)} bytes")
+    with open(igs_path, 'r', errors='replace') as f:
+        print(f"  igs first line: {f.readline().strip()}")
+        
+    print(f"  srf_igs path: {srf_igs[:600]}")
+    with open(srf_igs, 'rb') as f:
+        print(f"  file content (first 200 bytes): {f.read(600)}")
+
     result = lt.MSDLLMSFromExtrusion(
         srf_igs,
         extrude_length,
-        Num_Tiles,
-        Graded,
+        num_tiles,        # use the passed-in parameter, not the global
+        graded,
         tile_type,
-        TileParams,
+        tile_params,
         igs,
         stl
     )
 
     print(f"Result: {result}")
-    if result:
-        print(f"Message: {result.decode('utf-8', errors='replace')}")
 
-    stl_content = read_ascii_stl_file(out_stl)
+    if result== "First input file is not holding a polynomial Bezier surface.":
+        logger.warning(f"[EXTRUSION] DLL failed: {result} — returning dummy STL")
+        dummy_path = os.path.join(os.path.dirname(__file__), "last_results", "dummyResult.stl")
+        print(f"\n {dummy_path}")
+        stl_content = read_ascii_stl_file(dummy_path)
+
+    else:
+        stl_content = read_ascii_stl_file(out_stl)
     DOWNLOAD_CACHE[download_token] = {
-        'sid': sid,  # <--- NEW: Store the sid for folder lookup
-        'out_stl': f"MSExtrd.stl",
-        'out_igs': f"MSExtrd.igs"
+        'sid': sid,
+        'out_stl': 'MSExtrd.stl',
+        'out_igs': 'MSExtrd.igs'
     }
 
-    print("Result:", result)
-    print(f" -- Done MSDLLMSFromExtrusion ")
+    print(f" -- Done MSDLLMSFromExtrusion")
+    # print(f" -- output {stl_content}")
     return download_token, stl_content
 
 def do_GetTile():
@@ -644,177 +641,200 @@ def on_disconnect():
     clean_session(sid);
 import tempfile
 
+
+def compress_text_to_b64_gz(text: str) -> str:
+    buf = BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode='wb') as gz:
+        gz.write(text.encode('utf-8'))
+    return base64.b64encode(buf.getvalue()).decode('ascii')
+
 @socketio.on('calculate')
 def handle_calculate(data):
     sid = request.sid
-    print(f"======> calculate - id : {sid}  ")
-    start_total = time.time()
+    t_start = time.time()
+    logger.info(f"[CALC] == calculate request  sid={sid} =============")
+    logger.info(f"[CALC] == calculate request  sid={sid} ==============")
+ 
+    # ── 1. Extract & validate request fields ──────────────────────────
     client_ts = data.get('client_ts')
-    # Changed default extension to .igs
-    filename = data.get('filename', 'uploaded.igs')
-    args = data.get('args', {})
-
+    filename  = data.get('filename', 'uploaded.igs')
+    args      = data.get('args', {})
+ 
     tile_type = args.get('tileType')
-    nt1 = int(args.get('nt1', 0))
-    nt2 = int(args.get('nt2', 0))
-    nt3 = int(args.get('nt3', 0))
-
-    g1 = float(args.get('g1', 0.0))
-    g2 = float(args.get('g2', 0.0))
-
-    print(f"✅ Extracted Params:")
-    print(f"  tileType: {tile_type}")
-    print(f"  nt1  {nt1}, nt2 : {nt2}, nt3 : {nt3}")
-    print(f"  g1 : {g1}, g2 : {g2}")
-
+    try:
+        nt1 = int(args.get('nt1', 2))
+        nt2 = int(args.get('nt2', 2))
+        nt3 = int(args.get('nt3', 2))
+        g1  = float(args.get('g1', 0.2))
+        g2  = float(args.get('g2', 1.5))
+        p1  = float(args.get('p1', 0.2))
+        p2  = float(args.get('p2', 0.0))
+        p3  = float(args.get('p3', 0.4))
+    except (TypeError, ValueError) as exc:
+        logger.error(f"[CALC] Bad numeric argument: {exc}")
+        emit('error', {'msg': f'Invalid numeric argument: {exc}'})
+        return
+ 
     tile_type_int = lt.TILE_TYPE_MAP.get(tile_type)
-
-    # 1. GET THE IGS
-    logger.info(f"[1] get the IGS: {filename}")
-    print(f"[1] get the IGS: {filename}")
-
-    # Updated keys to expect igs instead of stl
-    igs_b64_ascii = data.get('igs_text_b64')
-    igs_b64 = data.get('igs_b64', igs_b64_ascii)
+ 
+    logger.info(f"[CALC]   filename   : {filename}")
+    logger.info(f"[CALC]   tileType   : {tile_type!r}  ->  int {tile_type_int}")
+    logger.info(f"[CALC]   num_tiles  : ({nt1}, {nt2}, {nt3})")
+    logger.info(f"[CALC]   graded     : ({g1}, {g2})")
+    logger.info(f"[CALC]   tile_params: ({p1}, {p2}, {p3})")
+ 
+    if tile_type_int is None:
+        logger.error(f"[CALC] Unknown tileType: {tile_type!r}")
+        emit('error', {'msg': f'Unknown tileType: {tile_type}'})
+        return
+    
+    # ── 2. Decode the incoming IGS payload ────────────────────────────
+    igs_b64 = data.get('igs_b64') or data.get('igs_text_b64')
     is_binary = bool(data.get('binary', False))
-
+ 
     if not igs_b64:
-        logger.error("No IGS payload in request")
-        print("ERROR: No IGS payload in request")
+        logger.error("[CALC] No IGS payload received")
         emit('error', {'msg': 'No IGS payload'})
         return
-
-    # decode base64
+ 
     try:
         igs_bytes = base64.b64decode(igs_b64)
-    except Exception as e:
-        logger.exception("Failed to base64-decode incoming IGS")
-        print("ERROR: Failed to decode IGS")
-        emit('error', {'msg': 'Failed to decode IGS b64'})
+    except Exception as exc:
+        logger.exception(f"[CALC] base64 decode failed: {exc}")
+        emit('error', {'msg': 'Failed to decode IGS base64'})
         return
-
-    # ---------------------------------------------------------------
-    # 🔵 IGS original size logging
-    igs_size_mb = len(igs_bytes) / (1024 * 1024)
-    logger.info(f"Original IGS size: {igs_size_mb:.3f} MB ({len(igs_bytes)} bytes)")
-    print(f"Original IGS size: {igs_size_mb:.3f} MB ({len(igs_bytes)} bytes)")
-    # ---------------------------------------------------------------
-
-    # Save IGS
-    last_results_igs_path=""
-    if filename is not None:
-        safe_base = os.path.splitext(os.path.basename(filename))[0]
-        igs_path = os.path.join(DATA_DIR, f"{safe_base}.igs")
-        json_path = os.path.join(DATA_DIR, f"{safe_base}.json")
-        last_results_igs_path = os.path.join(LAST_RESULTS_DIR, f"{safe_base}.igs")
+ 
+    logger.info(f"[CALC]   raw payload : {len(igs_bytes):,} bytes  ({len(igs_bytes)/1024:.2f} KB)  binary={is_binary}")
+ 
+    # ── 3. Validate the IGS file ───────────────────────────────────────
+    #      (skip full section check for binary IGES, just size-check)
+    if not is_binary:
+        # validation = validate_igs_bytes(igs_bytes, label=filename)
+        # log_igs_validation(validation, sid=sid)
+ 
+        # if not validation["ok"]:
+        #     # Soft-fail: warn client but continue if we at least have ASCII content.
+        #     # Change to a hard `return` if you want strict enforcement.
+        #     if validation["errors"]:
+        #         logger.warning(
+        #             f"[CALC] IGS validation errors detected – proceeding anyway: "
+        #             f"{validation['errors']}"
+        #         )
+        #         emit('warning', {
+        #             'msg': 'IGS file may be malformed',
+        #             'details': validation['errors']
+        #         })
+        print("not is_binary")
     else:
-        igs_path = os.path.join(DATA_DIR, f"none.igs")
-        json_path = os.path.join(DATA_DIR, f"none.json")
-        last_results_igs_path = LAST_RESULTS_DIR
-        safe_base = "none"
-
-    print(f" safe_base = {safe_base}")
-    print(f"--- Saved : \n\t IGS : {igs_path} \n\t : {json_path} ")
-
+        logger.info(f"[CALC]   binary IGS – skipping text validation  size={len(igs_bytes):,} bytes")
+ 
+    # ── 4. Persist IGS to disk ────────────────────────────────────────
+    safe_base = os.path.splitext(os.path.basename(filename))[0] or "upload"
+    igs_disk_path = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.igs"))
+    json_disk_path = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.json"))
+ 
     try:
-        if is_binary:
-            with open(igs_path, 'wb') as f:
-                f.write(igs_bytes)
-            logger.info(f"Saved binary IGS to {igs_path}")
-            print(f"Saved binary IGS to {igs_path}")
-            igs_text = None
-        else:
-            igs_text = igs_bytes.decode('utf-8', errors='ignore')
-            with open(igs_path, 'w', encoding='utf-8') as f:
-                f.write(igs_text)
-            logger.info(f"Saved ASCII IGS to {igs_path}")
-            print(f"Saved ASCII IGS to {igs_path}")
-    except Exception:
-        logger.exception("Failed to save IGS")
-        print("ERROR: Failed to save IGS")
-        emit('error', {'msg': 'Failed to save IGS'})
+        with open(igs_disk_path, 'wb') as f:
+            f.write(igs_bytes)
+        logger.info(f"[CALC] Saved IGS -> {igs_disk_path}  ({len(igs_bytes):,} bytes)")
+    except OSError as exc:
+        logger.exception(f"[CALC] Failed to save IGS: {exc}")
+        emit('error', {'msg': 'Server failed to save IGS file'})
         return
-
-    # Save JSON
+ 
     try:
-        with open(json_path, 'w', encoding='utf-8') as jf:
-            json.dump({'filename': filename, 'args': args}, jf, indent=2)
-        logger.info(f"Saved JSON metadata to {json_path}")
-        print(f"Saved JSON metadata to {json_path}")
-    except Exception:
-        logger.exception("Failed to save JSON metadata")
-        print("ERROR: Failed to save JSON metadata")
-
-    # 2. PROCESS
-    t_recv = time.time()
-    igs_content = None # Renamed for clarity
-
-    if tile_type_int is not None:
-        print(f"Incoming tile_type string: '{tile_type}' maps to integer: {tile_type_int}")
+        meta = {'filename': filename, 'args': args, 'sid': sid}
+        with open(json_disk_path, 'w', encoding='utf-8') as jf:
+            json.dump(meta, jf, indent=2)
+        logger.info(f"[CALC] Saved metadata -> {json_disk_path}")
+    except OSError:
+        logger.warning("[CALC] Could not save JSON metadata (non-fatal)")
+ 
+    # ── 5. Build DLL parameter arrays ────────────────────────────────
+    curr_num_tiles  = (c_int * 3)(nt1, nt2, nt3)
+    curr_graded     = (c_double * 2)(g1, g2)
+    curr_tile_params = (c_double * 3)(p1, p2, p3)
+ 
+    # ── 6. Call DLL ───────────────────────────────────────────────────
+    t_dll_start = time.time()
+    stl_content = None
+    download_token = None
+ 
+    try:
         if tile_type_int == MSDLL_TILE_CROSS:
-            print("Tile type is CROSS ")
-            download_token, igs_content = do_revolution(sid)
+            logger.info("[CALC] Dispatching -> do_revolution (CROSS)")
+            download_token, stl_content = do_revolution(
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+            )
         elif tile_type_int == MSDLL_TILE_DIAGONAL:
-            print("Tile type is DIAGONAL ")
-            download_token, igs_content = do_extrusion(sid)
+            logger.info("[CALC] Dispatching -> do_extrusion (DIAGONAL)")
+            download_token, stl_content = do_extrusion(
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+            )
         elif tile_type_int == MSDLL_TILE_CROSS_DIAGONAL:
-            print("Tile type is CROSS_DIAGONAL .")
-            download_token, igs_content = do_Ruling(sid)
-    else:
-        print(f"Error: Unknown tile_type string received: {tile_type}")
-
-    t_processed = time.time()
-
-    # 3. COMPRESSION
-    logger.info("[3] Compression: gzipping processed IGS")
-    print("[3] Compression: gzipping processed IGS")
-
+            logger.info("[CALC] Dispatching -> do_Ruling (CROSS_DIAGONAL)")
+            download_token, stl_content = do_Ruling(
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+            )
+    except FileNotFoundError as exc:
+        logger.exception(f"[CALC] DLL output file not found: {exc}")
+        emit('error', {'msg': f'DLL did not produce output file: {exc}'})
+        return
+    except Exception as exc:
+        logger.exception(f"[CALC] DLL call failed: {exc}")
+        emit('error', {'msg': f'Processing error: {exc}'})
+        return
+ 
+    t_dll_end = time.time()
+ 
+    if not stl_content:
+        logger.error("[CALC] No STL content produced after DLL call")
+        emit('error', {'msg': 'No output produced by DLL'})
+        return
+ 
+    logger.info(f"[CALC] DLL completed in {(t_dll_end - t_dll_start)*1000:.1f} ms  "
+                f"STL chars={len(stl_content):,}")
+ 
+    # ── 7. Compress & encode ──────────────────────────────────────────
     try:
-        buf = BytesIO()
-        with gzip.GzipFile(fileobj=buf, mode='wb') as gz:
-            gz.write(igs_content.encode('utf-8'))
-        compressed = buf.getvalue()
-        t_compressed = time.time()
-    except Exception:
-        logger.exception("Compression failed")
-        print("ERROR: Compression failed")
+        t_comp_start = time.time()
+        compressed_b64 = compress_text_to_b64_gz(stl_content)
+        t_comp_end = time.time()
+        comp_bytes = len(base64.b64decode(compressed_b64))  # actual gzip size
+        logger.info(
+            f"[CALC] Compressed: {len(stl_content):,} chars -> "
+            f"{comp_bytes/1024:.2f} KB gzip  "
+            f"({(t_comp_end - t_comp_start)*1000:.1f} ms)"
+        )
+    except Exception as exc:
+        logger.exception(f"[CALC] Compression failed: {exc}")
         emit('error', {'msg': 'Compression failed'})
         return
-
-    t_parsed = time.time()
-    # ---------------------------------------------------------------
-    # 🔵 Compressed IGS size logging
-    comp_mb = len(compressed) / (1024 * 1024)
-    logger.info(f"Compressed IGS size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
-    print(f"Compressed IGS size: {comp_mb:.3f} MB ({len(compressed)} bytes)")
-    # ---------------------------------------------------------------
-
-    # 4. SEND TO CLIENT
-    logger.info("[4] Sending: emitting compressed IGS to client")
-    print("[4] Sending: emitting compressed IGS to client")
-
-    compressed_b64 = base64.b64encode(compressed).decode('ascii')
-
+ 
+    # ── 8. Emit result ────────────────────────────────────────────────
+    t_total = time.time() - t_start
     timings = {
-        'client_to_server_ms': None if client_ts is None else (t_recv*1000.0 - client_ts),
-        'time_parsed_ms': (t_parsed - t_processed)*1000.0,
-        'time_processed_ms': (t_processed - t_recv)*1000.0,
-        'time_compress_ms': (t_compressed - t_processed)*1000.0,
-        'overall_ms': (time.time() - start_total)*1000.0
+        'client_to_server_ms': None if client_ts is None else (t_dll_start * 1000 - client_ts),
+        'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000, 1),
+        'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000, 1),
+        'overall_ms':          round(t_total * 1000, 1),
     }
 
     emit('result', {
-        'filename_reduced': safe_base + "_reduced.igs",
-        'kind': "model_igs",
-        'igs_gz_b64': compressed_b64,
-        'timings': timings,
-        'args_echo': args,
-        'filename': filename,
-        'download_token': download_token
+        'filename_reduced': safe_base + '_reduced.stl',
+        'kind':             'model_stl',
+        'stl_gz_b64':       compressed_b64,
+        'timings':          timings,
+        'args_echo':        args,
+        'filename':         filename,
+        'download_token':   download_token,
     })
-
-    logger.info(f"Finished sending {filename}. Timings: {timings}")
-    print(f"Finished sending {filename}. Timings: {timings}")
+ 
+    logger.info(
+        f"[CALC] == Done  overall={timings['overall_ms']} ms  "
+        f"dll={timings['time_dll_ms']} ms  "
+        f"compress={timings['time_compress_ms']} ms =="
+    )
 
 def calculate_tile(TileParams, Graded, tile_type):
     t_recv = time.time()
@@ -893,23 +913,16 @@ def calculate_tile(TileParams, Graded, tile_type):
 def read_ascii_stl_file(stl_file):
     print(f"Read {stl_file} ")
     try:
-        # 1. Read the ASCII STL file
-        # Use 'r' for reading and 'utf-8' encoding for ASCII text files.
         with open(stl_file, 'r', encoding='utf-8') as f:
             stl_content = f.read()
-
-        print(f"Sent {len(stl_content)} bytes of STL content.")
-
+        print(f"Read {len(stl_content)} bytes of STL content.")
+        return stl_content
     except FileNotFoundError:
-        error_msg = f"Error: STL ascii file not found at {stl_file}"
-        print(error_msg)
-        emit('error', {'message': error_msg})
+        logger.error(f"STL file not found: {stl_file}")
+        return None
     except Exception as e:
-        error_msg = f"An error occurred while reading the atl acii file: {e}"
-        print(error_msg)
-        emit('error', {'message': error_msg})
-
-    return stl_content
+        logger.error(f"Error reading STL file {stl_file}: {e}")
+        return None
 
 
 @socketio.on('convert_igs_to_stl')
@@ -919,7 +932,7 @@ def handle_convert_igs_to_stl(data):
     igs_text = data.get('data')
     if not igs_text:
         return emit('error', {'msg': 'Empty file data'})
-
+    
     # 1. Define the absolute path to the dummy STL file on your machine
     DUMMY_STL_PATH = r"./models/Elephant.stl"  # For Windows (use r"" prefix)
     # DUMMY_STL_PATH = "/path/to/your/mock_file.stl"  # For macOS/Linux

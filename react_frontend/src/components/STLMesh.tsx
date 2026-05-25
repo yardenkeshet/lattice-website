@@ -1,15 +1,9 @@
 import * as React from 'react'
-import { useLoader } from '@react-three/fiber'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
+import type { BufferGeometry } from 'three'
 
 
-export function STLMesh({ url }: { url: string }) {
-  if(!url) {
-    return null;
-  }
-
-  const geometry = useLoader(STLLoader, url)
+export function STLMesh({ geometry }: { geometry?: BufferGeometry }) {
   const meshRef = React.useRef<THREE.Mesh>(null)
 
   React.useLayoutEffect(() => {
@@ -21,6 +15,8 @@ export function STLMesh({ url }: { url: string }) {
     meshRef.current.position.sub(center)
     meshRef.current.scale.setScalar(3 / (maxDim || 1))
   }, [geometry])
+
+  if (!geometry) return null
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>

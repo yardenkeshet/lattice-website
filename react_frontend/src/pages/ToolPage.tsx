@@ -9,24 +9,53 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerSceneAndDrop } from '../components/ViewerSceneAndDrop'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults } from '../api/httpClient'
-import { useStlBlobUrl } from '../lib/stl'
-import type { TileType, VIEWER_ORDER } from '../api/types'
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import pako from 'pako'
+import type { TileType } from '../api/types'
+import type { BufferGeometry } from 'three'
 
-/* ─── File reading utility ─── */
-
-async function readFileAsB64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // result is "data:<mime>;base64,<data>" — strip the prefix
-      const b64 = result.split(',')[1]
-      resolve(b64)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+/* ─── STL decode helper ─── */
+function stlGzB64ToGeometry2(gzB64: string): BufferGeometry {
+  const compressed = Uint8Array.from(atob(gzB64), c => c.charCodeAt(0))
+  const decompressed = pako.inflate(compressed)
+  const stlText = new TextDecoder().decode(decompressed)
+  console.log('[STL] decompressed:', stlText.slice(0, 100))
+  return new STLLoader().parse(stlText.trimStart())
 }
+
+function stlGzB64ToGeometry(gzB64: string): BufferGeometry {
+  const compressed = Uint8Array.from(atob(gzB64), c => c.charCodeAt(0))
+  const decompressed = pako.inflate(compressed)
+
+  const header = new TextDecoder().decode(decompressed.slice(0, 256)).trimStart()
+  const looksLikeAscii = header.startsWith('solid') && header.includes('facet normal')
+
+  console.log('[STL] header start:', JSON.stringify(header.slice(0, 30)))
+  console.log('[STL] looksLikeAscii:', looksLikeAscii)
+
+  const loader = new STLLoader()
+  if (looksLikeAscii) {
+    return loader.parse(new TextDecoder().decode(decompressed).trimStart())
+  } else {
+    // Binary STL — must pass a copy, STLLoader reads from offset 0 of the buffer.
+    // decompressed.buffer may have an offset if pako returned a subarray view,
+    // so slice to get a clean ArrayBuffer.
+    return loader.parse(decompressed.buffer.slice(
+      decompressed.byteOffset,
+      decompressed.byteOffset + decompressed.byteLength
+    ) as ArrayBuffer)
+  }
+}
+
+/* ─── Types ─── */
+
+interface TileState {
+  type: TileType
+  sliderValues: number[]
+  previewGzB64: string | null
+}
+
+
 
 /* ─── ToolPage ─── */
 
@@ -41,191 +70,149 @@ export function ToolPage() {
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
 
   /* ── Tile state ── */
-  const [tileType, setTileType]           = React.useState<TileType>('diagonal')
-  const [tileSliderValues, setTileSliderValues] = React.useState(() => defaultSliderValues('diagonal'))
-  const [tilePreviewGzB64, setTilePreviewGzB64] = React.useState<string | null>(null)
+  const [tileParams, setTileParams] = React.useState<TileState>({
+    type: 'diagonal',
+    sliderValues: defaultSliderValues('diagonal'),
+    previewGzB64: null,
+  })
+
+  /* ── File & geometry state ── */
+  const [uploadedFile, setUploadedFile]         = React.useState<File | null>(null)
+  const [tileGeometry, setTileGeometry]         = React.useState<BufferGeometry | null>(null)
+  const [previewGeometry, setPreviewGeometry]   = React.useState<BufferGeometry | null>(null)
+  const [calculatedGeometry, setCalculatedGeometry] = React.useState<BufferGeometry | null>(null)
+
+  /* ── Calculation status ── */
+  const [isCalculating, setIsCalculating]   = React.useState(false)
+  const [downloadToken, setDownloadToken]   = React.useState<string | null>(null)
+  const [errorMsg, setErrorMsg]             = React.useState<string | null>(null)
 
   /* ── Lattice params ── */
-  const [nt1, setNt1]               = React.useState(10)
-  const [nt2, setNt2]               = React.useState(10)
-  const [nt3, setNt3]               = React.useState(1)
-  const [g1, setG1]                 = React.useState(0.57)
-  const [g2, setG2]                 = React.useState(0.83)
-  const [calcMode, setCalcMode]     = React.useState<'extrusion' | 'revolution'>('extrusion')
-
-  /* ── File / result state ── */
-  const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
-  const [uploadedB64, setUploadedB64]     = React.useState<string | null>(null)
-  const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
-  const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
-  const [isCalculating, setIsCalculating] = React.useState(false)
-  const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
-  const [modelPreviewOrder, setModelPreviewOrder] = React.useState<VIEWER_ORDER>('tile_preview') 
-  const [igesUrl, setIgesUrl] = React.useState<string | null>(null);
-
-  /* Blob URL for the tile mini preview in LatticeMenu */
-  const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
+  const [nt1, setNt1]           = React.useState(10)
+  const [nt2, setNt2]           = React.useState(10)
+  const [nt3, setNt3]           = React.useState(1)
+  const [g1, setG1]             = React.useState(0.57)
+  const [g2, setG2]             = React.useState(0.83)
+  const [calcMode, setCalcMode] = React.useState<'extrusion' | 'revolution'>('extrusion')
 
   /* ── Socket subscriptions ── */
+
+React.useEffect(() => {
+  console.log('previewGeometry changed:', previewGeometry)
+}, [previewGeometry])
+
   React.useEffect(() => {
-  const unsubResult = socket.onResult((payload) => {
-    setIsCalculating(false)
-    console.log("Received result payload:", payload);
-    // 1. Check for the new IGS kind we defined in the backend
-    if (payload.kind === 'model_igs') {
-      console.log('Received model IGS result:', payload);
-      
-      // Use the new igs_gz_b64 key
-      setResultGzB64(payload.igs_gz_b64);
-      
-      // Update preview order logic
-      setModelPreviewOrder(payload.igs_gz_b64 ? 'result' : 'tile_preview');
-      
-      // If the backend sent a download token, save it
-      if (payload.download_token) {
-        setDownloadToken(payload.download_token);
-      }
+    const unsubResult = socket.onResult((payload) => {
+      console.log('Received result payload:', payload)
 
-    } else if (payload.kind === 'tile_stl') {
-      // Keeping this for your tile preview if that still uses STL
-      console.log('Received tile preview:', payload);
-      setTilePreviewGzB64(payload.stl_gz_b64);
-      
-      if (resultGzB64 === null) {
-        setModelPreviewOrder('tile_preview');
+      if (payload.kind === 'model_stl') {
+        try {
+          const geometry = stlGzB64ToGeometry2(payload.stl_gz_b64)
+          console.log('[model_stl] geometry:', geometry)
+          console.log('[model_stl] vertex count:', geometry.attributes.position?.count)
+          if (!geometry.attributes.position || geometry.attributes.position.count === 0) {
+            throw new Error('DLL returned an empty mesh (0 vertices)')
+          }
+          setCalculatedGeometry(geometry)
+          setDownloadToken(payload.download_token)
+          setIsCalculating(false)
+        } catch (e) {
+          console.error('[model_stl] stlGzB64ToGeometry failed:', e)
+          setIsCalculating(false)
+          setErrorMsg(e instanceof Error ? e.message : 'Failed to parse result geometry')
+        }
+      } else if (payload.kind === 'tile_stl') {
+        setTileParams(prev => ({ ...prev, previewGzB64: payload.stl_gz_b64 }))
+        setTileGeometry(stlGzB64ToGeometry(payload.stl_gz_b64))
+
+      } else if (payload.kind === 'model_preview_stl') {
+        const geometry = stlGzB64ToGeometry(payload.stl_gz_b64)
+        console.log('Updated preview geometry from model_preview_stl result', geometry)
+        setPreviewGeometry(geometry)
+      } else {
+        console.warn('Received unknown result kind:', (payload as any).kind)
       }
-    } else if (payload.kind === 'model_preview_stl') {
-      // Keeping this for your tile preview if that still uses STL
-      console.log('Received model_preview_stl:', payload);
-      setResultGzB64(payload.stl_gz_b64);
-      
-    } else {
-      // Fallback for other kinds or unexpected payloads
-      if (payload.download_token) {
-        setDownloadToken(payload.download_token);
-      }
+    })
+
+    const unsubError = socket.onError(err => {
+      console.error('Socket error:', err)
+      setIsCalculating(false)
+      setErrorMsg(err.message)
+    })
+
+    return () => {
+      unsubResult()
+      unsubError()
     }
-  })
+  }, [socket])
 
-  const unsubError = socket.onError(err => {
-    console.log("Got error:", err);
-    setIsCalculating(false);
-    setErrorMsg(err.message || "An unknown error occurred");
-  })
-
-  return () => { 
-    unsubResult(); 
-    unsubError(); 
-  }
-}, [socket, resultGzB64]) // Added resultGzB64 to dependencies for the preview order logic
-
-  /* ── Tile param commit (mouse-up or badge Enter) → calculateTile ── */
+  /* ── Tile param commit ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
-    socket.calculateTile({ type: tileType, values: padded })
-  }, [socket, tileType])
+    socket.calculateTile({ type: tileParams.type, values: padded })
+  }, [socket, tileParams.type])
 
   const handleTileTypeChange = (type: TileType) => {
-    setTileType(type)
     const defaults = defaultSliderValues(type)
-    setTileSliderValues(defaults)
+    setTileParams({ type, sliderValues: defaults, previewGzB64: tileParams.previewGzB64 })
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
     socket.calculateTile({ type, values: padded })
   }
 
+  const handleTileSliderChange = React.useCallback((values: number[]) => {
+    setTileParams(prev => ({ ...prev, sliderValues: values }))
+  }, [])
+
   /* ── File upload ── */
   const handleFileAdd = async (file: File) => {
-  try {
+    try {
+      // BUG FIX: was not saving the file, so handleCalculate had no file to read.
+      setUploadedFile(file)
+      setPreviewGeometry(null)
+      setCalculatedGeometry(null)
+      setDownloadToken(null)
+      setErrorMsg(null)
 
-      // 1. file.text() returns a Promise, so you must await it
-      const fileContent = await file.text();
-    console.log("Added file :", { 
-        filename: file.name, 
-        data: fileContent 
-      });
-    setResultGzB64(null)      // clear previous result
-    setDownloadToken(null)
-    setErrorMsg(null)
-    setUploadedFile(file)
-    setModelPreviewOrder('uploaded')
-      // 2. Emit the payload matching the key ('data') the backend expects
-      // If using standard socket.io-client syntax:
-      socket.convertIGESToSTL({ 
-        filename: file.name, 
-        data: fileContent 
-      });
-
-      // Alternatively, if you are using a custom wrapper object:
-      // socket.convertIGESToSTL({ filename: file.name, data: fileContent });
-
+      const fileContent = await file.text()
+      socket.convertIGESToSTL({ filename: file.name, data: fileContent })
     } catch (err) {
-      console.error("Failed to read file text:", err);
+      console.error('Failed to read file:', err)
     }
-
-    
-    // if(file)
-    // {
-    //   const url = URL.createObjectURL(file);
-    //   setIgesUrl(url);
-    // }
-    // try {
-    //   const b64 = await readFileAsB64(file)
-    //   setUploadedB64(b64)
-    // } catch {
-    //   setErrorMsg('Failed to read file')
-    // }
   }
 
   /* ── Calculate ── */
   const handleCalculate = () => {
-    if (!uploadedFile ) {
-      setErrorMsg('Please upload a 3D file first')
-      return
-    }
-    setIsCalculating(true)
-    setResultGzB64(null)
+    // BUG FIX: was referencing undefined `userModel.file` and `upl.file`
+    // instead of the `uploadedFile` state variable.
+    if (!uploadedFile) return
+
+    setCalculatedGeometry(null)
     setDownloadToken(null)
     setErrorMsg(null)
-    console.log("Emitting calculate with file:", uploadedFile);
-    // socket.calculate({
-    //   filename: uploadedFile.name,
-    //   stl_text_b64: uploadedFile ,
-    //   client_ts: performance.now(),
-    //   args: { tileType, nt1, nt2, nt3, g1, g2 },
-    // })
-if (!uploadedFile) {
-        console.error("No file selected");
-        return;
-    }
+    setIsCalculating(true)
 
-    const reader = new FileReader();
-
+    const reader = new FileReader()
     reader.onload = () => {
-        // reader.result will be a Data URL (e.g., "data:application/octet-stream;base64,AAAA...")
-        // We need to strip the prefix to get just the base64 string
-        const base64String = (reader.result as string).split(',')[1];
+      const base64String = (reader.result as string).split(',')[1]
 
-        // Assuming 'socket' is your Socket.IO client instance
-        socket.calculate({
-            filename: uploadedFile.name,
-            igs_b64: base64String, 
-            client_ts: Date.now(),
-            args: {
-                tileType: 'diagonal',
-                nt1: 10,
-                nt2: 10,
-                nt3: 1,
-                g1: 0.57,
-                g2: 0.83
-            }
-        });
-    };
-
-    reader.onerror = (error) => {
-        console.error("Error reading file:", error);
-    };
-
-    reader.readAsDataURL(uploadedFile);
+      socket.calculate({
+        filename: uploadedFile.name,
+        igs_b64: base64String,
+        client_ts: Date.now(),
+        args: {
+          tileType: tileParams.type,
+          nt1, nt2, nt3, g1, g2,
+          p1: tileParams.sliderValues[0],
+          p2: tileParams.sliderValues[1],
+          p3: tileParams.sliderValues[2],
+        },
+      })
+    }
+    reader.onerror = () => {
+      setIsCalculating(false)
+      setErrorMsg('Error reading file')
+    }
+    reader.readAsDataURL(uploadedFile)
   }
 
   /* ── Export ── */
@@ -235,22 +222,17 @@ if (!uploadedFile) {
   }
 
 
-    const handleTileSliderChange = React.useCallback((values: number[]) => {
-    setTileSliderValues(values)
-  }, [])
   return (
     <div style={pageStyle}>
       <Banner />
       <Navbar activePage="tool" onNavigate={page => navigate(page === 'home' ? '/' : '/tool')} />
 
-      {/* ── Workspace ── */}
       <div style={workspaceStyle}>
 
-        {/* Left: LatticeMenu (collapsible) */}
         <div style={leftPanelStyle}>
           <LatticeMenu
-            tileType={tileType}
-            tilePreviewUrl={tilePreviewUrl}
+            tileType={tileParams.type}
+            tilePreviewUrl=""
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
             calculationMode={calcMode}
@@ -265,7 +247,6 @@ if (!uploadedFile) {
           />
         </div>
 
-        {/* Centre: Toolbar + ViewerScene */}
         <div style={centerStyle}>
           <div style={toolbarRowStyle}>
             <Toolbar
@@ -279,26 +260,16 @@ if (!uploadedFile) {
             />
           </div>
 
-          {/* Error message */}
           {errorMsg && (
-            <div style={errorStyle} role="alert">
+            <div style={errorStyle}>
               {errorMsg}
-              <button
-                type="button"
-                aria-label="Dismiss error"
-                onClick={() => setErrorMsg(null)}
-                style={errorDismissStyle}
-              >✕</button>
+              <button style={errorDismissStyle} onClick={() => setErrorMsg(null)}>✕</button>
             </div>
           )}
 
           <div style={viewerStyle}>
             <ViewerSceneAndDrop
-              // model={modelPreviewOrder === 'uploaded' 
-              //   ? {type: 'iges', data: igesUrl} : 
-              //   { type: 'stl', data: modelPreviewOrder === 'result' ? resultGzB64 : (modelPreviewOrder === 'tile_preview' ? tilePreviewGzB64 : null) }}
-              // model={ {type: 'stl', data: resultGzB64 }}
-              model={ {type: 'stl', data: resultGzB64 ?? tilePreviewGzB64}}
+              model={calculatedGeometry ?? previewGeometry}
               cameraMode={cameraMode}
               zoom={zoom}
               onZoomChange={setZoom}
@@ -307,13 +278,12 @@ if (!uploadedFile) {
           </div>
         </div>
 
-        {/* Right: TileMenu (conditionally shown) */}
         {isTileMenuOpen && (
           <div style={rightPanelStyle}>
             <TileMenu
-              tileType={tileType}
-              sliderValues={tileSliderValues}
-              previewStlGzB64={tilePreviewGzB64 ?? undefined}
+              tileType={tileParams.type}
+              sliderValues={tileParams.sliderValues}
+              previewStlGzB64={tileParams.previewGzB64 ?? undefined}
               onTileTypeChange={handleTileTypeChange}
               onSliderChange={handleTileSliderChange}
               onSliderCommit={handleTileSliderCommit}
@@ -368,7 +338,6 @@ const toolbarRowStyle: React.CSSProperties = {
 }
 
 const viewerStyle: React.CSSProperties = {
-  // flex: 1,
   minHeight: 500,
   borderRadius: 12,
   overflow: 'hidden',

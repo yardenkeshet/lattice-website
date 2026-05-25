@@ -1,61 +1,20 @@
 import * as React from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { Bounds, OrbitControls } from '@react-three/drei'
-import { useStlBlobUrl } from '../lib/stl'
-import { IGESMesh } from './IGESMesh';
 import { STLMesh } from './STLMesh';
+import type { BufferGeometry } from 'three';
 
 /* ─── Public API ─── */
 
 export interface ViewerSceneProps {
-  model: { 
-    data: string | File | null;
-    type?: 'iges' | 'stl'; // Added type here so TS knows it exists
-  }, 
+  model: BufferGeometry | null , 
   cameraMode?: 'perspective' | 'orthographic'
 }
 
 export function ViewerScene({
-  model = { data: null, type: 'iges' },
+  model = null,
   cameraMode = 'perspective',
 }: ViewerSceneProps) {
-  const [activeUrl, setActiveUrl] = React.useState<string | null>(null);
-
-  // 1. Handle Server-side STL (Base64 + Gzip)
-  // Only pass data to the hook if it's explicitly a server-returned string for an STL
-  const isServerStl = model.type === 'stl' && typeof model.data === 'string';
-  const resultStlUrl = useStlBlobUrl(isServerStl ? (model.data as string) : null);
-
-  React.useEffect(() => {
-    // Priority 1: Use the processed STL blob URL from the server result
-    if (resultStlUrl) {
-      setActiveUrl(resultStlUrl);
-      return;
-    }
-
-    if (!model.data) {
-      setActiveUrl(null);
-      return;
-    }
-
-    let url: string | null = null;
-
-    // Priority 2: If data is a File object (uploaded via browser)
-    if (model.data instanceof File) {
-      url = URL.createObjectURL(model.data);
-    } 
-    // Priority 3: If it's raw IGES text (string)
-    // Fixed: changed from 'model.data === string' to 'typeof'
-    else if (model.type === 'iges' && typeof model.data === 'string') {
-      const blob = new Blob([model.data], { type: 'text/plain' });
-      url = URL.createObjectURL(blob);
-    }
-
-    if (url) {
-      setActiveUrl(url);
-      return () => URL.revokeObjectURL(url!);
-    }
-  }, [model.data, model.type, resultStlUrl]);
 
   return (
     <Canvas
@@ -68,17 +27,15 @@ export function ViewerScene({
       <ambientLight intensity={0.7} />
       <directionalLight position={[3, 4, 3]} intensity={0.8} />
       <directionalLight position={[-3, -2, -3]} intensity={0.2} />
-          <axesHelper args={[5]} />
+          {/* <axesHelper args={[5]} /> */}
       
       <React.Suspense fallback={null}>
-           <Bounds fit clip observe>
+           <Bounds fit clip observe  margin={1.2}>
 
-        {activeUrl && (
+        {model && (
           // Fixed conditional routing: 
           // If it came back from the hook, it's definitely an STL. Otherwise check the type.
-          model.type === 'stl' || resultStlUrl
-            ? <STLMesh url={activeUrl} />
-            : <IGESMesh igesUrl={activeUrl} />
+            <STLMesh geometry={model} />
         )}
            </Bounds>
 

@@ -2,9 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import type {
   CalculatePayload,
   CalculateTilePayload,
-  ResultPayload,
-  STLResult,
-  TokenResult,
+  Result,
   ErrorPayload,
   LogLine,
   TileSTLResult,
@@ -18,8 +16,8 @@ interface RawResult {
   filename?: string;
   stl_gz_b64?: string;
   kind?: string;
-  timings?: STLResult['timings'];
-  args_echo?: STLResult['args_echo'];
+  timings?: ModelSTLResult['timings'];
+  args_echo?: ModelSTLResult['args_echo'];
   download_token?: string;
 }
 
@@ -30,7 +28,7 @@ interface RawError {
 
 // ─── Public callback types ────────────────────────────────────────────────────
 
-type ResultHandler = (payload: ResultPayload) => void;
+type ResultHandler = (payload: Result) => void;
 type ErrorHandler = (payload: ErrorPayload) => void;
 type LogHandler = (line: LogLine) => void;
 type ConnectHandler = () => void;
@@ -94,10 +92,11 @@ export class LatticeSocketClient {
   }
 
   onError(handler: ErrorHandler): () => void {
-    this.socket.on('error', (raw: RawError) => {
+    const wrapper = (raw: RawError) => {
       handler({ message: raw.msg ?? raw.message ?? 'Unknown server error' });
-    });
-    return () => this.socket.off('error', handler);
+    };
+    this.socket.on('error', wrapper);
+    return () => this.socket.off('error', wrapper);
   }
 
   onLogUpdate(handler: LogHandler): () => void {
@@ -116,23 +115,23 @@ export class LatticeSocketClient {
 
   private handleRawResult(raw: RawResult): void {
     console.log("Raw result: ", raw);
-    const payload: ResultPayload = (raw.kind && raw.kind =="tile_stl")
+    const payload: Result = (raw.kind === 'tile_stl')
     ? {
-      kind: raw.kind,
+      kind: 'tile_stl',
       filename: raw.filename ?? '',
-      stl_gz_b64: raw.stl_gz_b64,
+      stl_gz_b64: raw.stl_gz_b64!,
       timings: raw.timings!,
       args_echo: raw.args_echo,
     } as TileSTLResult
     : {
-      kind: raw.kind,
+      kind: (raw.kind ?? 'model_stl') as 'model_stl' | 'model_preview_stl',
       filename: raw.filename ?? '',
       stl_gz_b64: raw.stl_gz_b64!,
       timings: raw.timings!,
       args_echo: raw.args_echo,
       download_token: raw.download_token ?? '',
     } as ModelSTLResult;
-    
+
     this.resultHandlers.forEach((h) => h(payload));
   }
 }
