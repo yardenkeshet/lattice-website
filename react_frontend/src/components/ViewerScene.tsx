@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Bounds, OrbitControls } from '@react-three/drei'
+import { Bounds, OrbitControls, PerspectiveCamera, OrthographicCamera } from '@react-three/drei'
 import { STLMesh } from './STLMesh';
 import type { BufferGeometry } from 'three';
 
@@ -17,13 +17,13 @@ export function ViewerScene({
 }: ViewerSceneProps) {
 
   return (
-    <Canvas
-      key={cameraMode}
-      camera={{ position: [100, 0, 100], fov: 60 }}
-      gl={{ antialias: true, alpha: true }}
-    >
-      
-      {/* Lights turned back on so the meshes aren't pitch black */}
+    <Canvas gl={{ antialias: true, alpha: true }}>
+
+      {cameraMode === 'perspective'
+        ? <PerspectiveCamera makeDefault position={[100, 0, 100]} fov={60} />
+        : <OrthographicCamera makeDefault position={[100, 0, 100]} zoom={1} />
+      }
+
       <ambientLight intensity={0.7} />
       <directionalLight position={[3, 4, 3]} intensity={0.8} />
       <directionalLight position={[-3, -2, -3]} intensity={0.2} />

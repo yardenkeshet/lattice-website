@@ -15,7 +15,8 @@ TILE_TYPE_MAP = {
 
 def _load_lattice_dll():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    gershon_dir = os.path.join(base_dir, "gershon")
+    gershon_dir = os.path.join(base_dir, "gershonA")
+    # gershon_dir = os.path.join(base_dir, "gershon")
     dll_path = os.path.join(gershon_dir, "MSDLLD64.dll")
     dll_path = os.path.abspath(dll_path)
 
@@ -175,6 +176,20 @@ def MSDLLMSFromExtrusion(
         print("DLL returned:", result)
 
     return result
+
+# dll.MSDLLIGES2STL.restype = c_char_p
+# dll.MSDLLIGES2STL.argtypes = [
+#     c_char_p,   # SrfIgsFile
+#     c_char_p,   # SrfSTLFile
+#     c_double,   # Tolerance
+# ]
+
+# def MSDLLIGES2STL(igs_file: bytes, stl_file: bytes, tolerance: float = 0.0):
+#     result = dll.MSDLLIGES2STL(igs_file, stl_file, tolerance)
+#     if result:
+#         return result.decode("utf-8", errors="replace")
+#     return None
+
 
 def MSDLLGetTile(
         tile_type: int,

@@ -36,7 +36,7 @@ export interface LatticeMenuProps {
   onG2Change: (v: number) => void
   onCalculationModeChange: (mode: 'extrusion' | 'revolution') => void
   onOpenTileMenu: () => void
-  onExport: () => void
+  onExport: (type : 'stl' | 'igs')  => void
   onToggle: () => void
 
   className?: string
@@ -67,6 +67,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     },
     ref
   ) => {
+    const [isAdvancedFeaturesOpen, setIsAdvancedFeaturesOpen] = React.useState(false)
+    const OFF_G1 = 0.57
+    const OFF_G2 = 0.83
+
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
       return (
@@ -134,7 +138,50 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
+
+        {/* ── Calculation mode ── */}
+        <div style={sectionStyle}>
+          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
+          <Dropdown
+            options={CALC_MODE_OPTIONS}
+            value={calculationMode}
+            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
+          />
+        </div>
+
+        <Divider />
+
+        {/* ── Export buttons ── */}
+        <div style={exportRowStyle}>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={() => onExport('stl')}
+          >
+            Export STL
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={() => onExport('igs')}
+          >
+            Export IGS
+          </Button>
+        </div>
+        
         {/* ── Grading sliders ── */}
+        <Divider />
+
+        <Button onClick={()=>
+          {
+            setIsAdvancedFeaturesOpen(!isAdvancedFeaturesOpen)
+
+            onG1Change(OFF_G1)
+            onG2Change(OFF_G2)
+            }}>
+          Advanced Features
+        </Button>
+        {isAdvancedFeaturesOpen ? 
         <div style={sectionStyle}>
           <Slider
             label="Grading Start"
@@ -155,33 +202,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             showValue
             valuePrecision={2}
             onValueChange={([v]) => onG2Change(v)}
-          />
+            />
         </div>
-
-        <Divider />
-
-        {/* ── Calculation mode ── */}
-        <div style={sectionStyle}>
-          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
-          <Dropdown
-            options={CALC_MODE_OPTIONS}
-            value={calculationMode}
-            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
-          />
-        </div>
-
-        <Divider />
-
-        {/* ── Export button ── */}
-        <div style={exportRowStyle}>
-          <Button
-            variant="secondary"
-            disabled={!canExport}
-            onClick={onExport}
-          >
-            Export
-          </Button>
-        </div>
+        :<></>
+                }
       </div>
     )
   }

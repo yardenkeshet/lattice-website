@@ -48,7 +48,7 @@ Num_Tiles = (c_int * 3)(2, 2, 2)
 
 #   lattice functions
 
-def do_Ruling(sid, igs_path, num_tiles, tile_params):
+def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
     download_token = str(uuid.uuid4())
 
     # Prepare inputs
@@ -73,7 +73,7 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params):
         srf1_path,
         srf2_path,
         num_tiles,
-        Graded,
+        grading_params,
         tile_type,
         tile_params,
         igs,
@@ -93,7 +93,7 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params):
 
     print(f" -- Done MSDLLMSFromRuling ")
     return download_token, stl_content
-def do_revolution(sid, igs_path, num_tiles, tile_params):
+def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
     print(f"Do MSDLLMSFromRevolution")
     download_token = str(uuid.uuid4())
 
@@ -119,7 +119,7 @@ def do_revolution(sid, igs_path, num_tiles, tile_params):
     result = lt.MSDLLMSFromRevolution(
         srf_file,
         num_tiles,
-        Graded,
+        grading_params,
         tile_type,
         tile_params,
         igs,
@@ -136,7 +136,7 @@ def do_revolution(sid, igs_path, num_tiles, tile_params):
     print(f" -- Done MSDLLMSFromRevolution ")
     return download_token, stl_content
 
-def do_extrusion(sid, igs_path, num_tiles, tile_params):
+def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
     print(f"🧮 Do MSDLLMSFromExtrusion  sid={sid}  igs={igs_path}")
     download_token = str(uuid.uuid4())
 
@@ -170,7 +170,7 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params):
         srf_igs,
         extrude_length,
         num_tiles,        # use the passed-in parameter, not the global
-        graded,
+        grading_params,
         tile_type,
         tile_params,
         igs,
@@ -764,17 +764,17 @@ def handle_calculate(data):
         if tile_type_int == MSDLL_TILE_CROSS:
             logger.info("[CALC] Dispatching -> do_revolution (CROSS)")
             download_token, stl_content = do_revolution(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
             )
         elif tile_type_int == MSDLL_TILE_DIAGONAL:
             logger.info("[CALC] Dispatching -> do_extrusion (DIAGONAL)")
             download_token, stl_content = do_extrusion(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
             )
         elif tile_type_int == MSDLL_TILE_CROSS_DIAGONAL:
             logger.info("[CALC] Dispatching -> do_Ruling (CROSS_DIAGONAL)")
             download_token, stl_content = do_Ruling(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params
+                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
             )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}")
@@ -1033,66 +1033,36 @@ def generate_dummy_files_results(id_folder):
 @app.route('/download-results', methods=['POST'])
 def download_results():
     print(f" ==== Downloading Working from {os.getcwd()}")
-    # 1. Get the token from the POST form data
-    token = request.form.get('token')
-    print(f" --- token : {token}")
+    token     = request.form.get('token')
+    file_type = request.form.get('file_type')  # 'stl' or 'igs'
 
-    # 2. Retrieve the mapping from the global cache (and remove it immediately)
     output_map = DOWNLOAD_CACHE.pop(token, None)
-
-
     if output_map is None:
-        print("Error: Invalid or expired download token (not found in cache).")
+        logger.error(f"[DOWNLOAD] invalid/expired token: {token}")
         return redirect(url_for('index'))
 
-        # Retrieve the saved sid from the map
     sid_from_map = output_map.get('sid')
+    out_folder   = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid_from_map)
 
-    # 1. Create an in-memory buffer (BytesIO)
-    memory_file = io.BytesIO()
+    if file_type == 'stl':
+        filename  = output_map.get('out_stl')
+        mimetype  = 'model/stl'
+    elif file_type == 'igs':
+        filename  = output_map.get('out_igs')
+        mimetype  = 'application/octet-stream'
+    else:
+        return jsonify({'error': f'Unknown file_type: {file_type}'}), 400
 
-    out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid_from_map)
-    # 2. Use the buffer to create the ZIP file
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # Define the files you want to include in the ZIP
+    file_path = os.path.join(out_folder, filename)
+    if not os.path.exists(file_path):
+        logger.error(f"[DOWNLOAD] file not found: {file_path}")
+        return jsonify({'error': 'Result file not found'}), 404
 
-        print(f"--- DEBUG SESSION VALUE ---")
-        print(f"output_map value: {output_map}")
-        print(f"output_map type: {type(output_map)}")
-        print(f"---------------------------")
-
-        stl = output_map.get('out_stl')
-        igs = output_map.get('out_igs')
-        files_to_zip = [f"{stl}", f"{igs}"]
-        print(f"--- {files_to_zip}")
-
-        for filename in files_to_zip:
-            file_path = os.path.join(out_folder, filename)
-            # --- START DEBUGGING BLOCK ---
-            print(f"DEBUG: Checking path: {file_path}")
-            if not os.path.exists(file_path):
-                # If the file path is confirmed wrong here, it will exit gracefully
-                print(f"ERROR: File does not exist at path: {file_path}")
-                return redirect(url_for('index'))
-            # --- END DEBUGGING BLOCK ---
-            print(f"ZIP {file_path}")
-            try:
-                # Add the file to the ZIP archive
-                # The arcname is the name the file will have *inside* the zip
-                zf.write(file_path, arcname=filename)
-            except FileNotFoundError:
-                # Handle case where a source file is missing
-                return f"Error: Source file '{file_path}' not found.", 404
-
-    # 3. Move the file pointer back to the start of the buffer
-    memory_file.seek(0)
-
-    # 4. Use send_file to stream the in-memory ZIP file to the client
     return send_file(
-        memory_file,
-        mimetype='application/zip',
+        file_path,
+        mimetype=mimetype,
         as_attachment=True,
-        download_name='results.zip'  # The name the user will see
+        download_name=filename,
     )
 
 
