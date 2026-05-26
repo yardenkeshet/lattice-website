@@ -24,6 +24,7 @@ export interface LatticeMenuProps {
   g2: number
   calculationMode: 'extrusion' | 'revolution'
 
+  conversionTolerance : number
   /** Whether a download token is available (enables Export button). */
   canExport?: boolean
   /** Whether the panel is expanded (true) or collapsed to an icon (false). */
@@ -34,9 +35,10 @@ export interface LatticeMenuProps {
   onNt3Change: (v: number) => void
   onG1Change: (v: number) => void
   onG2Change: (v: number) => void
+  onConversionToleranceChange: (v: number) => void
   onCalculationModeChange: (mode: 'extrusion' | 'revolution') => void
   onOpenTileMenu: () => void
-  onExport: () => void
+  onExport: (type : 'stl' | 'igs')  => void
   onToggle: () => void
 
   className?: string
@@ -64,9 +66,15 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       onExport,
       onToggle,
       className,
+      conversionTolerance,
+      onConversionToleranceChange
     },
     ref
   ) => {
+    const [isAdvancedFeaturesOpen, setIsAdvancedFeaturesOpen] = React.useState(false)
+    const OFF_G1 = 0.57
+    const OFF_G2 = 0.83
+
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
       return (
@@ -134,7 +142,53 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
+
+        {/* ── Calculation mode ── */}
+        <div style={sectionStyle}>
+          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
+          <Dropdown
+            options={CALC_MODE_OPTIONS}
+            value={calculationMode}
+            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
+          />
+        </div>
+
+        <Divider />
+
+        {/* ── Export buttons ── */}
+        <div style={exportRowStyle}>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={() => onExport('stl')}
+          >
+            Export STL
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={() => onExport('igs')}
+          >
+            Export IGS
+          </Button>
+        </div>
+        
         {/* ── Grading sliders ── */}
+        <Divider />
+
+        <Button onClick={()=>
+          {
+            setIsAdvancedFeaturesOpen(!isAdvancedFeaturesOpen)
+
+            onG1Change(OFF_G1)
+            onG2Change(OFF_G2)
+            }}>
+              {isAdvancedFeaturesOpen 
+                ? <div >- Advance Features</div> 
+                : <div style={{"display":"flex", "flexDirection": "row" }}><PlusIcon /> Advanced Features</div>
+                }
+        </Button>
+        {isAdvancedFeaturesOpen ? 
         <div style={sectionStyle}>
           <Slider
             label="Grading Start"
@@ -155,33 +209,20 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             showValue
             valuePrecision={2}
             onValueChange={([v]) => onG2Change(v)}
-          />
+            />
+          <Slider
+            label="Preview conversion tolerance"
+            min={0}
+            max={1}
+            step={0.01}
+            value={[conversionTolerance]}
+            showValue
+            valuePrecision={2}
+            onValueChange={([v]) => onConversionToleranceChange(v)}
+            />
         </div>
-
-        <Divider />
-
-        {/* ── Calculation mode ── */}
-        <div style={sectionStyle}>
-          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
-          <Dropdown
-            options={CALC_MODE_OPTIONS}
-            value={calculationMode}
-            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
-          />
-        </div>
-
-        <Divider />
-
-        {/* ── Export button ── */}
-        <div style={exportRowStyle}>
-          <Button
-            variant="secondary"
-            disabled={!canExport}
-            onClick={onExport}
-          >
-            Export
-          </Button>
-        </div>
+        :<></>
+                }
       </div>
     )
   }

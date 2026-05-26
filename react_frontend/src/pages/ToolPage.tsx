@@ -12,6 +12,7 @@ import { downloadResults } from '../api/httpClient'
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import pako from 'pako'
 import type { TileType } from '../api/types'
+import type { FileType } from '../components/types'
 import type { BufferGeometry } from 'three'
 
 /* ─── STL decode helper ─── */
@@ -78,9 +79,21 @@ export function ToolPage() {
 
   /* ── File & geometry state ── */
   const [uploadedFile, setUploadedFile]         = React.useState<File | null>(null)
-  const [tileGeometry, setTileGeometry]         = React.useState<BufferGeometry | null>(null)
-  const [previewGeometry, setPreviewGeometry]   = React.useState<BufferGeometry | null>(null)
-  const [calculatedGeometry, setCalculatedGeometry] = React.useState<BufferGeometry | null>(null)
+  const [previewStlGzB64, setPreviewStlGzB64]       = React.useState<string | null>(null)
+  const [calculatedStlGzB64, setCalculatedStlGzB64] = React.useState<string | null>(null)
+
+  const tileGeometry = React.useMemo(
+    () => tileParams.previewGzB64 ? stlGzB64ToGeometry(tileParams.previewGzB64) : null,
+    [tileParams.previewGzB64]
+  )
+  const previewGeometry = React.useMemo(
+    () => previewStlGzB64 ? stlGzB64ToGeometry(previewStlGzB64) : null,
+    [previewStlGzB64]
+  )
+  const calculatedGeometry = React.useMemo(
+    () => calculatedStlGzB64 ? stlGzB64ToGeometry2(calculatedStlGzB64) : null,
+    [calculatedStlGzB64]
+  )
 
   /* ── Calculation status ── */
   const [isCalculating, setIsCalculating]   = React.useState(false)
@@ -94,12 +107,9 @@ export function ToolPage() {
   const [g1, setG1]             = React.useState(0.57)
   const [g2, setG2]             = React.useState(0.83)
   const [calcMode, setCalcMode] = React.useState<'extrusion' | 'revolution'>('extrusion')
+  const [conversionTolerance, setConversionTolerance] = React.useState<number>(0.5)
 
   /* ── Socket subscriptions ── */
-
-React.useEffect(() => {
-  console.log('previewGeometry changed:', previewGeometry)
-}, [previewGeometry])
 
   React.useEffect(() => {
     const unsubResult = socket.onResult((payload) => {
@@ -107,28 +117,23 @@ React.useEffect(() => {
 
       if (payload.kind === 'model_stl') {
         try {
+          // Validate before storing — decode once to check for empty mesh
           const geometry = stlGzB64ToGeometry2(payload.stl_gz_b64)
-          console.log('[model_stl] geometry:', geometry)
-          console.log('[model_stl] vertex count:', geometry.attributes.position?.count)
           if (!geometry.attributes.position || geometry.attributes.position.count === 0) {
             throw new Error('DLL returned an empty mesh (0 vertices)')
           }
-          setCalculatedGeometry(geometry)
+          setCalculatedStlGzB64(payload.stl_gz_b64)
           setDownloadToken(payload.download_token)
           setIsCalculating(false)
         } catch (e) {
-          console.error('[model_stl] stlGzB64ToGeometry failed:', e)
+          console.error('[model_stl] parse failed:', e)
           setIsCalculating(false)
           setErrorMsg(e instanceof Error ? e.message : 'Failed to parse result geometry')
         }
       } else if (payload.kind === 'tile_stl') {
         setTileParams(prev => ({ ...prev, previewGzB64: payload.stl_gz_b64 }))
-        setTileGeometry(stlGzB64ToGeometry(payload.stl_gz_b64))
-
       } else if (payload.kind === 'model_preview_stl') {
-        const geometry = stlGzB64ToGeometry(payload.stl_gz_b64)
-        console.log('Updated preview geometry from model_preview_stl result', geometry)
-        setPreviewGeometry(geometry)
+        setPreviewStlGzB64(payload.stl_gz_b64)
       } else {
         console.warn('Received unknown result kind:', (payload as any).kind)
       }
@@ -168,8 +173,8 @@ React.useEffect(() => {
     try {
       // BUG FIX: was not saving the file, so handleCalculate had no file to read.
       setUploadedFile(file)
-      setPreviewGeometry(null)
-      setCalculatedGeometry(null)
+      setPreviewStlGzB64(null)
+      setCalculatedStlGzB64(null)
       setDownloadToken(null)
       setErrorMsg(null)
 
@@ -186,7 +191,7 @@ React.useEffect(() => {
     // instead of the `uploadedFile` state variable.
     if (!uploadedFile) return
 
-    setCalculatedGeometry(null)
+    setCalculatedStlGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
     setIsCalculating(true)
@@ -216,11 +221,10 @@ React.useEffect(() => {
   }
 
   /* ── Export ── */
-  const handleExport = () => {
+  const handleExport = (type: FileType) => {
     if (!downloadToken) return
-    downloadResults(downloadToken).catch(() => setErrorMsg('Download failed'))
+    downloadResults(downloadToken, type).catch(() => setErrorMsg('Download failed'))
   }
-
 
   return (
     <div style={pageStyle}>
@@ -244,6 +248,8 @@ React.useEffect(() => {
             onOpenTileMenu={() => setIsTileMenuOpen(true)}
             onExport={handleExport}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
+            conversionTolerance={conversionTolerance}
+            onConversionToleranceChange={(v:number)=>{ setConversionTolerance(v)}}
           />
         </div>
 

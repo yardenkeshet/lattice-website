@@ -61,7 +61,7 @@ export class LatticeSocketClient {
   }
 
   convertIGESToSTL(payload: ConvertIGESToSTLPayload): void {
-    this.socket.emit('convert_igs_to_stl', payload);
+    this.socket.emit('convert_igs_to_stl', { ...payload, sid: this.socket.id });
   }
 
   calculateTile(payload: CalculateTilePayload): void {
