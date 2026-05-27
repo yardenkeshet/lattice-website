@@ -69,6 +69,8 @@ export function ToolPage() {
   const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(false)
   const [zoom, setZoom]                           = React.useState(100)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
+  const [calculationMessage, setCalculationMessage] = React.useState<string | null>(null);
+
 
   /* ── Tile state ── */
   const [tileParams, setTileParams] = React.useState<TileState>({
@@ -134,7 +136,19 @@ export function ToolPage() {
         setTileParams(prev => ({ ...prev, previewGzB64: payload.stl_gz_b64 }))
       } else if (payload.kind === 'model_preview_stl') {
         setPreviewStlGzB64(payload.stl_gz_b64)
-      } else {
+      } else if (payload.kind === 'progress_start') {
+        console.log("start ",payload);
+        setCalculationMessage(payload.payload)
+      } 
+      else if (payload.kind === 'progress_update') {
+        console.log("update ",payload);
+        setCalculationMessage(payload.payload)
+      } 
+      else if (payload.kind === 'progress_end') {
+        console.log("end ",payload);
+        setCalculationMessage(payload.payload)
+      } 
+      else {
         console.warn('Received unknown result kind:', (payload as any).kind)
       }
     })
@@ -259,6 +273,7 @@ export function ToolPage() {
               zoom={zoom}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
+              calculationMessage={calculationMessage}
               onZoomChange={setZoom}
               onCameraModeChange={setCameraMode}
               onFileAdd={handleFileAdd}

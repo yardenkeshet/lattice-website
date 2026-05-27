@@ -8,6 +8,9 @@ import type {
   TileSTLResult,
   ModelSTLResult,
   ConvertIGESToSTLPayload,
+  StartUpdate,
+  Update,
+  EndUpdate,
 } from './types';
 
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
@@ -26,6 +29,12 @@ interface RawError {
   message?: string;
 }
 
+interface RawUpdate {
+  type: 'progress_start' | 'progress_update' | 'progress_end';
+  message?: string;
+  progress?: number;
+}
+
 // ─── Public callback types ────────────────────────────────────────────────────
 
 type ResultHandler = (payload: Result) => void;
@@ -42,6 +51,7 @@ export class LatticeSocketClient {
   constructor(serverUrl = 'http://localhost:5003') {
     this.socket = io(serverUrl);
     this.socket.on('result', this.handleRawResult.bind(this));
+    this.socket.on('update', this.handleRawUpdate.bind(this));
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -132,6 +142,19 @@ export class LatticeSocketClient {
       download_token: raw.download_token ?? '',
     } as ModelSTLResult;
 
+    this.resultHandlers.forEach((h) => h(payload));
+  }
+
+  private handleRawUpdate(raw: RawUpdate): void {
+    console.log("Raw Update: ", raw);
+    let payload: StartUpdate | Update | EndUpdate;
+    if (raw.type === 'progress_start') {
+      payload = { kind: 'progress_start', payload: raw.message ?? '' } as StartUpdate;
+    } else if (raw.type === 'progress_update') {
+      payload = { kind: 'progress_update', payload: String(raw.progress ?? 0) } as Update;
+    } else {
+      payload = { kind: 'progress_end', payload: String(raw.progress ?? 100) } as EndUpdate;
+    }
     this.resultHandlers.forEach((h) => h(payload));
   }
 }

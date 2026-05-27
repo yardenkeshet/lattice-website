@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include "inc_irit/misc_lib.h"
 #include "inc_irit/geom_lib.h"
 #include "inc_irit/allocate.h"
 #include "inc_irit/iritprsr.h"
@@ -18,6 +19,63 @@
 #include "inc_irit/cagd_lib.h"
 #include "inc_irit/user_lib.h"
 #include "interface.h"
+
+static void MicroStructProgressReportDefaultInit(IritMiscProgressReportStruct
+								     *PRInfo);
+static void MicroStructProgressReportDefaultUpdate(IritMiscProgressReportStruct
+								     *PRInfo);
+static void MicroStructProgressReportDefaultDone(IritMiscProgressReportStruct
+					                             *PRInfo);
+
+/*****************************************************************************
+* DESCRIPTION:                                                               *
+*   A default progress report init function - justs send IritMsg to stderr.  *
+*                                                                            *
+* PARAMETERS:                                                                *
+*   char:   The message to initialize the progress.                          *
+*                                                                            *
+* RETURN VALUE:                                                              *
+*   void                                                                     *
+*****************************************************************************/
+static void MicroStructProgressReportDefaultInit(IritMiscProgressReportStruct
+					                              *PRInfo)
+{
+    fprintf(stderr, "%s     ", PRInfo -> InitMsg);
+}
+
+/*****************************************************************************
+* DESCRIPTION:                                                               *
+*   A default progress report update function - prints the current progress  *
+* in percentages to stderr. 						     *
+*                                                                            *
+* PARAMETERS:                                                                *
+*   Progress: N.S.F.I.                                                       *
+*                                                                            *
+* RETURN VALUE:                                                              *
+*   void                                                                     *
+*****************************************************************************/
+static void MicroStructProgressReportDefaultUpdate(IritMiscProgressReportStruct
+					                              *PRInfo)
+{
+    fprintf(stderr, "\b\b\b%3d", PRInfo -> Progress);
+}
+
+/*****************************************************************************
+* DESCRIPTION:                                                               *
+*   A default progress report done function - prints a new line to stderr.   *
+*                                                                            *
+* PARAMETERS:                                                                *
+*   None                                                                     *
+*                                                                            *
+* RETURN VALUE:                                                              *
+*   void                                                                     *
+*****************************************************************************/
+static void MicroStructProgressReportDefaultDone(IritMiscProgressReportStruct
+					                              *PRInfo)
+{
+    fprintf(stderr, "\b\b\b%3d", 100);
+    fprintf(stderr, "\n");
+}
 
 /*****************************************************************************
 * DESCRIPTION:                                                               M
@@ -43,24 +101,33 @@ void main(int arc, char **argv)
         *SrfRuled1IgsFile = "Input/RuledSrf1.igs",
 	*SrfRuled2IgsFile = "Input/RuledSrf2.igs",
         *SrfExtrdIgsFile = "Input/ExtrudeSrf.igs",
-        *SrfRevolvIgsFile = "Input/RevolveSrf.igs";
+        *SrfRevolvIgsFile = "Input/RevolveSrf.igs",
+        *SrfSTLOutputFile = "Data/IGSConverted.stl";
     double TileParams[3],
         Graded[2] = { 0.2, 1.5 };
+
+    /* Update (once) to report progress. */
+    MSDLLSetProgressReportFuncs(MicroStructProgressReportDefaultInit,
+				MicroStructProgressReportDefaultUpdate,
+				MicroStructProgressReportDefaultDone, NULL);
+
+    ErrStr = MSDLLIGES2STL(SrfRevolvIgsFile, SrfSTLOutputFile, 0.1);
+
 
     fprintf(stderr, "Generates some tiles...\n");
     TileParams[0] = 0.2;
     TileParams[1] = 0.1;
     TileParams[2] = 0.4;
-    ErrStr  = MSDLLGetTile(MSDLL_TILE_DIAGONAL, TileParams, Graded,
-			   "Data/TileDiagonal.stl");
+    ErrStr = MSDLLGetTile(MSDLL_TILE_DIAGONAL, TileParams, Graded,
+			  "Data/TileDiagonal.stl");
     TileParams[0] = 0.2;
     TileParams[1] = 0.0;
     ErrStr  = MSDLLGetTile(MSDLL_TILE_CROSS, TileParams, Graded,
 			   "Data/TileCross.stl");
     TileParams[0] = 0.05;
     TileParams[1] = 3.5;
-    ErrStr  = MSDLLGetTile(MSDLL_TILE_CROSS_DIAGONAL, TileParams, Graded,
-			   "Data/TileCrossDiag.stl");
+    ErrStr = MSDLLGetTile(MSDLL_TILE_CROSS_DIAGONAL, TileParams, Graded,
+			  "Data/TileCrossDiag.stl");
 
     fprintf(stderr, "Processing Extrusion...\n");
 

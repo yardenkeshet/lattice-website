@@ -15,7 +15,7 @@ export interface ToolbarProps {
   /** Called when user picks a file via the Add button. Receives the raw File. */
   onFileAdd?: (file: File) => void
   onCalculate?: () => void
-
+  calculationMessage: string | null
   className?: string
 }
 
@@ -30,6 +30,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       zoom = 100,
       cameraMode = 'perspective',
       isCalculating = false,
+      calculationMessage = null,
       onZoomChange,
       onCameraModeChange,
       onFileAdd,
@@ -147,6 +148,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
             style={{ boxShadow: 'none', height: 31 }}
           >
             {isCalculating ? 'Calculating…' : 'Calculate'}
+            <span>{calculationMessage}</span>
           </Button>
         </div>
       </div>

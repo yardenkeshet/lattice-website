@@ -99,5 +99,21 @@ export interface ModelPreviewSTLResult extends BaseResult {
   kind: 'model_preview_stl';
   stl_gz_b64: string;
 }
+interface ProgressUpdate {
+  payload: string;
+}
 
-export type Result = ModelSTLResult | ModelPreviewSTLResult | TileSTLResult;
+export interface StartUpdate extends ProgressUpdate {
+  kind: 'progress_start';
+
+}
+
+export interface Update extends ProgressUpdate {
+  kind: 'progress_update';
+  
+}
+
+export interface EndUpdate extends ProgressUpdate {
+  kind: 'progress_end';
+}
+export type Result = ModelSTLResult | ModelPreviewSTLResult | TileSTLResult | StartUpdate | Update | EndUpdate;

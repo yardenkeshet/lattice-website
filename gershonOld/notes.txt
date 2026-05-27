@@ -1,0 +1,1 @@
+Limit number of tries from one location per day?

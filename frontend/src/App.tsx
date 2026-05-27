@@ -186,7 +186,8 @@ const handleCalculate = () => {
             <div className="spinner"></div>
             <div className="timer">
               <span>Calculating… </span>
-              <span>{elapsedTime}</span>s
+              <span>{elapsedTime}</span>
+              <span>{calculationMessage}</span>
             </div>
           </div>
         )}
