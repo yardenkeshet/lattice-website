@@ -71,6 +71,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     // Hooks must be called unconditionally — before any early return.
     const [isTileHovered, setIsTileHovered] = React.useState(false)
     const [isTileFocused, setIsTileFocused] = React.useState(false)
+    const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
 
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
@@ -144,7 +145,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         {/* ── Num Tiles ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Num Tiles</span>
+          <span style={sectionLabelStyle}>Tiles Counts</span>
           <div style={numTilesRowStyle}>
             <NumberInput label="X" value={nt1} min={1} max={99} onChange={onNt1Change} aria-label="X tiles" />
             <NumberInput label="Y" value={nt2} min={1} max={99} onChange={onNt2Change} aria-label="Y tiles" />
@@ -152,9 +153,47 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           </div>
         </div>
 
+
+
+        <Divider />
+
+        {/* ── Calculation mode ── */}
+        <div style={sectionStyle}>
+          <span style={sectionLabelStyle}>Calculation Mode</span>
+          <Dropdown
+            options={CALC_MODE_OPTIONS}
+            value={calculationMode}
+            onChange={v => onCalculationModeChange(v as CalcMode)}
+          />
+        </div>
+
+        <Divider />
+
+        {/* ── Export button ── */}
+        <div style={exportRowStyle}>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={onExport}
+          >
+            Export STL
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!canExport}
+            onClick={onExport}
+          >
+            Export IGS
+          </Button>
+        </div>
+
         <Divider />
 
         {/* ── Grading sliders ── */}
+        <Button onClick={()=>{setUseAdvancedFeatures(!useAdvancedFeatures)}} variant="secondary">{useAdvancedFeatures?"- " :"+ "}Use Advanced Features</Button>
+        {
+          useAdvancedFeatures
+          ?
         <div style={sectionStyle}>
           <Slider
             label="Grading Start"
@@ -179,31 +218,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             onValueChange={([v]) => onG2Change(v)}
           />
         </div>
+          :<></>
 
-        <Divider />
-
-        {/* ── Calculation mode ── */}
-        <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Calculation Mode</span>
-          <Dropdown
-            options={CALC_MODE_OPTIONS}
-            value={calculationMode}
-            onChange={v => onCalculationModeChange(v as CalcMode)}
-          />
-        </div>
-
-        <Divider />
-
-        {/* ── Export button ── */}
-        <div style={exportRowStyle}>
-          <Button
-            variant="secondary"
-            disabled={!canExport}
-            onClick={onExport}
-          >
-            Export
-          </Button>
-        </div>
+        }
       </div>
     )
   }

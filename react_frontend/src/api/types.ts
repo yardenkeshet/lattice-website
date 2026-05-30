@@ -11,14 +11,17 @@ export interface CalculateArgs {
   nt1: number;
   nt2: number;
   nt3: number;
+  p1: number;
+  p2: number;
+  p3: number;
   g1: number;
   g2: number;
 }
 
 export interface CalculatePayload {
   filename: string;
-  /** base64-encoded STL file bytes (ASCII or binary) */
-  stl_text_b64: string;
+  // /** base64-encoded STL file bytes (ASCII or binary) */
+  // stl_text_b64: string;
   /** true when the original file was a binary STL */
   binary?: boolean;
   /** performance.now() value captured just before emit, for round-trip timing */
@@ -36,11 +39,8 @@ export interface CalculateTilePayload {
 
 // ─── result event (server → client) ──────────────────────────────────────────
 //
-// The server emits `result` twice after `calculate`:
-//   1. STLResult  — carries the mesh (stl_gz_b64 is present)
-//   2. TokenResult — carries the download token (stl_gz_b64 is absent)
-//
-// After `calculate_tile` it emits one STLResult (no token follow-up).
+// calculate_tile  → one TileSTLResult  (kind: 'tile_stl')
+// calculate       → one ModelSTLResult (kind: 'model_stl', carries STL + download_token)
 
 export interface Timings {
   /** null when client_ts was not provided in the request */
@@ -51,23 +51,27 @@ export interface Timings {
   overall_ms: number;
 }
 
-export interface STLResult {
-  kind: 'stl';
+/** Emitted by calculate_tile — tile preview geometry only. */
+export interface TileSTLResult {
+  kind: 'tile_stl';
   filename: string;
-  /** base64( gzip( ASCII-STL ) ) — decompress with pako.ungzip */
+  /** base64( gzip( ASCII-STL ) ) */
   stl_gz_b64: string;
   timings: Timings;
-  /** echoed back from the calculate args */
+}
+
+/** Emitted by calculate — full lattice result with download token. */
+export interface ModelSTLResult {
+  kind: 'model_stl';
+  filename: string;
+  /** base64( gzip( ASCII-STL ) ) */
+  stl_gz_b64: string;
+  download_token: string;
+  timings: Timings;
   args_echo?: CalculateArgs;
 }
 
-export interface TokenResult {
-  kind: 'token';
-  filename: string;
-  download_token: string;
-}
-
-export type ResultPayload = STLResult | TokenResult;
+export type ResultPayload = TileSTLResult | ModelSTLResult;
 
 // ─── error event (server → client) ───────────────────────────────────────────
 //
@@ -77,6 +81,13 @@ export interface ErrorPayload {
   /** normalised message (from either `msg` or `message` field) */
   message: string;
 }
+
+// ─── update event (server → client) ─────────────────────────────────────────
+
+export type UpdatePayload =
+  | { type: 'progress_start';  message: string }
+  | { type: 'progress_update'; progress: number }
+  | { type: 'progress_end';    progress: 100 };
 
 // ─── log events (server → client) ────────────────────────────────────────────
 
