@@ -8,24 +8,26 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
-import { downloadResults } from '../api/httpClient'
+import { downloadResults, convertIgsToStl } from '../api/httpClient'
 import { useStlBlobUrl } from '../lib/stl'
 import type { TileType, CalcMode, ValidationError } from '../api/types'
 
-/* ─── File reading utility ─── */
+/* ─── IGS conversion utility ─── */
 
-async function readFileAsB64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // result is "data:<mime>;base64,<data>" — strip the prefix
-      const b64 = result.split(',')[1]
-      resolve(b64)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+/**
+ * Sends a .igs file to the server's convert_igs_to_stl endpoint.
+ * Returns the base64-encoded STL string and a synthetic STL File so
+ * ViewerScene can render the converted mesh before calculation.
+ */
+async function convertIgsFile(file: File): Promise<{ stlB64: string; stlFile: File }> {
+  const stlB64 = await convertIgsToStl(file)
+  const binary = atob(stlB64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  const stlName = file.name.replace(/\.igs$/i, '.stl')
+  const stlFile = new File([bytes], stlName, { type: 'application/octet-stream' })
+  console.log("converted to: ", {stlB64, stlFile})
+  return { stlB64, stlFile }
 }
 
 /* ─── ToolPage ─── */
@@ -46,7 +48,7 @@ export function ToolPage() {
 
   /* ── Tile state ── */
   const [tileType, setTileType]           = React.useState<TileType>('diagonal')
-  const [tileSliderValues, setTileSliderValues] = React.useState(() => defaultSliderValues('diagonal'))
+  const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues('diagonal'))
   const [tilePreviewGzB64, setTilePreviewGzB64] = React.useState<string | null>(null)
 
   /* ── Lattice params ── */
@@ -63,6 +65,7 @@ export function ToolPage() {
   const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
+  const [calcLabel, setCalcLabel]         = React.useState('Calculating…')
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
 
   /* ── Second file slot for ruling mode ── */
@@ -78,8 +81,6 @@ export function ToolPage() {
   const calcModeRef = React.useRef<CalcMode>(calcMode)
   React.useEffect(() => { calcModeRef.current = calcMode }, [calcMode])
 
-  /* True while a full lattice `calculate` result is in-flight; false for tile results */
-  const pendingResultIsLattice = React.useRef<boolean>(false)
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
@@ -98,17 +99,11 @@ export function ToolPage() {
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
     const unsubResult = socket.onResult(payload => {
-      if (payload.kind === 'stl') {
-        setIsCalculating(false)
-        const isLattice = pendingResultIsLattice.current
-        pendingResultIsLattice.current = false
-
-        // Always update the tile mini-preview (LatticeMenu + TileMenu)
+      if (payload.kind === 'tile_stl') {
+        // Tile preview from calculate_tile — update mini-preview and main viewer
+        // (main viewer only in non-ruling mode; ruling mode shows two surfaces, not a tile)
         setTilePreviewGzB64(payload.stl_gz_b64)
-
-        // Only push into the main viewer if this is a full lattice result,
-        // OR we are not in ruling mode (tiles are shown in the main viewer in non-ruling modes)
-        if (isLattice || calcModeRef.current !== 'ruling') {
+        if (calcModeRef.current !== 'ruling') {
           setResultGzB64(payload.stl_gz_b64)
           if (pendingResetKey.current !== null) {
             setViewerResetKey(pendingResetKey.current)
@@ -116,15 +111,28 @@ export function ToolPage() {
           }
         }
       } else {
+        // model_stl from calculate — full lattice result
         setIsCalculating(false)
+        setCalcLabel('Calculating…')
+        setResultGzB64(payload.stl_gz_b64)
         setDownloadToken(payload.download_token)
+        if (pendingResetKey.current !== null) {
+          setViewerResetKey(pendingResetKey.current)
+          pendingResetKey.current = null
+        }
       }
     })
     const unsubError = socket.onError(err => {
       setIsCalculating(false)
+      setCalcLabel('Calculating…')
       setErrorMsg(err.message)
     })
-    return () => { unsubResult(); unsubError() }
+    const unsubUpdate = socket.onUpdate(upd => {
+      if (upd.type === 'progress_start')  setCalcLabel(upd.message)
+      else if (upd.type === 'progress_update') setCalcLabel(`Calculating… ${upd.progress}%`)
+      else setCalcLabel('Calculating… 100%')
+    })
+    return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
 
   /* ── Tile param change → update state only (no backend call on drag) ── */
@@ -165,54 +173,70 @@ export function ToolPage() {
 
     if (calcMode === 'ruling') {
       if (files.length >= 2) {
-        // Two files chosen: replace both slots immediately
+        // Two files chosen: convert both and replace both slots immediately
         setViewerResetKey('file-' + Date.now())
-        setUploadedFile(files[0])
-        setUploadedFile2(files[1])
-        try { setUploadedB64(await readFileAsB64(files[0])) }
-        catch { setErrorMsg('Failed to read file') }
+        try {
+          const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
+          setUploadedFile(r1.stlFile)
+          setUploadedFile2(r2.stlFile)
+          setUploadedB64(r1.stlB64)
+        } catch { setErrorMsg('Failed to convert IGS file') }
       } else {
         // One file: smart-fill next empty slot
         const file = files[0]
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
-          setUploadedFile(file)
-          try { setUploadedB64(await readFileAsB64(file)) }
-          catch { setErrorMsg('Failed to read file') }
+          try {
+            const { stlB64, stlFile } = await convertIgsFile(file)
+            setUploadedFile(stlFile)
+            setUploadedB64(stlB64)
+          } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
-          setUploadedFile2(file)
+          try {
+            const { stlFile } = await convertIgsFile(file)
+            setUploadedFile2(stlFile)
+          } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
           // Both full — cycle back and replace Surface 1
           setViewerResetKey('file-' + Date.now())
-          setUploadedFile(file)
-          try { setUploadedB64(await readFileAsB64(file)) }
-          catch { setErrorMsg('Failed to read file') }
+          try {
+            const { stlB64, stlFile } = await convertIgsFile(file)
+            setUploadedFile(stlFile)
+            setUploadedB64(stlB64)
+          } catch { setErrorMsg('Failed to convert IGS file') }
         }
       }
     } else {
-      // Non-ruling: single file, same as original handleFileAdd
+      // Non-ruling: single file
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
-      setUploadedFile(file)
-      try { setUploadedB64(await readFileAsB64(file)) }
-      catch { setErrorMsg('Failed to read file') }
+      try {
+        const { stlB64, stlFile } = await convertIgsFile(file)
+        setUploadedFile(stlFile)
+        setUploadedB64(stlB64)
+      } catch { setErrorMsg('Failed to convert IGS file') }
     }
   }
 
   /* Drag-drop onto DualViewerLayout panel 1 — always replaces Surface 1 */
   const handleFile1Drop = async (file: File) => {
-    setUploadedFile(file)
     setResultGzB64(null)
-    try { setUploadedB64(await readFileAsB64(file)) }
-    catch { setErrorMsg('Failed to read file') }
+    try {
+      const { stlB64, stlFile } = await convertIgsFile(file)
+      setUploadedFile(stlFile)
+      setUploadedB64(stlB64)
+    } catch { setErrorMsg('Failed to convert IGS file') }
   }
 
   /* Drag-drop onto DualViewerLayout panel 2 — always replaces Surface 2.
-     No b64 read: Surface 2 is not yet forwarded in the calculate payload
+     Surface 2 b64 is not yet forwarded in the calculate payload
      (backend integration deferred — see spec §7 Out of Scope). */
-  const handleFile2Drop = (file: File) => {
-    setUploadedFile2(file)
+  const handleFile2Drop = async (file: File) => {
     setResultGzB64(null)
+    try {
+      const { stlFile } = await convertIgsFile(file)
+      setUploadedFile2(stlFile)
+    } catch { setErrorMsg('Failed to convert IGS file') }
   }
 
   /* ── Clear handlers ── */
@@ -265,17 +289,26 @@ export function ToolPage() {
         return
       }
     }
-    pendingResultIsLattice.current = true
     pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
+    setCalcLabel('Calculating…')
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
-    socket.calculate({
+    console.log("socket please calculate with: ",{
       filename: uploadedFile!.name,
       stl_text_b64: uploadedB64!,
       client_ts: performance.now(),
-      args: { tileType, nt1, nt2, nt3, g1, g2 },
+      args: {
+        filename: uploadedFile!.name,
+        client_ts: performance.now(),
+        args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],  },
+      },
+    })
+    socket.calculate({
+      filename: uploadedFile!.name,
+      client_ts: performance.now(),
+      args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],  },
     })
   }
 
@@ -319,10 +352,12 @@ export function ToolPage() {
               zoom={zoom}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
+              calcLabel={calcLabel}
               onZoomChange={setZoom}
               onCameraModeChange={setCameraMode}
               onFilesAdd={handleFilesAdd}
               onCalculate={handleCalculate}
+              fileNames={[uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n)}
             />
           </div>
 

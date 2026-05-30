@@ -13,6 +13,7 @@
 #include "inc_irit/geom_lib.h"
 #include "inc_irit/allocate.h"
 #include "inc_irit/iritprsr.h"
+#include "inc_irit/ip_cnvrt.h"
 #include "inc_irit/triv_lib.h"
 #include "inc_irit/cagd_lib.h"
 #include "inc_irit/cagd_lib.h"
@@ -25,16 +26,36 @@ static char GlblErrStr[IRIT_LINE_LEN];
 
 static int MSDLLVerifyInput(const char *Srf1IgsFile,
 			    const char *Srf2IgsFile,
-			    IPObjectStruct **Srf1,
-			    IPObjectStruct **Srf2,
+			    IritPrsrObjectStruct **Srf1,
+			    IritPrsrObjectStruct **Srf2,
 			    int NumTiles[3],
 			    double Graded[2],
 			    MSDLLTileType Tile,
 			    char ** const ErrStr);
-static IPObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
-				       IrtRType *Params,
-				       IrtRType *Graded,
-				       char ** const ErrStr);
+static IritPrsrObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
+					     IrtRType *Params,
+					     IrtRType *Graded,
+					     char ** const ErrStr);
+
+/*****************************************************************************
+* DESCRIPTION:                                                               *
+*   Sets a call back function to be called with a progress report - a number *
+* between zero and one (completed task).			             *
+*                                                                            *
+* PARAMETERS:                                                                *
+*   ProgRepFunc:  A new call back function to be called with progress report.*
+*                                                                            *
+* RETURN VALUE:                                                              *
+*   void		                                                     *
+*****************************************************************************/
+void MSDLLSetProgressReportFuncs(
+			       IritMiscProgressReportInitFuncType InitFunc,
+			       IritMiscProgressReportUpdateFuncType UpdateFunc,
+			       IritMiscProgressReportDoneFuncType DoneFunc,
+			       void *CBData)
+{
+    IritMiscProgressReportSetFuncs(InitFunc, UpdateFunc, DoneFunc, CBData);
+}
 
 /*****************************************************************************
 * DESCRIPTION:                                                               *
@@ -51,8 +72,8 @@ static IPObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
 *****************************************************************************/
 static int MSDLLVerifyInput(const char *Srf1IgsFile,
 			    const char *Srf2IgsFile,
-			    IPObjectStruct **Srf1,
-			    IPObjectStruct **Srf2,
+			    IritPrsrObjectStruct **Srf1,
+			    IritPrsrObjectStruct **Srf2,
 			    int NumTiles[3],
 			    double Graded[2],
 			    MSDLLTileType Tile,
@@ -90,9 +111,9 @@ static int MSDLLVerifyInput(const char *Srf1IgsFile,
 	*ErrStr = "Failed to read first input file.";
 	return FALSE;
     }
-    else if (!IP_IS_SRF_OBJ(*Srf1) ||
-	     CAGD_IS_RATIONAL_SRF((*Srf1) -> U.Srfs) ||
-	     (!CAGD_IS_BEZIER_SRF((*Srf1) -> U.Srfs) &&
+    else if (!IRIT_PRSR_IS_SRF_OBJ(*Srf1) ||
+	     IRIT_CAGD_IS_RATIONAL_SRF((*Srf1) -> U.Srfs) ||
+	     (!IRIT_CAGD_IS_BEZIER_SRF((*Srf1) -> U.Srfs) &&
 	      !IritCagdBspSrfHasBezierKVs((*Srf1) -> U.Srfs))) {
         *ErrStr = "First input file is not holding a polynomial Bezier surface.";
 	return FALSE;
@@ -104,9 +125,9 @@ static int MSDLLVerifyInput(const char *Srf1IgsFile,
 	    *ErrStr = "Failed to read second input file.";
 	    return FALSE;
 	}
-	else if (!IP_IS_SRF_OBJ(*Srf2) ||
-		 CAGD_IS_RATIONAL_SRF((*Srf2) -> U.Srfs) ||
-		 (!CAGD_IS_BEZIER_SRF((*Srf2) -> U.Srfs) &&
+	else if (!IRIT_PRSR_IS_SRF_OBJ(*Srf2) ||
+		 IRIT_CAGD_IS_RATIONAL_SRF((*Srf2) -> U.Srfs) ||
+		 (!IRIT_CAGD_IS_BEZIER_SRF((*Srf2) -> U.Srfs) &&
 		  !IritCagdBspSrfHasBezierKVs((*Srf2) -> U.Srfs))) {
 	    IritPrsrFreeObject(*Srf1);
 	    *ErrStr = "Second input file is not holding a polynomial Bezier surface.";
@@ -126,19 +147,19 @@ static int MSDLLVerifyInput(const char *Srf1IgsFile,
 *   Params:   For Cross tile: (Outer Radius, Inner Radius)                   *
 *             For Diagonal tiles: (Center Size, Corner Size, Smooth Factor). *
 *             For Cross-Diagonal tile: (Cross Radius, Diagonal Radius)       *
-*   Graded:   We be used to create a graded lattice in theruled direction    *
+*   Graded:   We be used to create a graded lattice in the ruled direction   *
 *             (variable arm thicknesses).				     *
 *                                                                            *
 * RETURN VALUE:                                                              *
-*   IPObjectStruct *:                                                        *
+*   IritPrsrObjectStruct *:    The created tile.                             *
 *****************************************************************************/
-static IPObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
-				       IrtRType *Params,
-				       IrtRType *Graded,
-				       char ** const ErrStr)
+static IritPrsrObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
+					     IrtRType *Params,
+					     IrtRType *Graded,
+					     char ** const ErrStr)
 {
     int i;
-    IPObjectStruct
+    IritPrsrObjectStruct
         *TileObj = NULL;
 
     *ErrStr = NULL;
@@ -202,7 +223,7 @@ static IPObjectStruct *MSDLLGetTileAux(MSDLLTileType Tile,
 *   Params:   For Cross tile: (Outer Radius, Inner Radius)                   M
 *             For Diagonal tiles: (Center Size, Corner Size, Smooth Factor). M
 *             For Cross-Diagonal tile: (Cross Radius, Diagonal Radius)       M
-*   Graded:   We be used to create a graded lattice in theruled direction    M
+*   Graded:   We be used to create a graded lattice in the ruled direction   M
 *             (variable arm thicknesses).				     M
 *   MSSTLFile: Name of STL file to save the tile in.	 	             M
 *                                                                            *
@@ -219,7 +240,7 @@ const char *MSDLLGetTile(MSDLLTileType Tile,
 {
     char *ErrStr;
     IrtHmgnMatType UnitMat;
-    IPObjectStruct *TileObj;
+    IritPrsrObjectStruct *TileObj;
 
     IritPrsrSetPolyListCirc(TRUE);
     IritMiscSetIritParallelExec(IRIT_PARA_NUM_THREADS);
@@ -240,9 +261,9 @@ const char *MSDLLGetTile(MSDLLTileType Tile,
 *   Constructs the lattice and save it in the designated files.              *
 *                                                                            *
 * PARAMETERS:                                                                *
-*   TV:         The macro-shape in whcih to build the microstructure.        *
+*   TV:         The macro-shape in which to build the microstructure.        *
 *   TileObj:    The tile to use for the lattice.  Should be NULL if Graded.  *
-*   NumTiles:   In (u, v, w) parameteric directions.                         *
+*   NumTiles:   In (u, v, w) parametric directions.                          *
 *   Graded:     If tiles should be geometrically graded in the lattice.      *
 *               hold the minimal and maximal scales to use in the grading    *
 *               of the first parameter in the third (non surface) axis.      *
@@ -251,25 +272,27 @@ const char *MSDLLGetTile(MSDLLTileType Tile,
 *               on Tile type.						     *
 *                                                                            *
 * RETURN VALUE:                                                              *
-*   IPObjectStruct *:                                                        *
+*   IritPrsrObjectStruct *:    The created lattice.                          *
 *****************************************************************************/
-static IPObjectStruct *MSDLLGenMS(const TrivTVStruct *TV,
-				  IPObjectStruct *TileObj,
-				  int NumTiles[3],
-				  double Graded[2],
-				  MSDLLTileType Tile,
-				  double *TileParams)
+static IritPrsrObjectStruct *MSDLLGenMS(const IritTrivTVStruct *TV,
+					IritPrsrObjectStruct *TileObj,
+					int NumTiles[3],
+					double Graded[2],
+					MSDLLTileType Tile,
+					double *TileParams)
 {
     int i;
-    IPObjectStruct *MS, *MSMerged, *MSSrfs;
-    UserMicroParamStruct MSParam;
-    UserMicroRegularParamStruct *MSRegularParam;
+    IritPrsrObjectStruct *MS, *MSMerged, *MSSrfs;
+    IritUserMicroParamStruct MSParam;
+    IritUserMicroRegularParamStruct *MSRegularParam;
 
     /* Create the structure to be passed to the call back function. */
-    IRIT_ZAP_MEM(&MSParam, sizeof(UserMicroParamStruct));
-    MSParam.TilingType = USER_MICRO_TILE_REGULAR;
+    IRIT_ZAP_MEM(&MSParam, sizeof(IritUserMicroParamStruct));
+    // GERSHON MSParam.ProgressReportCB = GlblProjRepFunc;
+    MSParam.TilingType = IRIT_USER_MICRO_TILE_REGULAR;
     MSParam.DeformMV = IritMvarCnvrtTVToMV(TV);
     MSParam.ApproxLowOrder = 4;
+    MSParam.ProgressReport = TRUE;
 
     MSRegularParam = &MSParam.U.RegularParam;
     MSRegularParam -> Tile = IritUserMicroParseTileFromObj(TileObj);
@@ -298,7 +321,7 @@ static IPObjectStruct *MSDLLGenMS(const TrivTVStruct *TV,
 
     MSMerged = IritPrsrFlattenForrest2(MS, FALSE);
     IritPrsrFreeObject(MS);
-    MSSrfs = IritPrsrCoerceObjectTo(MSMerged, IP_OBJ_SURFACE);
+    MSSrfs = IritPrsrCoerceObjectTo(MSMerged, IRIT_PRSR_OBJ_SURFACE);
     IritPrsrFreeObject(MSMerged);
 
     return MSSrfs;
@@ -317,7 +340,7 @@ static IPObjectStruct *MSDLLGenMS(const TrivTVStruct *TV,
 *              rule a volume between, for the microstructure.                M
 *   NumTiles:  Number of tiles to place in the lattice, in the three         M
 *              parametric directions of the volume.			     M
-*   Graded:    We be used to create a graded lattice in theruled direction   M
+*   Graded:    We be used to create a graded lattice in the ruled direction  M
 *              (variable arm thicknesses).				     M
 *   Tile:      Type of tile to use.                                          M
 *   TileParams: Two or three numeric parameters to control tiles, depending  M
@@ -341,8 +364,8 @@ const char *MSDLLMSFromRuling(const char *Srf1IgsFile,
 {
     char * const ErrStr;
     IrtHmgnMatType UnitMat;
-    TrivTVStruct *TV;
-    IPObjectStruct *MS, *TileObj, *Srf1, *Srf2;
+    IritTrivTVStruct *TV;
+    IritPrsrObjectStruct *MS, *TileObj, *Srf1, *Srf2;
 	     
     if (!MSDLLVerifyInput(Srf1IgsFile, Srf2IgsFile, &Srf1, &Srf2,
 			  NumTiles, Graded, Tile, (char ** const) &ErrStr))
@@ -410,10 +433,10 @@ const char *MSDLLMSFromExtrusion(const char *SrfIgsFile,
 				 const char *MSSTLFile)
 {
     char * const ErrStr;
-    CagdVecStruct ZVec;
+    IritCagdVecStruct ZVec;
     IrtHmgnMatType UnitMat;
-    TrivTVStruct *TV;
-    IPObjectStruct *MS, *TileObj, *Srf;
+    IritTrivTVStruct *TV;
+    IritPrsrObjectStruct *MS, *TileObj, *Srf;
 	     
     if (!MSDLLVerifyInput(SrfIgsFile, NULL, &Srf, NULL,
 			  NumTiles, Graded, Tile, (char ** const) &ErrStr))
@@ -430,7 +453,7 @@ const char *MSDLLMSFromExtrusion(const char *SrfIgsFile,
         return GlblErrStr;
     }
 
-    IRIT_ZAP_MEM(&ZVec, sizeof(CagdVecStruct));
+    IRIT_ZAP_MEM(&ZVec, sizeof(IritCagdVecStruct));
     ZVec.Vec[2] = ExtrudeLength;
     TV = IritTrivExtrudeTV(Srf -> U.Srfs, &ZVec);
 
@@ -477,18 +500,18 @@ const char *MSDLLMSFromExtrusion(const char *SrfIgsFile,
 * KEYWORDS:                                                                  M
 *   MSDLLMSFromRuling                                                        M
 *****************************************************************************/
-const char * MSDLLMSFromRevolution(const char *SrfIgsFile,
-				   int NumTiles[3],
-				   double Graded[2],
-				   MSDLLTileType Tile,
-				   double *TileParams,
-				   const char *MSIGSFile,
-				   const char *MSSTLFile)
+const char *MSDLLMSFromRevolution(const char *SrfIgsFile,
+				  int NumTiles[3],
+				  double Graded[2],
+				  MSDLLTileType Tile,
+				  double *TileParams,
+				  const char *MSIGSFile,
+				  const char *MSSTLFile)
 {
     char * const ErrStr;
     IrtHmgnMatType UnitMat;
-    TrivTVStruct *TV;
-    IPObjectStruct *MS, *TileObj, *Srf;
+    IritTrivTVStruct *TV;
+    IritPrsrObjectStruct *MS, *TileObj, *Srf;
 
     NumTiles[2] = (NumTiles[2] + 3) / 4;   /* We have 4 domains in revolve. */
 
@@ -517,3 +540,65 @@ const char * MSDLLMSFromRevolution(const char *SrfIgsFile,
 
     return NULL;
 }
+
+/*****************************************************************************
+* DESCRIPTION:                                                               M
+*   COnverts a surface model in IGES file to STL, also as a file.            M
+*                                                                            *
+* PARAMETERS:                                                                M
+*   SrfIgsFile:  The surface, given as IGES files, to convert to STL.        M
+*   SrfSTLFile:  The surface approximation in STL will be saved here.        M
+*   Tolerance:   Fineness of tessellation approximation.		     M
+*                Must be non-negative and if zero, 1/100 of the bbox of the  M
+*                model is used.						     M
+*                                                                            *
+* RETURN VALUE:                                                              M
+*   const char *:  NULL if successful. An error string if not.               M
+*                                                                            *
+* SEE ALSO:                                                                  M
+*                                                                            M
+*                                                                            *
+* KEYWORDS:                                                                  M
+*   MSDLLIGES2STL                                                            M
+*****************************************************************************/
+const char *MSDLLIGES2STL(const char *SrfIgsFile,
+			  const char *SrfSTLFile,
+			  double Tolerance)
+{
+    IrtHmgnMatType Mat;
+    IritPrsrObjectStruct *PObj;
+    IritPrsrIgesLoadDfltFileParamsStruct IgesParams;
+	
+    IRIT_ZAP_MEM(&IgesParams, sizeof(IritPrsrIgesLoadDfltFileParamsStruct));
+    IgesParams = IritPrsrIgesLoadDfltParams;
+    IgesParams.DumpAll = FALSE;
+    IgesParams.InverseProjCrvOnSrfs = TRUE;
+    IgesParams.Messages = 1;
+
+    PObj = IritPrsrIgesLoadFile(SrfIgsFile, &IgesParams);
+
+    if (PObj == NULL)
+        return "Failed to read IGES file";
+
+    IritMiscMatGenUnitMat(Mat);
+
+    if (Tolerance == 0.0) {
+        IritGeomBBBboxStruct BBox;
+
+	IritGeomBBComputeBboxObject(PObj, &BBox, TRUE);
+	Tolerance = IRIT_MAX3(BBox.Max[0] - BBox.Min[0],
+			      BBox.Max[1] - BBox.Min[1],
+			      BBox.Max[2] - BBox.Min[2]) / 100.0;
+	fprintf(stderr, "IGS2STL: Selected tolerance of of %.5g\n", Tolerance);
+    }
+
+    IritPrsrFFCState.OptimalPolygons = TRUE;
+    IritPrsrFFCState.FineNess = Tolerance;
+    IritPrsrSetPolyListCirc(TRUE);
+    IritPrsrSTLSaveFile(PObj, Mat, SrfSTLFile, NULL);
+
+    IritPrsrFreeObject(PObj);
+
+    return NULL;
+}
+

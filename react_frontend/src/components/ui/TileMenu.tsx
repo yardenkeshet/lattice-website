@@ -26,7 +26,7 @@ const TILE_PARAMS: Record<TileType, SliderDef[]> = {
   diagonal: [
     { label: 'Center Size',       min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
     { label: 'End-Arm Size',      min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
-    { label: 'Smoothing of Arms', min: 0.0,  max: 1.0,  defaultValue: 0.5,  step: 0.01 },
+    { label: 'Smoothing of Arms', min: 0.0,  max: 1.0,  defaultValue: 0.3,  step: 0.01 },
   ],
   cross: [
     { label: 'Outer Radius', min: 0.01, max: 0.5,  defaultValue: 0.3,  step: 0.01 },

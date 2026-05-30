@@ -144,7 +144,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         {/* ── Num Tiles ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Num Tiles</span>
+          <span style={sectionLabelStyle}>Tiles Counts</span>
           <div style={numTilesRowStyle}>
             <NumberInput label="X" value={nt1} min={1} max={99} onChange={onNt1Change} aria-label="X tiles" />
             <NumberInput label="Y" value={nt2} min={1} max={99} onChange={onNt2Change} aria-label="Y tiles" />

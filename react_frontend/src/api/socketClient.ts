@@ -3,19 +3,21 @@ import type {
   CalculatePayload,
   CalculateTilePayload,
   ResultPayload,
-  STLResult,
-  TokenResult,
+  TileSTLResult,
+  ModelSTLResult,
   ErrorPayload,
+  UpdatePayload,
   LogLine,
 } from './types';
 
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
 
 interface RawResult {
+  kind?: string;
   filename?: string;
   stl_gz_b64?: string;
-  timings?: STLResult['timings'];
-  args_echo?: STLResult['args_echo'];
+  timings?: TileSTLResult['timings'];
+  args_echo?: ModelSTLResult['args_echo'];
   download_token?: string;
 }
 
@@ -75,10 +77,10 @@ export class LatticeSocketClient {
   }
 
   /**
-   * Unified result handler — receives both STLResult and TokenResult.
+   * Unified result handler — receives TileSTLResult and ModelSTLResult.
    * Use the `kind` discriminant to branch:
-   *   if (payload.kind === 'stl') { ... }
-   *   if (payload.kind === 'token') { ... }
+   *   if (payload.kind === 'tile_stl') { ... }
+   *   if (payload.kind === 'model_stl') { ... }
    */
   onResult(handler: ResultHandler): () => void {
     this.resultHandlers.add(handler);
@@ -90,6 +92,11 @@ export class LatticeSocketClient {
       handler({ message: raw.msg ?? raw.message ?? 'Unknown server error' });
     });
     return () => this.socket.off('error', handler);
+  }
+
+  onUpdate(handler: (payload: UpdatePayload) => void): () => void {
+    this.socket.on('update', handler);
+    return () => this.socket.off('update', handler);
   }
 
   onLogUpdate(handler: LogHandler): () => void {
@@ -107,18 +114,20 @@ export class LatticeSocketClient {
   private resultHandlers = new Set<ResultHandler>();
 
   private handleRawResult(raw: RawResult): void {
-    const payload: ResultPayload = raw.stl_gz_b64
+    const payload: ResultPayload = raw.kind === 'model_stl'
       ? {
-          kind: 'stl',
+          kind: 'model_stl',
           filename: raw.filename ?? '',
-          stl_gz_b64: raw.stl_gz_b64,
+          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          download_token: raw.download_token ?? '',
           timings: raw.timings!,
           args_echo: raw.args_echo,
         }
       : {
-          kind: 'token',
+          kind: 'tile_stl',
           filename: raw.filename ?? '',
-          download_token: raw.download_token ?? '',
+          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          timings: raw.timings!,
         };
 
     this.resultHandlers.forEach((h) => h(payload));

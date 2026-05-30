@@ -10,6 +10,7 @@ export interface ToolbarProps {
   zoom?: number          // 10–500, default 100
   cameraMode?: 'perspective' | 'orthographic'
   isCalculating?: boolean
+  calcLabel?: string
 
   onZoomChange?: (zoom: number) => void
   onCameraModeChange?: (mode: 'perspective' | 'orthographic') => void
@@ -20,12 +21,14 @@ export interface ToolbarProps {
   onCalculate?: () => void
 
   className?: string
+
+  fileNames: string[]
 }
 
 const ZOOM_STEP = 10
 const ZOOM_MIN  = 10
 const ZOOM_MAX  = 500
-const ACCEPTED_3D = '.stl,.obj,.3mf'
+const ACCEPTED_3D = '.igs'
 
 const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
@@ -33,12 +36,14 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       zoom = 100,
       cameraMode = 'perspective',
       isCalculating = false,
+      calcLabel = 'Calculating…',
       onZoomChange,
       onCameraModeChange,
       calcMode,
       onFilesAdd,
       onCalculate,
       className,
+      fileNames
     },
     ref
   ) => {
@@ -69,12 +74,11 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
 
         {/* ── Add (file upload) icon button ── */}
         <IconButton
-          aria-label="Add 3D file"
+          aria-label="Add IGS file"
           onClick={() => fileInputRef.current?.click()}
         >
           <PlusIcon />
         </IconButton>
-
         {/* ── Pill: zoom + camera mode ── */}
         <div style={pillStyle}>
 
@@ -144,6 +148,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
           </div>
 
           <PillDivider />
+          {fileNames?<ul> {fileNames.map((name)=><li key={name}><CubeIcon3D/> {name}</li>)}</ul> :<></>}
 
           {/* Calculate button */}
           <Button
@@ -151,7 +156,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
             disabled={isCalculating}
             onClick={onCalculate}
           >
-            {isCalculating ? 'Calculating…' : 'Calculate'}
+            {isCalculating ? calcLabel : 'Calculate'}
           </Button>
         </div>
       </div>
@@ -195,6 +200,30 @@ function ChevronDownIcon({ open }: { open: boolean }) {
     </svg>
   )
 }
+
+export const CubeIcon3D = ({ size = 24, className = "" }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25em' }}
+    >
+      {/* Top Face */}
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      {/* Left Face */}
+      <path d="M2 17l10 5V12L2 7v10z" />
+      {/* Right Face */}
+      <path d="M22 7l-10 5v10l10-5V7z" />
+    </svg>
+  );
+};
 
 /* ─── Pill divider ─── */
 

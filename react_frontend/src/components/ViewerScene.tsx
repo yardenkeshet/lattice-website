@@ -39,7 +39,7 @@ export interface ViewerSceneProps {
   style?: React.CSSProperties
 }
 
-const ACCEPTED_EXTS = new Set(['.stl', '.obj', '.3mf'])
+const ACCEPTED_EXTS = new Set(['.igs'])
 
 const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
@@ -157,7 +157,7 @@ export function ViewerScene({
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>
-            Drop a .stl / .obj / .3mf file here,<br />or use the + button above
+            Drop a .igs file here,<br />or use the + button above
           </span>
         </div>
       )}
