@@ -11,6 +11,7 @@ import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl } from '../api/httpClient'
 import { useStlBlobUrl } from '../lib/stl'
 import type { TileType, CalcMode, ValidationError } from '../api/types'
+import { DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT } from '../lib/utils'
 
 /* ─── IGS conversion utility ─── */
 
@@ -52,9 +53,9 @@ export function ToolPage() {
   const [tilePreviewGzB64, setTilePreviewGzB64] = React.useState<string | null>(null)
 
   /* ── Lattice params ── */
-  const [nt1, setNt1]               = React.useState(10)
-  const [nt2, setNt2]               = React.useState(10)
-  const [nt3, setNt3]               = React.useState(1)
+  const [nt1, setNt1]               = React.useState(DEFAULT_X_COUNT)
+  const [nt2, setNt2]               = React.useState(DEFAULT_Y_COUNT)
+  const [nt3, setNt3]               = React.useState(DEFAULT_Z_COUNT)
   const [g1, setG1]                 = React.useState(0.57)
   const [g2, setG2]                 = React.useState(0.83)
   const [calcMode, setCalcMode]     = React.useState<CalcMode>('extrusion')
@@ -313,9 +314,13 @@ export function ToolPage() {
   }
 
   /* ── Export ── */
-  const handleExport = () => {
+  const handleExportStl = () => {
     if (!downloadToken) return
-    downloadResults(downloadToken).catch(() => setErrorMsg('Download failed'))
+    downloadResults(downloadToken, 'stl').catch(() => setErrorMsg('Download failed'))
+  }
+  const handleExportIgs = () => {
+    if (!downloadToken) return
+    downloadResults(downloadToken, 'igs').catch(() => setErrorMsg('Download failed'))
   }
 
   return (
@@ -339,7 +344,8 @@ export function ToolPage() {
             onG1Change={setG1} onG2Change={setG2}
             onCalculationModeChange={handleCalcModeChange}
             onOpenTileMenu={() => setIsTileMenuOpen(true)}
-            onExport={handleExport}
+            onExportStl={handleExportStl}
+            onExportIgs={handleExportIgs}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
           />
         </div>

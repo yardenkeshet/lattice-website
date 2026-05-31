@@ -36,7 +36,8 @@ export interface LatticeMenuProps {
   onG2Change: (v: number) => void
   onCalculationModeChange: (mode: CalcMode) => void
   onOpenTileMenu: () => void
-  onExport: () => void
+  onExportStl: () => void
+  onExportIgs: () => void
   onToggle: () => void
 
   className?: string
@@ -62,7 +63,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       onG1Change, onG2Change,
       onCalculationModeChange,
       onOpenTileMenu,
-      onExport,
+      onExportStl,
+      onExportIgs,
       onToggle,
       className,
     },
@@ -174,14 +176,14 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <Button
             variant="secondary"
             disabled={!canExport}
-            onClick={onExport}
+            onClick={onExportStl}
           >
             Export STL
           </Button>
           <Button
             variant="secondary"
             disabled={!canExport}
-            onClick={onExport}
+            onClick={onExportIgs}
           >
             Export IGS
           </Button>

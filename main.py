@@ -405,6 +405,8 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
     DOWNLOAD_CACHE[download_token] = {
         'sid': sid, 'out_stl': 'MSExtrd.stl', 'out_igs': 'MSExtrd.igs'
     }
+    for c in DOWNLOAD_CACHE:
+        print(f"cache: {c}")
     print("-- Done MSDLLMSFromExtrusion")
     return download_token, stl_content
 
@@ -720,7 +722,6 @@ def handle_calculate(data):
         f"compress={timings['time_compress_ms']} ms =="
     )
 
-
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
     p1, p2, p3 = data['values']
@@ -802,6 +803,10 @@ def download_results():
     token     = request.form.get('token')
     file_type = request.form.get('file_type')
 
+    if token in DOWNLOAD_CACHE:
+        print("FOUND!")
+    else:
+        print("NOT FOUND!!!!!!!!!")
     output_map = DOWNLOAD_CACHE.pop(token, None)
     if output_map is None:
         logger.error(f"[DOWNLOAD] invalid/expired token: {token}")
@@ -822,7 +827,7 @@ def download_results():
     if not os.path.exists(file_path):
         logger.error(f"[DOWNLOAD] file not found: {file_path}")
         return jsonify({'error': 'Result file not found'}), 404
-
+    print(f"Return the file in pat {file_path}, {mimetype}, {filename}")
     return send_file(file_path, mimetype=mimetype, as_attachment=True, download_name=filename)
 
 

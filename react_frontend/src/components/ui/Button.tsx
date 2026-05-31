@@ -107,19 +107,23 @@ const baseStyle: React.CSSProperties = {
 const secondaryStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-tertiary)',
   color: 'var(--text-base)',
-  border: '1px solid transparent',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'transparent',
 }
 
 const secondaryHoverStyle: React.CSSProperties = {
   backgroundColor: 'var(--gray-100)',
-  borderColor: 'color-mix(in srgb, var(--gray-400) 50%, transparent)',
+  // borderColor: 'color-mix(in srgb, var(--gray-400) 50%, transparent)',
 }
 
 /* ── Primary ── */
 const primaryStyle: React.CSSProperties = {
   backgroundColor: 'var(--action-primary)',
   color: 'var(--action-primary-text)',
-  border: '1px solid transparent',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'transparent',
 }
 
 const primaryHoverStyle: React.CSSProperties = {

@@ -32,13 +32,10 @@ export async function convertIgsToStl(file: File): Promise<string> {
  * On an invalid/expired token the server redirects to `/`, so the download
  * simply silently fails rather than throwing.
  */
-export async function downloadResults(token: string): Promise<void> {
-  const form = new FormData();
-  form.append('token', token);
-
+export async function downloadResults(token: string, fileType: 'stl' | 'igs'): Promise<void> {
   const response = await fetch(`${BASE_URL}/download-results`, {
     method: 'POST',
-    body: new URLSearchParams({ token }),
+    body: new URLSearchParams({ token, file_type: fileType }),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     redirect: 'follow',
   });
@@ -47,12 +44,16 @@ export async function downloadResults(token: string): Promise<void> {
     throw new Error(`Download failed: ${response.status} ${response.statusText}`);
   }
 
+  const disposition = response.headers.get('Content-Disposition');
+  const match = disposition?.match(/filename=(.+)/);
+  const filename = match?.[1] ?? `results.${fileType}`;
+
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'results.zip';
+  a.download = filename;
   a.click();
 
   URL.revokeObjectURL(url);
