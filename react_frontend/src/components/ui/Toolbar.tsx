@@ -30,7 +30,7 @@ const ZOOM_MIN  = 10
 const ZOOM_MAX  = 500
 const ACCEPTED_3D = '.igs'
 
-const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
+const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
     {
       zoom = 100,
@@ -164,7 +164,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
   }
 )
 
-Toolbar.displayName = 'Toolbar'
+ToolbarInner.displayName = 'Toolbar'
 
 /* ─── Icons ─── */
 
@@ -334,4 +334,4 @@ const dropdownItemActiveStyle: React.CSSProperties = {
   fontWeight: 600,
 }
 
-export { Toolbar }
+export const Toolbar = React.memo(ToolbarInner)
