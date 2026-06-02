@@ -148,33 +148,31 @@ export function ToolPage() {
     socket.calculateTile({ type: tileType, values: padded })
   }, [socket, tileType])
 
-  const handleTileTypeChange = (type: TileType) => {
-    pendingResetKey.current = type  // camera resets to match new tile type
+  const handleTileTypeChange = React.useCallback((type: TileType) => {
+    pendingResetKey.current = type
     setTileType(type)
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
     socket.calculateTile({ type, values: padded })
-  }
+  }, [socket])
 
-  const handleCalcModeChange = (mode: CalcMode) => {
-    // Clear result and second file on every transition; keep uploadedFile (Surface 1) always
+  const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
     setUploadedFile2(null)
     setCalcMode(mode)
-  }
+  }, [])
 
   /* ── File upload ── */
-  const handleFilesAdd = async (files: File[]) => {
+  const handleFilesAdd = React.useCallback(async (files: File[]) => {
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
 
     if (calcMode === 'ruling') {
       if (files.length >= 2) {
-        // Two files chosen: convert both and replace both slots immediately
         setViewerResetKey('file-' + Date.now())
         try {
           const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
@@ -183,7 +181,6 @@ export function ToolPage() {
           setUploadedB64(r1.stlB64)
         } catch { setErrorMsg('Failed to convert IGS file') }
       } else {
-        // One file: smart-fill next empty slot
         const file = files[0]
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
@@ -198,7 +195,6 @@ export function ToolPage() {
             setUploadedFile2(stlFile)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
-          // Both full — cycle back and replace Surface 1
           setViewerResetKey('file-' + Date.now())
           try {
             const { stlB64, stlFile } = await convertIgsFile(file)
@@ -208,7 +204,6 @@ export function ToolPage() {
         }
       }
     } else {
-      // Non-ruling: single file
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
@@ -217,49 +212,44 @@ export function ToolPage() {
         setUploadedB64(stlB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
-  }
+  }, [calcMode, uploadedFile, uploadedFile2])
 
-  /* Drag-drop onto DualViewerLayout panel 1 — always replaces Surface 1 */
-  const handleFile1Drop = async (file: File) => {
+  const handleFile1Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
       const { stlB64, stlFile } = await convertIgsFile(file)
       setUploadedFile(stlFile)
       setUploadedB64(stlB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
-  }
+  }, [])
 
-  /* Drag-drop onto DualViewerLayout panel 2 — always replaces Surface 2.
-     Surface 2 b64 is not yet forwarded in the calculate payload
-     (backend integration deferred — see spec §7 Out of Scope). */
-  const handleFile2Drop = async (file: File) => {
+  const handleFile2Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
       const { stlFile } = await convertIgsFile(file)
       setUploadedFile2(stlFile)
     } catch { setErrorMsg('Failed to convert IGS file') }
-  }
+  }, [])
 
   /* ── Clear handlers ── */
-  const handleClearSingle = () => {
+  const handleClearSingle = React.useCallback(() => {
     setUploadedFile(null)
     setUploadedB64(null)
     setResultGzB64(null)
     setDownloadToken(null)
-  }
+  }, [])
 
-  const handleClear1 = () => {
+  const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
     setUploadedB64(null)
-  }
+  }, [])
 
-  const handleClear2 = () => {
+  const handleClear2 = React.useCallback(() => {
     setUploadedFile2(null)
-  }
+  }, [])
 
   /* ── Calculate ── */
-  const handleCalculate = () => {
-    // Check aggregated validation errors first
+  const handleCalculate = React.useCallback(() => {
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
       setErrorMsg(allErrors[0].message)
@@ -279,7 +269,6 @@ export function ToolPage() {
         setErrorMsg('Please upload Surface 2')
         return
       }
-      // uploadedB64 is read asynchronously; guard ensures it is ready
       if (!uploadedB64) {
         setErrorMsg('Surface 1 is still loading — please wait a moment')
         return
@@ -303,25 +292,35 @@ export function ToolPage() {
       args: {
         filename: uploadedFile!.name,
         client_ts: performance.now(),
-        args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],  },
+        args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
       },
     })
     socket.calculate({
       filename: uploadedFile!.name,
       client_ts: performance.now(),
-      args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],  },
+      args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
     })
-  }
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedB64, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */
-  const handleExportStl = () => {
+  const handleExportStl = React.useCallback(() => {
     if (!downloadToken) return
     downloadResults(downloadToken, 'stl').catch(() => setErrorMsg('Download failed'))
-  }
-  const handleExportIgs = () => {
+  }, [downloadToken])
+
+  const handleExportIgs = React.useCallback(() => {
     if (!downloadToken) return
     downloadResults(downloadToken, 'igs').catch(() => setErrorMsg('Download failed'))
-  }
+  }, [downloadToken])
+
+  /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
+  const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
+  const handleTileMenuClose  = React.useCallback(() => setIsTileMenuOpen(false), [])
+
+  const fileNames = React.useMemo(
+    () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
+    [uploadedFile, uploadedFile2]
+  )
 
   return (
     <div style={pageStyle}>
@@ -363,7 +362,7 @@ export function ToolPage() {
               onCameraModeChange={setCameraMode}
               onFilesAdd={handleFilesAdd}
               onCalculate={handleCalculate}
-              fileNames={[uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n)}
+              fileNames={fileNames}
             />
           </div>
 
@@ -404,7 +403,7 @@ export function ToolPage() {
                   zoom={zoom}
                   cameraResetKey={viewerResetKey}
                   onZoomChange={setZoom}
-                  onFileDrop={f => handleFilesAdd([f])}
+                  onFileDrop={handleViewerFileDrop}
                   onClear={handleClearSingle}
                 />
               )
@@ -422,7 +421,7 @@ export function ToolPage() {
               onTileTypeChange={handleTileTypeChange}
               onSliderChange={handleTileSliderChange}
               onSliderCommit={handleTileSliderCommit}
-              onClose={() => setIsTileMenuOpen(false)}
+              onClose={handleTileMenuClose}
               onValidationChange={handleValidationChange}
             />
           </div>
