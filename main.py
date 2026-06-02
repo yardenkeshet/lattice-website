@@ -179,6 +179,8 @@ def _dll_from_extrusion(srf_igs: bytes, extrude_length: float, num_tiles, graded
 
 def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
                       out_igs: bytes, out_stl: bytes):
+    print(f"MSDLLMSFromRuling  \nsrf1={srf1} \n srf2={srf2} \n num_tiles={num_tiles}  graded={graded}  tile_type={tile_type}  tile_params={tile_params}  out_igs={out_igs}  out_stl={out_stl}")
+    srf2 = b'C:\\Users\\yaniv\\Uni\\Sem 6\\Lattice Project\\lattice-website\\client_data\\RuledSrf2.igs'
     return _call(_dll.MSDLLMSFromRuling,
                  srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
 
