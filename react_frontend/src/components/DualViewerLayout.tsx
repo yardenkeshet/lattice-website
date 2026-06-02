@@ -17,7 +17,7 @@ export interface DualViewerLayoutProps {
   style?: React.CSSProperties
 }
 
-export function DualViewerLayout({
+function DualViewerLayoutFn({
   file1,
   file2,
   onFile1Drop,
@@ -66,3 +66,6 @@ export function DualViewerLayout({
     </div>
   )
 }
+
+export const DualViewerLayout = React.memo(DualViewerLayoutFn)
+DualViewerLayout.displayName = 'DualViewerLayout'
