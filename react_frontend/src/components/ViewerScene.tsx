@@ -45,7 +45,7 @@ const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
 const SCROLL_ZOOM_MAX  = 500
 
-export function ViewerScene({
+function ViewerSceneFn({
   uploadedFile = null,
   resultStlGzB64 = null,
   cameraMode = 'perspective',
@@ -401,3 +401,6 @@ const clearButtonStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   padding: 0,
 }
+
+export const ViewerScene = React.memo(ViewerSceneFn)
+ViewerScene.displayName = 'ViewerScene'
