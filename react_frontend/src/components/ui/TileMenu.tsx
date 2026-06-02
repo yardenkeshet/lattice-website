@@ -68,7 +68,7 @@ const TILE_OPTIONS: { type: TileType; label: string; imageUrl: string }[] = [
   { type: 'cross_diagonal', label: 'Cross Diagonal',  imageUrl: crossDiagonalImg },
 ]
 
-const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
+const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
   (
     {
       tileType,
@@ -198,7 +198,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
   }
 )
 
-TileMenu.displayName = 'TileMenu'
+TileMenuInner.displayName = 'TileMenu'
 
 /* ─── Close icon ─── */
 
@@ -295,4 +295,4 @@ const sliderRowStyle: React.CSSProperties = {
   gap: 5,
 }
 
-export { TileMenu }
+export const TileMenu = React.memo(TileMenuInner)
