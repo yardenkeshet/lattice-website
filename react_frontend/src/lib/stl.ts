@@ -2,6 +2,17 @@ import * as React from 'react'
 import * as pako from 'pako'
 
 /**
+ * Gzip-compresses an ASCII STL string and returns a base64-encoded result
+ * in the same format the server emits (`base64(gzip(ASCII-STL))`).
+ */
+export function stlTextToGzB64(text: string): string {
+  const compressed = pako.gzip(text)
+  let bin = ''
+  compressed.forEach(b => (bin += String.fromCharCode(b)))
+  return btoa(bin)
+}
+
+/**
  * Decodes a base64-encoded gzipped ASCII STL string (as returned by the server's
  * `result` event) into a Blob URL that Three.js STLLoader can consume.
  *

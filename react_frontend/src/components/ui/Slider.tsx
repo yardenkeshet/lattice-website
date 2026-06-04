@@ -269,7 +269,7 @@ const thumbBaseStyle: React.CSSProperties = {
 
 const thumbHoverStyle: React.CSSProperties = {
   ...thumbBaseStyle,
-  borderColor: 'var(--action-primary)',
+  border: '2px solid var(--action-primary)',
   boxShadow: 'var(--shadow-thumb-hover)',
 }
 

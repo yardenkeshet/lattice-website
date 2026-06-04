@@ -9,7 +9,8 @@ import { ViewerScene } from '../components/ViewerScene'
 import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl } from '../api/httpClient'
-import { useStlBlobUrl } from '../lib/stl'
+import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
+import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import type { TileType, CalcMode, ValidationError } from '../api/types'
 import { DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT } from '../lib/utils'
 
@@ -86,20 +87,22 @@ export function ToolPage() {
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
 
-  /* ── Fire calculateTile once on mount so preview is ready when TileMenu opens ── */
+  /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
   React.useEffect(() => {
-    const padded: [number, number, number] = [
-      tileSliderValues[0] ?? 0,
-      tileSliderValues[1] ?? 0,
-      tileSliderValues[2] ?? 0,
-    ]
-    socket.calculateTile({ type: tileType, values: padded })
+    fetch(defaultTileUrl)
+      .then(r => r.text())
+      .then(text => {
+        setTilePreviewGzB64(stlTextToGzB64(text))
+        setResultGzB64(stlTextToGzB64(text))
+      })
+      .catch(() => {/* preview stays null; first slider commit will populate it */})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
     const unsubResult = socket.onResult(payload => {
+      console.log("socket: onResult: ", payload)
       if (payload.kind === 'tile_stl') {
         // Tile preview from calculate_tile — update mini-preview and main viewer
         // (main viewer only in non-ruling mode; ruling mode shows two surfaces, not a tile)
@@ -465,7 +468,7 @@ const centerStyle: React.CSSProperties = {
   padding: 20,
   minWidth: 0,
   minHeight: 0,
-  maxHeight: 395,
+  // maxHeight: 395,
 }
 
 const toolbarRowStyle: React.CSSProperties = {

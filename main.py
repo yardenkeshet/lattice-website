@@ -732,7 +732,6 @@ def handle_calculate_tile(data):
     tile_params = (c_double * 3)(p1, p2, p3)
     graded      = (c_double * 2)(0.2, 1.5)
 
-    print(f"Backend received: {tile_type} with P1:{p1}, P2:{p2}, P3:{p3}")
     calculate_tile(tile_params, graded, tile_type)
 
 
