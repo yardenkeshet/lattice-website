@@ -17,10 +17,9 @@ import {
   DEFAULT_ZOOM, DEFAULT_G1, DEFAULT_G2,
   DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
-  type TileType,
   RULING,
 } from '../lib/parameters'
-import { type CalcMode } from '../calculation_params'
+import { type CalcMode, type TileType } from '../calculation_params'
 import type { ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */

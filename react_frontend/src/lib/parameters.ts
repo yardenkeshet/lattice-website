@@ -29,7 +29,7 @@ export const INITIAL_VIEWER_RESET_KEY = 'initial'
 export const DEFAULT_TILE_TYPE: TileType = DIAGONAL
 
 
-import type { CalcMode, TILE_TYPES } from '../calculation_params'
+import type { CalcMode, TileType } from '../calculation_params'
 
 export interface TileDef {
     label: string
@@ -45,4 +45,3 @@ export interface SliderDef {
     step: number
 }
 
-export type TileType = typeof TILE_TYPES[number]

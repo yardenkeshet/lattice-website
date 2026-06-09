@@ -1,5 +1,4 @@
-import { type TileType } from '../lib/parameters'
-// ─── calculate event ─────────────────────────────────────────────────────────
+import type { TileType } from "../calculation_params";
 
 export interface CalculateArgs {
   tileType: TileType;

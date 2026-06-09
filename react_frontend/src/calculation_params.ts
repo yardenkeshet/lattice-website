@@ -1,27 +1,20 @@
-import { CROSS, CROSS_DIAGONAL, DIAGONAL, EXTRUSION, REVOLUTION, RULING, type TileDef, type TileType } from "./lib/parameters";
+import { CROSS, CROSS_DIAGONAL, DIAGONAL, EXTRUSION, REVOLUTION, RULING, type TileDef } from "./lib/parameters";
 
 
-//Permitted calculation modes:
-
-export const CALC_MODES = [EXTRUSION, REVOLUTION, RULING] as const
-export type CalcMode = (typeof CALC_MODES)[number]
 interface CalcModeDef { label: string} 
-// Actualy used calculation modes
-
-export const CALC_MODE_DEFS: Record<CalcMode, CalcModeDef> = {
+export const CALC_MODE_DEFS: Record<string, CalcModeDef> = {
     [EXTRUSION]: { label: 'Extrusion' },
     [REVOLUTION]: { label: 'Revolution' },
     [RULING]: { label: 'Ruling' },
 }
 
-
+export type CalcMode = keyof typeof CALC_MODE_DEFS
 
 import crossImg from './assets/TileTypes/cross.png'
 import diagonalImg from './assets/TileTypes/diagonal.png'
 import crossDiagonalImg from './assets/TileTypes/cross-diagonal.png'
 
-export const TILE_TYPES = [CROSS, DIAGONAL, CROSS_DIAGONAL] as const
-export const TILE_DEFS: Record<TileType, TileDef> = {
+export const TILE_DEFS: Record<string, TileDef> = {
     [CROSS]: {
         label: 'Cross',
         imageUrl: crossImg,
@@ -48,3 +41,5 @@ export const TILE_DEFS: Record<TileType, TileDef> = {
         ],
     },
 }
+
+export type TileType = keyof typeof TILE_DEFS

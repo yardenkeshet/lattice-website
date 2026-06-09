@@ -6,10 +6,9 @@ import { NumberInput } from './NumberInput'
 import { Dropdown } from './Dropdown'
 import { TileCard } from './TileCard'
 import { IconButton } from './IconButton'
-import { type TileType } from '../../lib/parameters'
-import { CALC_MODE_DEFS, CALC_MODES, type CalcMode } from '../../calculation_params'
+import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_params'
 
-const CALC_MODE_OPTIONS = CALC_MODES.map(value => ({ value, label: CALC_MODE_DEFS[value].label }))
+const CALC_MODE_OPTIONS = Object.entries(CALC_MODE_DEFS).map(([mode, value]) => ({ value: mode, label: value.label }))
 
 /* ─── Public API ─── */
 
@@ -49,7 +48,7 @@ export interface LatticeMenuProps {
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
   (
     {
-      tileType,
+      // tileType,
       tileLabel,
       tilePreviewUrl,
       nt1, nt2, nt3, g1, g2,
@@ -83,7 +82,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       )
     }
 
-    const tileName = tileLabel ?? { cross: 'Cross', diagonal: 'Diagonal', cross_diagonal: 'Cross Diagonal' }[tileType]
+    const tileName = tileLabel
 
     return (
       <div

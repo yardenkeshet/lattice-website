@@ -28,6 +28,7 @@ export const Default: Story = {
     const [mode, setMode] = useState<'perspective' | 'orthographic'>('perspective')
     return (
       <Toolbar
+        fileNames={[]}
         zoom={zoom}
         cameraMode={mode}
         onZoomChange={setZoom}
@@ -43,6 +44,7 @@ export const Calculating: Story = {
   name: 'While calculating',
   render: () => (
     <Toolbar
+      fileNames={[]}
       zoom={100}
       cameraMode="perspective"
       isCalculating

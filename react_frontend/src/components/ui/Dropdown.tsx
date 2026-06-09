@@ -276,4 +276,3 @@ const itemStyle: React.CSSProperties = {
 }
 
 export { Dropdown }
-export type { DropdownOption }

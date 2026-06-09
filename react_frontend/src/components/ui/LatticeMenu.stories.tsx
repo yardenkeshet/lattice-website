@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { LatticeMenu } from './LatticeMenu'
-import type { CalcMode } from '../../calculation_params'
-import type { TileType } from '../../lib/parameters'
+import type { CalcMode, TileType } from '../../calculation_params'
 
 const meta: Meta<typeof LatticeMenu> = {
   title: 'UI/LatticeMenu',

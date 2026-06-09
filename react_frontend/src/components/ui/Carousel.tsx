@@ -299,4 +299,3 @@ const dotActiveStyle: React.CSSProperties = {
 }
 
 export { Carousel }
-export type { CarouselImage }

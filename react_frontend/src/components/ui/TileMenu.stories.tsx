@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { TileMenu, defaultSliderValues } from './TileMenu'
-import type { TileType } from '../../lib/parameters'
+import type { TileType } from '../../calculation_params'
 
 const meta: Meta<typeof TileMenu> = {
   title: 'UI/TileMenu',

@@ -4,8 +4,8 @@ import { useStlBlobUrl } from '../../lib/stl'
 import { type ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
-import { CROSS, type TileType } from '../../lib/parameters'
-import { TILE_DEFS, TILE_TYPES } from '../../calculation_params'
+import { CROSS } from '../../lib/parameters'
+import { TILE_DEFS, type TileType } from '../../calculation_params'
 
 /* ─── Per-tile-type definitions ─── */
 
@@ -122,15 +122,15 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
           <span style={sectionLabelStyle}>Tile Type</span>
           <div style={tileGridWrapperStyle}>
             <div style={tileGridStyle}>
-              {TILE_TYPES.map(type => (
+              {Object.entries(TILE_DEFS).map(([type, def]) => (
                 <TileCard
                   key={type}
                   size="small"
-                  label={TILE_DEFS[type].label}
-                  imageUrl={TILE_DEFS[type].imageUrl}
+                  label={def.label}
+                  imageUrl={def.imageUrl}
                   selected={tileType === type}
                   onClick={() => onTileTypeChange(type)}
-                  aria-label={TILE_DEFS[type].label}
+                  aria-label={def.label}
                 />
               ))}
             </div>
