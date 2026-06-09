@@ -103,14 +103,18 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
           aria-live="polite"
         >
           {images.map((img, i) => (
-            <img
+            <div
               key={img.src}
-              src={img.src}
-              alt={img.alt ?? `Slide ${i + 1}`}
-              style={slideStyle}
+              style={slideContainerStyle}
               aria-hidden={i !== current}
-              draggable={false}
-            />
+            >
+              <img
+                src={img.src}
+                alt={img.alt ?? `Slide ${i + 1}`}
+                style={slideImgStyle}
+                draggable={false}
+              />
+            </div>
           ))}
         </div>
 
@@ -215,12 +219,21 @@ const trackStyle: React.CSSProperties = {
   transition: 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
 }
 
-const slideStyle: React.CSSProperties = {
+const slideContainerStyle: React.CSSProperties = {
   flex: '0 0 100%',
   width: '100%',
   height: '100%',
-  objectFit: 'cover',
-  objectPosition: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+
+const slideImgStyle: React.CSSProperties = {
+  maxWidth: '100%',
+  maxHeight: '100%',
+  width: 'auto',
+  height: 'auto',
+  display: 'block',
 }
 
 const overlayStyle: React.CSSProperties = {
