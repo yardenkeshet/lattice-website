@@ -31,7 +31,7 @@ describe('downloadResults()', () => {
       new Response(new Blob(['zip-content']), { status: 200 })
     )
 
-    await downloadResults('tok-abc-123')
+    await downloadResults('tok-abc-123', 'stl')
 
     expect(fetchSpy).toHaveBeenCalledOnce()
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
@@ -44,7 +44,7 @@ describe('downloadResults()', () => {
   it('throws when the server returns a non-ok status', async () => {
     fetchSpy.mockResolvedValue(new Response('', { status: 400, statusText: 'Bad Request' }))
 
-    await expect(downloadResults('bad-token')).rejects.toThrow('Download failed: 400 Bad Request')
+    await expect(downloadResults('bad-token','stl')).rejects.toThrow('Download failed: 400 Bad Request')
   })
 
   it('triggers a browser file download with filename results.zip', async () => {
@@ -55,7 +55,7 @@ describe('downloadResults()', () => {
     const anchorMock = { href: '', download: '', click: vi.fn() }
     vi.spyOn(document, 'createElement').mockReturnValue(anchorMock as unknown as HTMLElement)
 
-    await downloadResults('tok-xyz')
+    await downloadResults('tok-xyz', 'stl')
 
     expect(anchorMock.download).toBe('results.zip')
     expect(anchorMock.click).toHaveBeenCalledOnce()

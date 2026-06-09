@@ -1,6 +1,4 @@
 export type {
-  TileType,
-  CalcMode,
   CalculateArgs,
   CalculatePayload,
   CalculateTilePayload,

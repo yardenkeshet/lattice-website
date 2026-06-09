@@ -11,6 +11,9 @@ __pycache__/
 client_data/
 last_results/
 last_tiles_results/
+last_tiles_results/TileCross.stl
+last_tiles_results/TileDiagnoal.stl
+last_tiles_results/TileCross.stl
 
 # Node / React
 react_frontend/node_modules/
