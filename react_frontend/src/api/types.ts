@@ -11,6 +11,9 @@ export interface CalculateArgs {
   p3: number;
   g1: number;
   g2: number;
+  p1: number;
+  p2: number;
+  p3: number;
 }
 
 export interface CalculatePayload {
@@ -24,12 +27,16 @@ export interface CalculatePayload {
   args: CalculateArgs;
 }
 
+export interface ConvertIGESToSTLPayload {
+  filename: string;
+  data: string;              // raw IGES text content (not base64)
+}
+
 // ─── calculate_tile event ────────────────────────────────────────────────────
 
 export interface CalculateTilePayload {
   type: TileType;
-  /** [p1, p2, p3] — tile shape parameters */
-  values: [number, number, number];
+  values: [number, number, number];   // [p1, p2, p3]
 }
 
 // ─── result event (server → client) ──────────────────────────────────────────
@@ -38,11 +45,9 @@ export interface CalculateTilePayload {
 // calculate       → one ModelSTLResult (kind: 'model_stl', carries STL + download_token)
 
 export interface Timings {
-  /** null when client_ts was not provided in the request */
   client_to_server_ms: number | null;
-  time_processed_ms: number;
+  time_dll_ms: number;        // replaces old time_parsed_ms + time_processed_ms
   time_compress_ms: number;
-  time_parsed_ms: number;
   overall_ms: number;
 }
 
@@ -70,11 +75,16 @@ export type ResultPayload = TileSTLResult | ModelSTLResult;
 
 // ─── error event (server → client) ───────────────────────────────────────────
 //
-// The server uses two inconsistent shapes; ErrorPayload normalises them.
+// Backend uses two shapes inconsistently: { msg } and { message }.
+// Backend also emits a 'warning' event (malformed IGS) with { msg, details }.
 
 export interface ErrorPayload {
-  /** normalised message (from either `msg` or `message` field) */
-  message: string;
+  message: string;            // normalise both `msg` and `message` in your handler
+}
+
+export interface WarningPayload {
+  msg: string;
+  details: string[];
 }
 
 // ─── update event (server → client) ─────────────────────────────────────────

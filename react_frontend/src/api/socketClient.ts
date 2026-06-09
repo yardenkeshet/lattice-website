@@ -8,6 +8,9 @@ import type {
   ErrorPayload,
   UpdatePayload,
   LogLine,
+  TileSTLResult,
+  ModelSTLResult,
+  ConvertIGESToSTLPayload,
 } from './types';
 
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
@@ -28,7 +31,7 @@ interface RawError {
 
 // ─── Public callback types ────────────────────────────────────────────────────
 
-type ResultHandler = (payload: ResultPayload) => void;
+type ResultHandler = (payload: Result) => void;
 type ErrorHandler = (payload: ErrorPayload) => void;
 type LogHandler = (line: LogLine) => void;
 type ConnectHandler = () => void;
@@ -60,6 +63,10 @@ export class LatticeSocketClient {
     this.socket.emit('calculate', payload);
   }
 
+  convertIGESToSTL(payload: ConvertIGESToSTLPayload): void {
+    this.socket.emit('convert_igs_to_stl', payload);
+  }
+
   calculateTile(payload: CalculateTilePayload): void {
     this.socket.emit('calculate_tile', payload);
   }
@@ -88,10 +95,11 @@ export class LatticeSocketClient {
   }
 
   onError(handler: ErrorHandler): () => void {
-    this.socket.on('error', (raw: RawError) => {
+    const wrapper = (raw: RawError) => {
       handler({ message: raw.msg ?? raw.message ?? 'Unknown server error' });
-    });
-    return () => this.socket.off('error', handler);
+    };
+    this.socket.on('error', wrapper);
+    return () => this.socket.off('error', wrapper);
   }
 
   onUpdate(handler: (payload: UpdatePayload) => void): () => void {
