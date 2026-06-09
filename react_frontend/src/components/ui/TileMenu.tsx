@@ -4,7 +4,8 @@ import { useStlBlobUrl } from '../../lib/stl'
 import { type ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
-import { CROSS, TILE_DEFS, TILE_TYPES, type TileType } from '../../lib/parameters'
+import { CROSS, type TileType } from '../../lib/parameters'
+import { TILE_DEFS, TILE_TYPES } from '../../calculation_params'
 
 /* ─── Per-tile-type definitions ─── */
 
@@ -52,7 +53,7 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
     ref
   ) => {
     const previewUrl = useStlBlobUrl(previewStlGzB64)
-    const defs = TILE_DEFS[tileType].sliders
+    const defs = TILE_DEFS[tileType].sliders 
 
     const innerRadiusError =
       tileType === CROSS && (sliderValues[1] ?? 0) >= (sliderValues[0] ?? Infinity)
@@ -140,7 +141,7 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
         {/* ── Dynamic sliders ── */}
         <div style={sectionStyle}>
-          {defs.map((def, i) => {
+          {defs.map((def, i: number) => {
             const isInnerRadius = tileType === CROSS && i === 1
             return (
               <div key={def.label} style={sliderRowStyle}>

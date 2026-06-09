@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { LatticeMenu } from './LatticeMenu'
-import type { TileType, CalcMode } from '../../api/types'
+import type { CalcMode } from '../../calculation_params'
+import type { TileType } from '../../lib/parameters'
 
 const meta: Meta<typeof LatticeMenu> = {
   title: 'UI/LatticeMenu',
@@ -44,7 +45,8 @@ function Demo({ initialOpen = true }: { initialOpen?: boolean }) {
       onG1Change={setG1} onG2Change={setG2}
       onCalculationModeChange={setMode}
       onOpenTileMenu={() => alert('open tile menu')}
-      onExport={() => alert('export')}
+      onExportIgs={() => alert('export')}
+      onExportStl={() => alert('export')}
       onToggle={() => setIsOpen(o => !o)}
     />
   )
@@ -82,7 +84,8 @@ export const ExportEnabled: Story = {
         onG1Change={setG1} onG2Change={setG2}
         onCalculationModeChange={setMode}
         onOpenTileMenu={() => {}}
-        onExport={() => alert('downloading...')}
+        onExportIgs={() => alert('downloading...')}
+        onExportStl={() => alert('downloading...')}
         onToggle={() => setIsOpen(o => !o)}
       />
     )

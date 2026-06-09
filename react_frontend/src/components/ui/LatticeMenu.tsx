@@ -6,7 +6,8 @@ import { NumberInput } from './NumberInput'
 import { Dropdown } from './Dropdown'
 import { TileCard } from './TileCard'
 import { IconButton } from './IconButton'
-import { CALC_MODE_DEFS, CALC_MODES, type CalcMode, type TileType } from '../../lib/parameters'
+import { type TileType } from '../../lib/parameters'
+import { CALC_MODE_DEFS, CALC_MODES, type CalcMode } from '../../calculation_params'
 
 const CALC_MODE_OPTIONS = CALC_MODES.map(value => ({ value, label: CALC_MODE_DEFS[value].label }))
 

@@ -46,9 +46,9 @@ describe('LatticeSocketClient', () => {
   it('emits "calculate" with the full payload', () => {
     const payload: CalculatePayload = {
       filename: 'part.stl',
-      stl_text_b64: 'AAAA',
+      
       client_ts: 1000,
-      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5 },
+      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3 },
     }
     client.calculate(payload)
     expect(mockEmit).toHaveBeenCalledWith('calculate', payload)

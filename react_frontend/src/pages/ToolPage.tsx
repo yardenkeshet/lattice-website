@@ -18,10 +18,9 @@ import {
   DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
   type TileType,
-  type CalcMode,
   RULING,
-  CROSS_DIAGONAL,
 } from '../lib/parameters'
+import { type CalcMode } from '../calculation_params'
 import type { ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
@@ -167,7 +166,7 @@ export function ToolPage() {
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type:(type=='yaniv' ? CROSS_DIAGONAL : type), values: padded })
+    socket.calculateTile({ type, values: padded })
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
