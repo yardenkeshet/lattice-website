@@ -178,7 +178,7 @@ const circleBlobImgStyle: React.CSSProperties = {
 
 const labLogoStyle: React.CSSProperties = {
   position: 'absolute',
-  left: '0px',
+  left: '-25px',
   top: '5px',
   width: '239px',
   height: '148px',
