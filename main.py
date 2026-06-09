@@ -1,5 +1,6 @@
 # main2.py — same endpoints as main.py, but calls MSDLL64.dll directly via ctypes.
 import os
+import argparse
 import shutil
 import time
 import base64
@@ -190,11 +191,17 @@ def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: float = 0.0) -> s
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# CLI args — parsed early so CORS can use --frontend-port
+_ap = argparse.ArgumentParser(description='Lattice website backend', add_help=True)
+_ap.add_argument('--port', type=int, default=5003, help='Backend listen port (default: 5003)')
+_ap.add_argument('--frontend-port', type=int, default=5173, help='Frontend dev server port for CORS (default: 5173)')
+_cli_args, _ = _ap.parse_known_args()
+
 # Flask / SocketIO setup
 # ──────────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost"]}})
+CORS(app, resources={r"/*": {"origins": [f"http://localhost:{_cli_args.frontend_port}", "http://localhost"]}})
 
 app.config['SECRET_KEY'] = 'secret!'
 app.config.update(
@@ -774,12 +781,12 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/viewlog007')
+@app.route('/viewlog')
 def view_log():
     return render_template('log_view.html', log_file=LOG_FILE_NAME)
 
 
-@app.route('/viewfulllog007')
+@app.route('/viewfulllog')
 def view_full_log():
     try:
         with open(LOG_FILE_NAME, 'r', encoding='utf-8') as f:
@@ -830,5 +837,5 @@ def download_results():
 
 if __name__ == '__main__':
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    logger.info("Server starting on http://localhost:5003")
-    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
+    logger.info(f"Server starting on http://localhost:{_cli_args.port}")
+    socketio.run(app, host='0.0.0.0', port=_cli_args.port, allow_unsafe_werkzeug=True)

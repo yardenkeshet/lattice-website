@@ -39,7 +39,7 @@ type DisconnectHandler = (reason: string) => void;
 export class LatticeSocketClient {
   private socket: Socket;
 
-  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL ?? '') {
+  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? '') {
     this.socket = io(serverUrl);
     this.socket.on('result', this.handleRawResult.bind(this));
   }
