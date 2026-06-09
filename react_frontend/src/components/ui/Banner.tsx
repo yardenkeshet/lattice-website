@@ -3,7 +3,7 @@ import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
 
 import defaultKonsis   from '../../assets/Banner/konsis 10.jpg'
-import defaultLabLogo  from '../../assets/Banner/logo-tamc (1).png'
+import defaultLabLogo  from '../../assets/CSLogo400.png'
 import defaultCenter   from '../../assets/Banner/Lattice.png'
 import defaultRightLogo from '../../assets/Banner/technion-logo (1).png'
 
@@ -166,7 +166,7 @@ const circleBlobStyle: React.CSSProperties = {
   height: 'var(--banner-circle-size)',
   borderRadius: 'var(--radius-full)',
   top: '-82px',
-  left: '-182px',
+  left: '-273px',
   overflow: 'hidden',
 }
 
@@ -176,23 +176,22 @@ const circleBlobImgStyle: React.CSSProperties = {
   objectFit: 'cover',
 }
 
-/* TAMC logo — Figma: x=25, y=20, w=191, h=118 */
 const labLogoStyle: React.CSSProperties = {
   position: 'absolute',
-  left: '25px',
-  top: '20px',
-  width: '191px',
-  height: '118px',
+  left: '-25px',
+  top: '5px',
+  width: '239px',
+  height: '148px',
   objectFit: 'contain',
 }
 
 /* TAMC logo button (when onLeftLogoClick is provided) */
 const labLogoButtonStyle: React.CSSProperties = {
   position: 'absolute',
-  left: '25px',
-  top: '20px',
-  width: '191px',
-  height: '118px',
+  left: '-25px',
+  top: '5px',
+  width: '239px',
+  height: '148px',
   background: 'none',
   border: 'none',
   padding: 0,
