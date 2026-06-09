@@ -201,7 +201,7 @@ _cli_args, _ = _ap.parse_known_args()
 # ──────────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": [f"http://localhost:{_cli_args.frontend_port}", "http://localhost"]}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.config['SECRET_KEY'] = 'secret!'
 app.config.update(
