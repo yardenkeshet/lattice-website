@@ -223,12 +223,23 @@ class _JsonFormatter(logging.Formatter):
     def format(self, record):
         record.message = record.getMessage()
         obj = {'ts': self.formatTime(record), 'level': record.levelname, 'msg': record.message}
+        sid = getattr(record, 'sid', None)
+        if sid:
+            obj['sid'] = sid
         if record.exc_info:
             obj['exc'] = self.formatException(record.exc_info)
         return json.dumps(obj)
 
-_use_json = os.environ.get('LOG_FORMAT') == 'json'
-fmt = _JsonFormatter() if _use_json else logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+class _TextFormatter(logging.Formatter):
+    def format(self, record):
+        s = super().format(record)
+        sid = getattr(record, 'sid', None)
+        if sid:
+            s += f'  sid={sid}'
+        return s
+
+_use_json = True #os.environ.get('LOG_FORMAT') == 'json'
+fmt = _JsonFormatter() if _use_json else _TextFormatter('%(asctime)s %(levelname)-8s %(message)s')
 
 logger = logging.getLogger('lattice')
 logger.setLevel(logging.DEBUG)
@@ -439,7 +450,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
     }
     stl_filename = tile_filename_map.get(tile_type_int)
     if stl_filename is None:
-        logger.error(f"[TILE] Unknown tile type: {tile_type_str}")
+        logger.error(f"[TILE] Unknown tile type: {tile_type_str}", extra={'sid': sid})
         return
 
     stl_tile_path = os.path.join(os.getcwd(), LAST_TILES_RESULTS_DIR, stl_filename)
@@ -454,7 +465,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
                 gz.write(stl_content.encode('utf-8'))
             compressed = buf.getvalue()
         except Exception:
-            logger.exception("Tile compression failed")
+            logger.exception("Tile compression failed", extra={'sid': sid})
             emit('error', {'msg': 'Compression failed'})
             return
 
@@ -470,8 +481,8 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
             f"[TILE] {tile_type_str}"
             f"  p=({tile_params[0]:.2f},{tile_params[1]:.2f},{tile_params[2]:.2f})"
             f"  g=({graded[0]:.2f},{graded[1]:.2f})"
-            f"  {timings['overall_ms']:.0f}ms"
-            f"  sid={sid}"
+            f"  {timings['overall_ms']:.0f}ms",
+            extra={'sid': sid},
         )
         emit('result', {
             'filename': stl_tile_path,
@@ -480,7 +491,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
             'timings': timings,
         })
     else:
-        logger.error(f"[TILE] STL not found: {stl_tile_path}")
+        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra={'sid': sid})
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -527,13 +538,13 @@ client_state = {}
 
 
 def worker_loop(state):
-    logger.debug(f"[WORKER] started sid={state['sid']}")
+    logger.debug("[WORKER] started", extra={'sid': state['sid']})
     while True:
         state["event"].wait()
         state["event"].clear()
         tile_type = state["tile_type"]
         p1, p2, p3 = state["p1"], state["p2"], state["p3"]
-        logger.debug(f"[WORKER] processing tile_type={tile_type} p=({p1},{p2},{p3})")
+        logger.debug(f"[WORKER] processing tile_type={tile_type} p=({p1},{p2},{p3})", extra={'sid': state['sid']})
 
 
 @socketio.on('connect')
@@ -541,7 +552,7 @@ def on_connect():
     global log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
-    logger.info(f'Client connected {sid}  ip={ip_address}')
+    logger.info(f'Client connected  ip={ip_address}', extra={'sid': sid})
 
     state = {
         "sid": sid,
@@ -579,7 +590,7 @@ def clean_session(sid):
 
 @socketio.on('disconnect')
 def on_disconnect():
-    logger.info(f'Client disconnected {request.sid}')
+    logger.info('Client disconnected', extra={'sid': request.sid})
     clean_session(request.sid)
 
 
@@ -603,15 +614,18 @@ def handle_calculate(data):
         p2  = float(args.get('p2', 0.0))
         p3  = float(args.get('p3', 0.4))
     except (TypeError, ValueError) as exc:
-        logger.exception(f"[CALC] Bad numeric argument: {exc}")
+        logger.exception(f"[CALC] Bad numeric argument: {exc}", extra={'sid': sid})
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
-    logger.info(f"[CALC] {filename}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  sid={sid}")
+    logger.info(
+        f"[CALC] {filename}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})",
+        extra={'sid': sid},
+    )
 
     if tile_type_int is None:
-        logger.error(f"[CALC] Unknown tileType: {tile_type!r}")
+        logger.error(f"[CALC] Unknown tileType: {tile_type!r}", extra={'sid': sid})
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
@@ -620,7 +634,7 @@ def handle_calculate(data):
     json_disk_path = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.json"))
 
     if not os.path.exists(igs_disk_path):
-        logger.error(f"[CALC] IGS file not found on disk: {igs_disk_path}")
+        logger.error(f"[CALC] IGS file not found on disk: {igs_disk_path}", extra={'sid': sid})
         emit('error', {'msg': 'IGS file not found — upload it first via convert_igs_to_stl'})
         return
 
@@ -628,7 +642,7 @@ def handle_calculate(data):
         with open(json_disk_path, 'w', encoding='utf-8') as jf:
             json.dump({'filename': filename, 'args': args, 'sid': sid}, jf, indent=2)
     except OSError:
-        logger.warning("[CALC] Could not save JSON metadata (non-fatal)", exc_info=True)
+        logger.warning("[CALC] Could not save JSON metadata (non-fatal)", exc_info=True, extra={'sid': sid})
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
@@ -644,23 +658,23 @@ def handle_calculate(data):
             MSDLL_TILE_CROSS_DIAGONAL: ('ruling',      do_Ruling),
         }
         dispatch_name, dispatch_fn = dispatch_map[tile_type_int]
-        logger.info(f"[CALC] -> {dispatch_name}  igs={os.path.basename(igs_disk_path)}  sid={sid}")
+        logger.info(f"[CALC] -> {dispatch_name}  igs={os.path.basename(igs_disk_path)}", extra={'sid': sid})
         download_token, stl_content = dispatch_fn(
             sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
         )
     except FileNotFoundError as exc:
-        logger.exception(f"[CALC] DLL output file not found: {exc}")
+        logger.exception(f"[CALC] DLL output file not found: {exc}", extra={'sid': sid})
         emit('error', {'msg': f'DLL did not produce output file: {exc}'})
         return
     except Exception as exc:
-        logger.exception(f"[CALC] DLL call failed: {exc}")
+        logger.exception(f"[CALC] DLL call failed: {exc}", extra={'sid': sid})
         emit('error', {'msg': f'Processing error: {exc}'})
         return
 
     t_dll_end = time.time()
 
     if not stl_content:
-        logger.error("[CALC] No STL content produced after DLL call")
+        logger.error("[CALC] No STL content produced after DLL call", extra={'sid': sid})
         emit('error', {'msg': 'No output produced by DLL'})
         return
 
@@ -670,7 +684,7 @@ def handle_calculate(data):
         t_comp_end = time.time()
         comp_kb = len(base64.b64decode(compressed_b64)) / 1024
     except Exception as exc:
-        logger.exception(f"[CALC] Compression failed: {exc}")
+        logger.exception(f"[CALC] Compression failed: {exc}", extra={'sid': sid})
         emit('error', {'msg': 'Compression failed'})
         return
 
@@ -696,8 +710,8 @@ def handle_calculate(data):
         f"[CALC] done  {comp_kb:.0f}KB"
         f"  overall={timings['overall_ms']}ms"
         f"  dll={timings['time_dll_ms']}ms"
-        f"  compress={timings['time_compress_ms']}ms"
-        f"  sid={sid}"
+        f"  compress={timings['time_compress_ms']}ms",
+        extra={'sid': sid},
     )
 
 @socketio.on('calculate_tile')
@@ -711,7 +725,7 @@ def handle_calculate_tile(data):
 
         calculate_tile(tile_params, graded, tile_type, request.sid)
     except Exception as exc:
-        logger.exception(f"[TILE] bad request: {exc}  sid={request.sid}")
+        logger.exception(f"[TILE] bad request: {exc}", extra={'sid': request.sid})
         emit('error', {'msg': f'Bad tile request: {exc}'})
 
 
@@ -800,7 +814,7 @@ def download_results():
         filename = output_map['out_igs']
         mimetype = 'application/octet-stream'
     else:
-        logger.warning(f"[DOWNLOAD] unknown file_type: {file_type!r}  sid={output_map['sid']}")
+        logger.warning(f"[DOWNLOAD] unknown file_type: {file_type!r}", extra={'sid': output_map['sid']})
         return jsonify({'error': f'Unknown file_type: {file_type}'}), 400
 
     file_path = os.path.join(out_folder, filename)
@@ -808,12 +822,13 @@ def download_results():
         logger.error(f"[DOWNLOAD] file not found: {file_path}")
         return jsonify({'error': 'Result file not found'}), 404
 
-    logger.info(f"[DOWNLOAD] {filename}  sid={output_map['sid']}")
+    logger.info(f"[DOWNLOAD] {filename}", extra={'sid': output_map['sid']})
     return send_file(file_path, mimetype=mimetype, as_attachment=True, download_name=filename)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     logger.info("Server starting on http://localhost:5003")
     socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)

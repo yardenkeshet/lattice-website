@@ -2,67 +2,216 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ log_file }} Real-Time Viewer</title>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <title>Log Viewer</title>
     <style>
-        body { font-family: monospace; background-color: #282c34; color: #abb2bf; margin: 0; padding: 20px; }
-        h1 { color: #61afef; text-align: center; margin-bottom: 30px; }
-        .log-container {
-            background-color: #3e4451;
-            padding: 15px;
-            border-radius: 8px;
-            min-height: 500px;
-            max-height: 85vh;
-            overflow-y: auto; /* Allows scrolling */
-            white-space: pre-wrap; /* Wraps log lines */
-            font-size: 0.85em;
-            line-height: 1.4;
-            border: 1px solid #5c6370;
-        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:monospace;font-size:13px;background:#21252b;color:#abb2bf;padding:16px 20px}
+        h1{color:#61afef;text-align:center;margin-bottom:16px;font-size:1em;letter-spacing:.05em;text-transform:uppercase}
+        .toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 12px;align-items:center}
+        .toolbar input[type=text]{flex:1;min-width:140px;height:32px;font-size:12px;font-family:monospace;padding:0 10px;background:#282c34;border:1px solid #3e4451;border-radius:6px;color:#abb2bf}
+        .toolbar input[type=text]::placeholder{color:#4b5263}
+        .filters{display:flex;gap:6px;flex-wrap:wrap}
+        .lvl-btn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid transparent;cursor:pointer;transition:opacity .15s}
+        .lvl-btn[data-level=INFO]{background:#2d4a2d;color:#98c379;border-color:#3a6a3a}
+        .lvl-btn[data-level=DEBUG]{background:#3e4451;color:#abb2bf;border-color:#555}
+        .lvl-btn[data-level=WARNING]{background:#4a3d1a;color:#e5c07b;border-color:#6a5a2a}
+        .lvl-btn[data-level=ERROR]{background:#4a1f22;color:#e06c75;border-color:#6a3035}
+        .lvl-btn.off{opacity:.35}
+        select{height:32px;font-size:12px;padding:0 8px;background:#282c34;border:1px solid #3e4451;border-radius:6px;color:#abb2bf}
+        .sep{width:1px;height:24px;background:#3e4451;align-self:center}
+        .stats{font-size:11px;color:#4b5263;white-space:nowrap}
+        .log-wrap{background:#282c34;border-radius:8px;border:1px solid #3e4451;max-height:80vh;overflow-y:auto}
+        .log-entry{display:flex;flex-direction:column;padding:3px 12px;border-left:3px solid transparent;border-bottom:1px solid rgba(255,255,255,.04)}
+        .log-entry:hover{background:rgba(255,255,255,.03)}
+        .log-entry.E{border-left-color:#e06c75;background:rgba(224,108,117,.06)}
+        .log-entry.W{border-left-color:#e5c07b;background:rgba(229,192,123,.05)}
+        .log-line{display:flex;gap:8px;align-items:baseline}
+        .ts{color:#4b5263;flex-shrink:0;min-width:68px;font-size:11px}
+        .badge{flex-shrink:0;font-weight:600;font-size:10px;padding:1px 6px;border-radius:3px;min-width:54px;text-align:center}
+        .badge.INFO{background:#2d4a2d;color:#98c379}
+        .badge.DEBUG{background:#3e4451;color:#636d83}
+        .badge.WARNING{background:#4a3d1a;color:#e5c07b}
+        .badge.ERROR{background:#4a1f22;color:#e06c75}
+        .msg{color:#abb2bf;flex:1;white-space:pre-wrap;overflow-wrap:break-word}
+        .prefix{color:#c678dd;font-weight:bold}
+        .sid-pill{flex-shrink:0;background:#1d3248;color:#61afef;font-size:10px;padding:1px 7px;border-radius:10px;cursor:default}
+        .exc-block{margin:3px 0 4px 90px;padding:5px 10px;background:rgba(224,108,117,.1);border-left:2px solid #e06c75;color:#e06c75;font-size:11px;white-space:pre-wrap;border-radius:0 3px 3px 0}
+        .empty{padding:20px;color:#4b5263;text-align:center;font-size:12px}
+        .group-hdr{padding:4px 12px;background:#1e2127;font-size:10px;color:#61afef;letter-spacing:.04em;border-bottom:1px solid #3e4451;position:sticky;top:0;z-index:1}
+        .group-hdr span{color:#4b5263}
     </style>
 </head>
 <body>
-    <h1>Real-Time Log Tailing: {{ log_file }}</h1>
-    <div id="log-output" class="log-container">
-        <p>Waiting for connection and log updates...</p>
-    </div>
+<h1>&#9679; Live — {{ log_file }}</h1>
 
-    <script type="text/javascript">
-        // 2. Initialize the WebSocket connection
-        var socket = io();
-        var logOutput = document.getElementById('log-output');
+<div class="toolbar">
+    <input type="text" id="search" placeholder="Search messages or SID…" oninput="render()">
+    <div class="sep"></div>
+    <div class="filters" id="lvl-filters"></div>
+    <div class="sep"></div>
+    <select id="sort" onchange="render()">
+        <option value="asc">Oldest first</option>
+        <option value="desc">Newest first</option>
+    </select>
+    <select id="group" onchange="render()">
+        <option value="none">No grouping</option>
+        <option value="sid">Group by SID</option>
+        <option value="prefix">Group by [TAG]</option>
+    </select>
+    <div class="sep"></div>
+    <span class="stats" id="stats"></span>
+</div>
 
-        // --- Socket.IO Event Handlers ---
+<div class="log-wrap" id="log-output">
+    <p style="padding:12px;color:#4b5263;">Waiting for connection…</p>
+</div>
 
-        // 3. Connect Event: Fires when connection to the server is established
-        socket.on('connect', function() {
-            console.log('Connected to server!');
-            logOutput.innerHTML = '<p>Connected. Streaming log data now...</p>';
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+<script>
+    // ── In-memory log store ──────────────────────────────────────────────────
+    var allEntries = [];
+
+    // ── Level filter state ───────────────────────────────────────────────────
+    var LEVELS = ['INFO', 'DEBUG', 'WARNING', 'ERROR'];
+    var active = new Set(LEVELS);
+
+    // Build level toggle buttons
+    var fEl = document.getElementById('lvl-filters');
+    LEVELS.forEach(function(lv) {
+        var b = document.createElement('button');
+        b.className = 'lvl-btn';
+        b.dataset.level = lv;
+        b.textContent = lv;
+        b.onclick = function() {
+            if (active.has(lv)) {
+                if (active.size > 1) { active.delete(lv); b.classList.add('off'); }
+            } else {
+                active.add(lv); b.classList.remove('off');
+            }
+            render();
+        };
+        fEl.appendChild(b);
+    });
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function getPrefix(msg) {
+        var m = (msg || '').match(/^\[([A-Z0-9_]+)\]/);
+        return m ? m[1] : null;
+    }
+
+    function timeStr(ts) {
+        return ts ? ts.split(' ')[1].split(',')[0] : '';
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function msgHtml(msg) {
+        return esc(msg || '').replace(/(\[[A-Z0-9_]+\])/g, '<span class="prefix">$1</span>');
+    }
+
+    function entryHtml(e, hideSid) {
+        var lv = e.level || 'INFO';
+        var lc = lv === 'WARNING' ? 'W' : lv === 'ERROR' ? 'E' : '';
+        var sid = (e.sid && !hideSid)
+            ? '<span class="sid-pill" title="' + esc(e.sid) + '">' + esc(e.sid.substring(0, 8)) + '</span>'
+            : '';
+        return '<div class="log-entry ' + lc + '">'
+            + '<div class="log-line">'
+            + '<span class="ts">' + esc(timeStr(e.ts)) + '</span>'
+            + '<span class="badge ' + lv + '">' + lv + '</span>'
+            + '<span class="msg">' + msgHtml(e.msg) + '</span>'
+            + sid
+            + '</div>'
+            + (e.exc ? '<pre class="exc-block">' + esc(e.exc) + '</pre>' : '')
+            + '</div>';
+    }
+
+    // ── Render (filter + sort + group) ───────────────────────────────────────
+    function render() {
+        var q = (document.getElementById('search').value || '').toLowerCase();
+        var sort = document.getElementById('sort').value;
+        var group = document.getElementById('group').value;
+        var out = document.getElementById('log-output');
+
+        var filtered = allEntries.filter(function(e) {
+            return active.has(e.level || 'INFO')
+                && (!q || (e.msg || '').toLowerCase().includes(q) || (e.sid || '').toLowerCase().includes(q));
         });
 
-        // 4. Log Update Event: Receives new log lines from the Flask backend
-        socket.on('log_update', function(msg) {
-            // Create a new div element for the log line
-            var newLogLine = document.createElement('div');
-            newLogLine.textContent = msg.data;
+        if (sort === 'desc') filtered = filtered.slice().reverse();
 
-            // Append the new line to the log container
-            logOutput.appendChild(newLogLine);
+        document.getElementById('stats').textContent = filtered.length + ' / ' + allEntries.length + ' entries';
 
-            // Automatically scroll to the bottom (tail -f behavior)
-            logOutput.scrollTop = logOutput.scrollHeight;
-        });
+        if (!filtered.length) {
+            out.innerHTML = '<div class="empty">No matching entries</div>';
+            return;
+        }
 
-        // 5. Error Event: Handles errors like the log file not being found
-        socket.on('log_error', function(msg) {
-            logOutput.innerHTML += '<div style="color: red;">SERVER ERROR: ' + msg.data + '</div>';
-        });
+        var atBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 40;
 
-        // 6. Disconnect Event: Fires if the connection is lost
-        socket.on('disconnect', function() {
-            logOutput.innerHTML += '<p style="color: orange;">Disconnected from server. Refresh to reconnect.</p>';
-        });
-    </script>
+        if (group === 'none') {
+            out.innerHTML = filtered.map(function(e){ return entryHtml(e, false); }).join('');
+        } else if (group === 'sid') {
+            var buckets = new Map();
+            filtered.forEach(function(e) {
+                var k = e.sid || '(no sid)';
+                if (!buckets.has(k)) buckets.set(k, []);
+                buckets.get(k).push(e);
+            });
+            var html = '';
+            buckets.forEach(function(rows, sid) {
+                html += '<div class="group-hdr">SID: ' + esc(sid) + '&nbsp;&nbsp;<span>' + rows.length + ' entries</span></div>';
+                html += rows.map(function(e){ return entryHtml(e, true); }).join('');
+            });
+            out.innerHTML = html;
+        } else if (group === 'prefix') {
+            var buckets2 = new Map();
+            filtered.forEach(function(e) {
+                var k = getPrefix(e.msg) || '(no tag)';
+                if (!buckets2.has(k)) buckets2.set(k, []);
+                buckets2.get(k).push(e);
+            });
+            var html2 = '';
+            buckets2.forEach(function(rows, tag) {
+                html2 += '<div class="group-hdr">[' + esc(tag) + ']&nbsp;&nbsp;<span>' + rows.length + ' entries</span></div>';
+                html2 += rows.map(function(e){ return entryHtml(e, false); }).join('');
+            });
+            out.innerHTML = html2;
+        }
+
+        if (atBottom) out.scrollTop = out.scrollHeight;
+    }
+
+    // ── Socket.IO ─────────────────────────────────────────────────────────────
+    var socket = io();
+
+    socket.on('connect', function() {
+        allEntries = [];
+        document.getElementById('log-output').innerHTML = '<p style="padding:12px;color:#4b5263;">Connected. Streaming…</p>';
+    });
+
+    socket.on('log_update', function(msg) {
+        var entry;
+        try {
+            entry = JSON.parse(msg.data);
+        } catch(e) {
+            entry = { msg: msg.data, level: 'INFO', ts: '' };
+        }
+        allEntries.push(entry);
+        render();
+    });
+
+    socket.on('log_error', function(msg) {
+        allEntries.push({ msg: 'SERVER ERROR: ' + msg.data, level: 'ERROR', ts: '' });
+        render();
+    });
+
+    socket.on('disconnect', function() {
+        allEntries.push({ msg: 'Disconnected. Refresh to reconnect.', level: 'WARNING', ts: '' });
+        render();
+    });
+</script>
 </body>
 </html>
