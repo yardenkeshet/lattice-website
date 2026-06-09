@@ -154,13 +154,12 @@ def _call(fn, *args):
     result = fn(*args)
     if result:
         decoded = result.decode("utf-8", errors="replace")
-        print(f"DLL [{fn.__name__}] returned: {decoded}")
+        logger.warning(f"[DLL] {fn.__name__} returned: {decoded}")
         return decoded
     return None
 
 
 def _dll_get_tile(tile_type, tile_params, graded, out_stl_file: bytes):
-    print(f"MSDLLGetTile  type={tile_type}  params={list(tile_params[:3])}  graded={list(graded[:2])}")
     return _call(_dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
 
 
@@ -179,7 +178,7 @@ def _dll_from_extrusion(srf_igs: bytes, extrude_length: float, num_tiles, graded
 
 def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
                       out_igs: bytes, out_stl: bytes):
-    print(f"MSDLLMSFromRuling  \nsrf1={srf1} \n srf2={srf2} \n num_tiles={num_tiles}  graded={graded}  tile_type={tile_type}  tile_params={tile_params}  out_igs={out_igs}  out_stl={out_stl}")
+    logger.debug(f"[DLL] FromRuling srf1={srf1}  srf2={srf2}")
     srf2 = b'C:\\Users\\yaniv\\Uni\\Sem 6\\Lattice Project\\lattice-website\\client_data\\RuledSrf2.igs'
     return _call(_dll.MSDLLMSFromRuling,
                  srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
@@ -220,9 +219,19 @@ LOG_FILE_NAME         = LOGFILE
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-logger = logging.getLogger('lattice2')
+class _JsonFormatter(logging.Formatter):
+    def format(self, record):
+        record.message = record.getMessage()
+        obj = {'ts': self.formatTime(record), 'level': record.levelname, 'msg': record.message}
+        if record.exc_info:
+            obj['exc'] = self.formatException(record.exc_info)
+        return json.dumps(obj)
+
+_use_json = os.environ.get('LOG_FORMAT') == 'json'
+fmt = _JsonFormatter() if _use_json else logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+
+logger = logging.getLogger('lattice')
 logger.setLevel(logging.DEBUG)
-fmt = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 fh = RotatingFileHandler(LOGFILE, maxBytes=5 * 1024 * 1024, backupCount=3)
 fh.setFormatter(fmt)
 logger.addHandler(fh)
@@ -240,10 +249,10 @@ def read_ascii_stl_file(path):
         with open(path, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        logger.error(f"STL file not found: {path}")
+        logger.warning(f"STL file not found: {path}")
         return None
     except Exception as exc:
-        logger.error(f"Error reading STL file {path}: {exc}")
+        logger.exception(f"Error reading STL file {path}: {exc}")
         return None
 
 
@@ -347,18 +356,11 @@ DOWNLOAD_CACHE = {}
 
 
 def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
-    print("Do MSDLLMSFromRevolution")
     download_token = str(uuid.uuid4())
-
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
-
     out_igs = os.path.join(new_folder, "MSRevolv.igs").encode('ascii')
     out_stl = os.path.join(new_folder, "MSRevolv.stl").encode('ascii')
-
-    print(f"  Num_Tiles : {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
-    print(f"  TileParams: {tile_params[0]} {tile_params[1]} {tile_params[2]}")
-
     _dll_from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
@@ -366,28 +368,19 @@ def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
         tile_params,
         out_igs, out_stl,
     )
-
     stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
     DOWNLOAD_CACHE[download_token] = {
         'sid': sid, 'out_stl': 'MSRevolv.stl', 'out_igs': 'MSRevolv.igs'
     }
-    print("-- Done MSDLLMSFromRevolution")
     return download_token, stl_content
 
 
 def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
-    print(f"Do MSDLLMSFromExtrusion  sid={sid}  igs={igs_path}")
     download_token = str(uuid.uuid4())
-
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
-
     out_igs = os.path.join(new_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(new_folder, "MSExtrd.stl").encode('ascii')
-
-    print(f"  num_tiles : {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
-    print(f"  tile_params: {tile_params[0]} {tile_params[1]} {tile_params[2]}")
-
     result = _dll_from_extrusion(
         igs_path.encode('ascii') if isinstance(igs_path, str) else igs_path,
         10.0,
@@ -407,9 +400,6 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
     DOWNLOAD_CACHE[download_token] = {
         'sid': sid, 'out_stl': 'MSExtrd.stl', 'out_igs': 'MSExtrd.igs'
     }
-    # for c in DOWNLOAD_CACHE:
-    #     print(f"cache: {c}")
-    print("-- Done MSDLLMSFromExtrusion")
     return download_token, stl_content
 
 
@@ -423,9 +413,6 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
     out_stl = os.path.join(new_folder, "MSRuled.stl").encode('ascii')
 
     srf_path = igs_path.encode('ascii')
-    print(f"  Num_Tiles : {num_tiles[0]} {num_tiles[1]} {num_tiles[2]}")
-    print(f"  TileParams: {tile_params[0]} {tile_params[1]} {tile_params[2]}")
-
     _dll_from_ruling(
         srf_path, srf_path,
         num_tiles, grading_params,
@@ -438,11 +425,10 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
     DOWNLOAD_CACHE[download_token] = {
         'sid': sid, 'out_stl': 'MSRuled.stl', 'out_igs': 'MSRuled.igs'
     }
-    print("-- Done MSDLLMSFromRuling")
     return download_token, stl_content
 
 
-def calculate_tile(tile_params, graded, tile_type_str):
+def calculate_tile(tile_params, graded, tile_type_str, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
 
@@ -453,7 +439,7 @@ def calculate_tile(tile_params, graded, tile_type_str):
     }
     stl_filename = tile_filename_map.get(tile_type_int)
     if stl_filename is None:
-        print(f"Unknown tile type: {tile_type_str}")
+        logger.error(f"[TILE] Unknown tile type: {tile_type_str}")
         return
 
     stl_tile_path = os.path.join(os.getcwd(), LAST_TILES_RESULTS_DIR, stl_filename)
@@ -480,6 +466,13 @@ def calculate_tile(tile_params, graded, tile_type_str):
             'time_compress_ms': (t_done - t_processed) * 1000.0,
             'overall_ms': (t_done - t_recv) * 1000.0,
         }
+        logger.info(
+            f"[TILE] {tile_type_str}"
+            f"  p=({tile_params[0]:.2f},{tile_params[1]:.2f},{tile_params[2]:.2f})"
+            f"  g=({graded[0]:.2f},{graded[1]:.2f})"
+            f"  {timings['overall_ms']:.0f}ms"
+            f"  sid={sid}"
+        )
         emit('result', {
             'filename': stl_tile_path,
             'kind': 'tile_stl',
@@ -487,7 +480,7 @@ def calculate_tile(tile_params, graded, tile_type_str):
             'timings': timings,
         })
     else:
-        print("Error: Tile STL file not found on disk.")
+        logger.error(f"[TILE] STL not found: {stl_tile_path}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -522,7 +515,7 @@ def follow_log(file_name, socketio_instance):
     except FileNotFoundError:
         socketio_instance.emit('log_error', {'data': f"Log file '{file_name}' not found."})
     except Exception as exc:
-        print(f"Log follower error: {exc}")
+        logger.exception(f"Log follower error: {exc}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -534,20 +527,21 @@ client_state = {}
 
 
 def worker_loop(state):
-    print("Worker started")
+    logger.debug(f"[WORKER] started sid={state['sid']}")
     while True:
         state["event"].wait()
         state["event"].clear()
         tile_type = state["tile_type"]
         p1, p2, p3 = state["p1"], state["p2"], state["p3"]
-        print(f"Processing value: {tile_type} {p1} {p2} {p3}")
+        logger.debug(f"[WORKER] processing tile_type={tile_type} p=({p1},{p2},{p3})")
 
 
 @socketio.on('connect')
 def on_connect():
     global log_thread
-    logger.info('Client connected')
     sid = request.sid
+    ip_address = request.environ.get('REMOTE_ADDR')
+    logger.info(f'Client connected {sid}  ip={ip_address}')
 
     state = {
         "sid": sid,
@@ -557,15 +551,12 @@ def on_connect():
     t = threading.Thread(target=worker_loop, args=(state,), daemon=True)
     t.start()
     client_state[sid] = state
-
-    ip_address = request.environ.get('REMOTE_ADDR')
     unique_file_id = str(uuid.uuid4())
     connected_clients[sid] = {
         'sid': sid,
         'ip_address_reported': ip_address,
         'unique_file_id': unique_file_id,
     }
-    print(f"Client connected. SID: {sid}")
 
     for line in get_initial_log_content(LOG_FILE_NAME):
         emit('log_update', {'data': line})
@@ -583,12 +574,12 @@ def clean_session(sid):
         if os.path.exists(folder):
             shutil.rmtree(folder)
     except Exception as exc:
-        print(f"Error removing directory {folder}: {exc}")
+        logger.exception(f"[SESSION] cleanup failed {folder}: {exc}")
 
 
 @socketio.on('disconnect')
 def on_disconnect():
-    logger.info('Client disconnected')
+    logger.info(f'Client disconnected {request.sid}')
     clean_session(request.sid)
 
 
@@ -596,7 +587,6 @@ def on_disconnect():
 def handle_calculate(data):
     sid = request.sid
     t_start = time.time()
-    logger.info(f"[CALC] == calculate request  sid={sid} ==")
 
     client_ts = data.get('client_ts')
     filename  = data.get('filename', 'uploaded.igs')
@@ -613,16 +603,12 @@ def handle_calculate(data):
         p2  = float(args.get('p2', 0.0))
         p3  = float(args.get('p3', 0.4))
     except (TypeError, ValueError) as exc:
-        logger.error(f"[CALC] Bad numeric argument: {exc}")
+        logger.exception(f"[CALC] Bad numeric argument: {exc}")
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
-    logger.info(f"[CALC]   filename   : {filename}")
-    logger.info(f"[CALC]   tileType   : {tile_type!r}  ->  int {tile_type_int}")
-    logger.info(f"[CALC]   num_tiles  : ({nt1}, {nt2}, {nt3})")
-    logger.info(f"[CALC]   graded     : ({g1}, {g2})")
-    logger.info(f"[CALC]   tile_params: ({p1}, {p2}, {p3})")
+    logger.info(f"[CALC] {filename}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  sid={sid}")
 
     if tile_type_int is None:
         logger.error(f"[CALC] Unknown tileType: {tile_type!r}")
@@ -638,13 +624,11 @@ def handle_calculate(data):
         emit('error', {'msg': 'IGS file not found — upload it first via convert_igs_to_stl'})
         return
 
-    logger.info(f"[CALC] Using pre-saved IGS -> {igs_disk_path}")
-
     try:
         with open(json_disk_path, 'w', encoding='utf-8') as jf:
             json.dump({'filename': filename, 'args': args, 'sid': sid}, jf, indent=2)
     except OSError:
-        logger.warning("[CALC] Could not save JSON metadata (non-fatal)")
+        logger.warning("[CALC] Could not save JSON metadata (non-fatal)", exc_info=True)
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
@@ -654,21 +638,16 @@ def handle_calculate(data):
     stl_content = download_token = None
 
     try:
-        if tile_type_int == MSDLL_TILE_CROSS:
-            logger.info("[CALC] Dispatching -> do_revolution (CROSS)")
-            download_token, stl_content = do_revolution(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
-            )
-        elif tile_type_int == MSDLL_TILE_DIAGONAL:
-            logger.info("[CALC] Dispatching -> do_extrusion (DIAGONAL)")
-            download_token, stl_content = do_extrusion(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
-            )
-        elif tile_type_int == MSDLL_TILE_CROSS_DIAGONAL:
-            logger.info("[CALC] Dispatching -> do_Ruling (CROSS_DIAGONAL)")
-            download_token, stl_content = do_Ruling(
-                sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
-            )
+        dispatch_map = {
+            MSDLL_TILE_CROSS:          ('revolution',  do_revolution),
+            MSDLL_TILE_DIAGONAL:       ('extrusion',   do_extrusion),
+            MSDLL_TILE_CROSS_DIAGONAL: ('ruling',      do_Ruling),
+        }
+        dispatch_name, dispatch_fn = dispatch_map[tile_type_int]
+        logger.info(f"[CALC] -> {dispatch_name}  igs={os.path.basename(igs_disk_path)}  sid={sid}")
+        download_token, stl_content = dispatch_fn(
+            sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
+        )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}")
         emit('error', {'msg': f'DLL did not produce output file: {exc}'})
@@ -689,12 +668,7 @@ def handle_calculate(data):
         t_comp_start = time.time()
         compressed_b64 = compress_text_to_b64_gz(stl_content)
         t_comp_end = time.time()
-        comp_bytes = len(base64.b64decode(compressed_b64))
-        logger.info(
-            f"[CALC] Compressed: {len(stl_content):,} chars -> "
-            f"{comp_bytes / 1024:.2f} KB gzip  "
-            f"({(t_comp_end - t_comp_start) * 1000:.1f} ms)"
-        )
+        comp_kb = len(base64.b64decode(compressed_b64)) / 1024
     except Exception as exc:
         logger.exception(f"[CALC] Compression failed: {exc}")
         emit('error', {'msg': 'Compression failed'})
@@ -703,9 +677,9 @@ def handle_calculate(data):
     t_total = time.time() - t_start
     timings = {
         'client_to_server_ms': None if client_ts is None else (t_dll_start * 1000 - client_ts),
-        'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000, 1),
-        'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000, 1),
-        'overall_ms':          round(t_total * 1000, 1),
+        'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
+        'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
+        'overall_ms':          round(t_total * 1000),
     }
 
     emit('result', {
@@ -719,26 +693,30 @@ def handle_calculate(data):
     })
 
     logger.info(
-        f"[CALC] == Done  overall={timings['overall_ms']} ms  "
-        f"dll={timings['time_dll_ms']} ms  "
-        f"compress={timings['time_compress_ms']} ms =="
+        f"[CALC] done  {comp_kb:.0f}KB"
+        f"  overall={timings['overall_ms']}ms"
+        f"  dll={timings['time_dll_ms']}ms"
+        f"  compress={timings['time_compress_ms']}ms"
+        f"  sid={sid}"
     )
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
-    p1, p2, p3 = data['values']
-    tile_type   = data['type']
+    try:
+        p1, p2, p3 = data['values']
+        tile_type   = data['type']
 
-    tile_params = (c_double * 3)(p1, p2, p3)
-    graded      = (c_double * 2)(0.2, 1.5)
+        tile_params = (c_double * 3)(p1, p2, p3)
+        graded      = (c_double * 2)(0.2, 1.5)
 
-    calculate_tile(tile_params, graded, tile_type)
+        calculate_tile(tile_params, graded, tile_type, request.sid)
+    except Exception as exc:
+        logger.exception(f"[TILE] bad request: {exc}  sid={request.sid}")
+        emit('error', {'msg': f'Bad tile request: {exc}'})
 
 
 @app.route('/convert_igs_to_stl', methods=['POST'])
 def handle_convert_igs_to_stl():
-    print("Received request to convert IGS to STL")
-
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -753,7 +731,9 @@ def handle_convert_igs_to_stl():
         with open(igs_disk, 'wb') as f:
             f.write(igs_bytes)
 
+        t_igs_start = time.time()
         err = _dll_iges2stl(igs_disk.encode('ascii'), stl_disk.encode('ascii'), 0.0)
+        t_igs_ms = round((time.time() - t_igs_start) * 1000)
         if err:
             logger.warning(f"[IGS2STL] DLL warning: {err}")
 
@@ -764,8 +744,7 @@ def handle_convert_igs_to_stl():
             stl_content = f.read()
 
         b64_str = base64.b64encode(stl_content).decode('utf-8')
-        print("IGS -> STL conversion succeeded.")
-        print(f"Returning : {b64_str[0:30]}")
+        logger.info(f"[IGS2STL] {safe_base}  {len(stl_content) // 1024}KB  {t_igs_ms}ms")
         return jsonify({'stl_b64': b64_str})
 
     except Exception as exc:
@@ -800,7 +779,6 @@ def view_full_log():
 
 @app.route('/download-results', methods=['POST'])
 def download_results():
-    print(f"==== Downloading from {os.getcwd()}")
     token     = request.form.get('token')
     file_type = request.form.get('file_type')
 
@@ -822,18 +800,20 @@ def download_results():
         filename = output_map['out_igs']
         mimetype = 'application/octet-stream'
     else:
+        logger.warning(f"[DOWNLOAD] unknown file_type: {file_type!r}  sid={output_map['sid']}")
         return jsonify({'error': f'Unknown file_type: {file_type}'}), 400
 
     file_path = os.path.join(out_folder, filename)
     if not os.path.exists(file_path):
         logger.error(f"[DOWNLOAD] file not found: {file_path}")
         return jsonify({'error': 'Result file not found'}), 404
-    # print(f"Return the file in pat {file_path}, {mimetype}, {filename}")
+
+    logger.info(f"[DOWNLOAD] {filename}  sid={output_map['sid']}")
     return send_file(file_path, mimetype=mimetype, as_attachment=True, download_name=filename)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    print("Starting Flask-SocketIO server on http://localhost:5003")
+    logger.info("Server starting on http://localhost:5003")
     socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
