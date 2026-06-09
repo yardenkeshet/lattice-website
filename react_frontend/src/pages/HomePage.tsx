@@ -4,15 +4,11 @@ import { Banner } from '../components/ui/Banner'
 import { Carousel } from '../components/ui/Carousel'
 import { Footer } from '../components/ui/Footer'
 
-import slide1 from '../assets/Carousel/home-slider-1 (1).jpg'
-import slide2 from '../assets/Carousel/home-slider-2 (1).jpg'
-import slide3 from '../assets/Carousel/home-slider-3 (1).jpg'
-
-const SLIDES = [
-  { src: slide1, alt: 'Lattice structure example 1' },
-  { src: slide2, alt: 'Lattice structure example 2' },
-  { src: slide3, alt: 'Lattice structure example 3' },
-]
+const imageModules = import.meta.glob('../assets/Carousel/*.{jpg,JPG,png,PNG}', { eager: true })
+const SLIDES = Object.entries(imageModules).map(([path, mod]) => ({
+  src: (mod as { default: string }).default,
+  alt: path.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? '',
+}))
 
 const TAMC_TEXT = `The Technion Additive Manufacturing and 3D printing Center (TAMC), inaugurated in 2021, reflects the Technion's commitment to promoting cutting-edge additive manufacturing (AM) innovation. The center was founded with the generous support of Mr. Robert Davis and is committed to fulfilling an academic leadership role in promoting futuristic advancements in AM technology, as well as supporting Israeli industry.
 
@@ -105,7 +101,7 @@ export function HomePage() {
       <div style={separatorStyle} aria-hidden="true" />
 
       {/* ── Carousel ── */}
-      <Carousel images={SLIDES} loop autoPlay={5000} />
+      <Carousel images={SLIDES} loop autoPlay={5000} showDots={false} />
 
       {/* ── CTA ── */}
       <div style={ctaSectionStyle}>
