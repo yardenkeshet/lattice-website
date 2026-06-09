@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5003';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 
 /**
  * Sends a .igs file to the server and returns the converted STL content
