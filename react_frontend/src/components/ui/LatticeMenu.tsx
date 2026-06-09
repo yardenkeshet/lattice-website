@@ -1,12 +1,14 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
-import type { TileType, CalcMode } from '../../api/types'
 import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
 import { Dropdown } from './Dropdown'
 import { TileCard } from './TileCard'
 import { IconButton } from './IconButton'
+import { CALC_MODE_DEFS, CALC_MODES, type CalcMode, type TileType } from '../../lib/parameters'
+
+const CALC_MODE_OPTIONS = CALC_MODES.map(value => ({ value, label: CALC_MODE_DEFS[value].label }))
 
 /* ─── Public API ─── */
 
@@ -42,12 +44,6 @@ export interface LatticeMenuProps {
 
   className?: string
 }
-
-const CALC_MODE_OPTIONS = [
-  { value: 'extrusion',  label: 'Extrusion' },
-  { value: 'revolution', label: 'Revolution' },
-  { value: 'ruling',     label: 'Ruling' },
-]
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
   (

@@ -195,7 +195,7 @@ def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: float = 0.0) -> s
 # ──────────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost"]}})
 
 app.config['SECRET_KEY'] = 'secret!'
 app.config.update(

@@ -1,9 +1,4 @@
-// ─── Shared enums ────────────────────────────────────────────────────────────
-
-export type TileType = 'cross' | 'diagonal' | 'cross_diagonal';
-
-export type CalcMode = 'extrusion' | 'revolution' | 'ruling';
-
+import { type TileType } from '../lib/parameters'
 // ─── calculate event ─────────────────────────────────────────────────────────
 
 export interface CalculateArgs {
@@ -112,3 +107,5 @@ export interface DownloadRequest {
 export interface ValidationError {
   message: string;
 }
+
+

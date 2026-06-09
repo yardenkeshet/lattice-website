@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { IconButton } from './IconButton'
 import { Button } from './Button'
-import type { CalcMode } from '../../api/types'
+import type { CalcMode } from '../../lib/parameters'
 
 /* ─── Public API ─── */
 

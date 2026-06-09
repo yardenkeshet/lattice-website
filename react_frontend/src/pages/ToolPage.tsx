@@ -11,8 +11,18 @@ import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl } from '../api/httpClient'
 import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
-import type { TileType, CalcMode, ValidationError } from '../api/types'
-import { DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT } from '../lib/utils'
+import {
+  DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
+  DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
+  DEFAULT_ZOOM, DEFAULT_G1, DEFAULT_G2,
+  DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
+  INITIAL_VIEWER_RESET_KEY,
+  type TileType,
+  type CalcMode,
+  RULING,
+  CROSS_DIAGONAL,
+} from '../lib/parameters'
+import type { ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
 
@@ -39,27 +49,27 @@ export function ToolPage() {
   const socket = getLatticeSocket()
 
   /* ── UI state ── */
-  const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(true)
-  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(true)
-  const [zoom, setZoom]                           = React.useState(100)
-  const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
-  const [viewerResetKey, setViewerResetKey]       = React.useState('initial')
+  const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(DEFAULT_LATTICE_MENU_OPEN)
+  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(DEFAULT_TILE_MENU_OPEN)
+  const [zoom, setZoom]                           = React.useState(DEFAULT_ZOOM)
+  const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>(DEFAULT_CAMERA_MODE)
+  const [viewerResetKey, setViewerResetKey]       = React.useState(INITIAL_VIEWER_RESET_KEY)
   /* Tracks what kind of action triggered the last backend call so the result
      handler knows whether to reset the viewer camera. null = no reset. */
   const pendingResetKey = React.useRef<string | null>(null)
 
   /* ── Tile state ── */
-  const [tileType, setTileType]           = React.useState<TileType>('diagonal')
-  const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues('diagonal'))
+  const [tileType, setTileType]           = React.useState<TileType>(DEFAULT_TILE_TYPE)
+  const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues(DEFAULT_TILE_TYPE))
   const [tilePreviewGzB64, setTilePreviewGzB64] = React.useState<string | null>(null)
 
   /* ── Lattice params ── */
   const [nt1, setNt1]               = React.useState(DEFAULT_X_COUNT)
   const [nt2, setNt2]               = React.useState(DEFAULT_Y_COUNT)
   const [nt3, setNt3]               = React.useState(DEFAULT_Z_COUNT)
-  const [g1, setG1]                 = React.useState(0.57)
-  const [g2, setG2]                 = React.useState(0.83)
-  const [calcMode, setCalcMode]     = React.useState<CalcMode>('extrusion')
+  const [g1, setG1]                 = React.useState(DEFAULT_G1)
+  const [g2, setG2]                 = React.useState(DEFAULT_G2)
+  const [calcMode, setCalcMode]     = React.useState<CalcMode>(DEFAULT_CALC_MODE)
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
@@ -107,7 +117,7 @@ export function ToolPage() {
         // Tile preview from calculate_tile — update mini-preview and main viewer
         // (main viewer only in non-ruling mode; ruling mode shows two surfaces, not a tile)
         setTilePreviewGzB64(payload.stl_gz_b64)
-        if (calcModeRef.current !== 'ruling') {
+        if (calcModeRef.current !== RULING) {
           setResultGzB64(payload.stl_gz_b64)
           if (pendingResetKey.current !== null) {
             setViewerResetKey(pendingResetKey.current)
@@ -157,7 +167,7 @@ export function ToolPage() {
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type, values: padded })
+    socket.calculateTile({ type:(type=='yaniv' ? CROSS_DIAGONAL : type), values: padded })
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
@@ -174,7 +184,7 @@ export function ToolPage() {
     setDownloadToken(null)
     setErrorMsg(null)
 
-    if (calcMode === 'ruling') {
+    if (calcMode === RULING) {
       if (files.length >= 2) {
         setViewerResetKey('file-' + Date.now())
         try {
@@ -259,7 +269,7 @@ export function ToolPage() {
       return
     }
 
-    if (calcMode === 'ruling') {
+    if (calcMode === RULING) {
       if (!uploadedFile && !uploadedFile2) {
         setErrorMsg('Please upload both surface files')
         return
@@ -383,7 +393,7 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            {calcMode === 'ruling' && !resultGzB64
+            {calcMode === RULING && !resultGzB64
               ? (
                 <DualViewerLayout
                   file1={uploadedFile}
