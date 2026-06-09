@@ -2,6 +2,8 @@
 
 export type TileType = 'cross' | 'diagonal' | 'cross_diagonal';
 
+export type CalcMode = 'extrusion' | 'revolution' | 'ruling';
+
 // ─── calculate event ─────────────────────────────────────────────────────────
 
 export interface CalculateArgs {
@@ -9,6 +11,9 @@ export interface CalculateArgs {
   nt1: number;
   nt2: number;
   nt3: number;
+  p1: number;
+  p2: number;
+  p3: number;
   g1: number;
   g2: number;
   p1: number;
@@ -18,9 +23,12 @@ export interface CalculateArgs {
 
 export interface CalculatePayload {
   filename: string;
-  igs_b64: string;           // required — base64-encoded IGS bytes
-  binary?: boolean;          // true when the IGS file is binary (rare)
-  client_ts?: number;        // performance.now() for round-trip timing
+  // /** base64-encoded STL file bytes (ASCII or binary) */
+  // stl_text_b64: string;
+  /** true when the original file was a binary STL */
+  binary?: boolean;
+  /** performance.now() value captured just before emit, for round-trip timing */
+  client_ts: number;
   args: CalculateArgs;
 }
 
@@ -37,6 +45,9 @@ export interface CalculateTilePayload {
 }
 
 // ─── result event (server → client) ──────────────────────────────────────────
+//
+// calculate_tile  → one TileSTLResult  (kind: 'tile_stl')
+// calculate       → one ModelSTLResult (kind: 'model_stl', carries STL + download_token)
 
 export interface Timings {
   client_to_server_ms: number | null;
@@ -45,20 +56,29 @@ export interface Timings {
   overall_ms: number;
 }
 
-/** Shared properties — all optional because tile results omit most of them */
-interface BaseResult {
-  filename?: string;
-  timings?: Partial<Timings>;
+/** Emitted by calculate_tile — tile preview geometry only. */
+export interface TileSTLResult {
+  kind: 'tile_stl';
+  filename: string;
+  /** base64( gzip( ASCII-STL ) ) */
+  stl_gz_b64: string;
+  timings: Timings;
+}
+
+/** Emitted by calculate — full lattice result with download token. */
+export interface ModelSTLResult {
+  kind: 'model_stl';
+  filename: string;
+  /** base64( gzip( ASCII-STL ) ) */
+  stl_gz_b64: string;
+  download_token: string;
+  timings: Timings;
   args_echo?: CalculateArgs;
 }
 
-/** Emitted after calculate_tile */
-export interface TileSTLResult extends BaseResult {
-  kind: 'tile_stl';
-  stl_gz_b64: string;         // base64( gzip( ASCII-STL ) )
-}
+export type ResultPayload = TileSTLResult | ModelSTLResult;
 
-// ─── error / warning events (server → client) ────────────────────────────────
+// ─── error event (server → client) ───────────────────────────────────────────
 //
 // Backend uses two shapes inconsistently: { msg } and { message }.
 // Backend also emits a 'warning' event (malformed IGS) with { msg, details }.
@@ -72,6 +92,13 @@ export interface WarningPayload {
   details: string[];
 }
 
+// ─── update event (server → client) ─────────────────────────────────────────
+
+export type UpdatePayload =
+  | { type: 'progress_start';  message: string }
+  | { type: 'progress_update'; progress: number }
+  | { type: 'progress_end';    progress: 100 };
+
 // ─── log events (server → client) ────────────────────────────────────────────
 
 export interface LogLine {
@@ -82,22 +109,16 @@ export interface LogLine {
 
 export interface DownloadRequest {
   token: string;
+  file_type: 'stl' | 'igs';
 }
 
-export type VIEWER_ORDER = 'uploaded' | 'tile_preview' | 'result';
+// ─── Client-side validation ───────────────────────────────────────────────────
 
-/** Emitted after calculate (main lattice operation) */
-export interface ModelSTLResult extends BaseResult {
-  kind: 'model_stl';
-  stl_gz_b64: string;
-  filename_reduced: string;
-  download_token: string;
+/**
+ * A validation error raised by a UI component that blocks the calculate action.
+ * Components report errors via onValidationChange(source, errors).
+ * ToolPage aggregates by source key and blocks calculate when any errors exist.
+ */
+export interface ValidationError {
+  message: string;
 }
-
-/** Emitted after convert_igs_to_stl (upload preview) */
-export interface ModelPreviewSTLResult extends BaseResult {
-  kind: 'model_preview_stl';
-  stl_gz_b64: string;
-}
-
-export type Result = ModelSTLResult | ModelPreviewSTLResult | TileSTLResult;

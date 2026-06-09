@@ -57,6 +57,24 @@ export const CustomRightLogo: Story = {
   },
 }
 
+/* ── Home navigation (ToolPage) ── */
+
+export const WithHomeNavigation: Story = {
+  name: 'With Home Navigation (Tool Page)',
+  args: {
+    onLeftLogoClick: () => alert('Navigate to home page'),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'On the ToolPage the TAMC logo becomes a button that navigates back to the home page. ' +
+          'Tab to the logo and press Enter or Space to test keyboard accessibility — a visible focus ring should appear.',
+      },
+    },
+  },
+}
+
 /* ── All variants ── */
 
 export const AllVariants: Story = {

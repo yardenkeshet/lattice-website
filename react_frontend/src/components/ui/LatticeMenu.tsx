@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
-import type { TileType } from '../../api/types'
+import type { TileType, CalcMode } from '../../api/types'
 import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
@@ -22,7 +22,7 @@ export interface LatticeMenuProps {
   nt3: number
   g1: number
   g2: number
-  calculationMode: 'extrusion' | 'revolution'
+  calculationMode: CalcMode
 
   /** Whether a download token is available (enables Export button). */
   canExport?: boolean
@@ -34,9 +34,10 @@ export interface LatticeMenuProps {
   onNt3Change: (v: number) => void
   onG1Change: (v: number) => void
   onG2Change: (v: number) => void
-  onCalculationModeChange: (mode: 'extrusion' | 'revolution') => void
+  onCalculationModeChange: (mode: CalcMode) => void
   onOpenTileMenu: () => void
-  onExport: (type : 'stl' | 'igs')  => void
+  onExportStl: () => void
+  onExportIgs: () => void
   onToggle: () => void
 
   className?: string
@@ -45,6 +46,7 @@ export interface LatticeMenuProps {
 const CALC_MODE_OPTIONS = [
   { value: 'extrusion',  label: 'Extrusion' },
   { value: 'revolution', label: 'Revolution' },
+  { value: 'ruling',     label: 'Ruling' },
 ]
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -61,15 +63,17 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       onG1Change, onG2Change,
       onCalculationModeChange,
       onOpenTileMenu,
-      onExport,
+      onExportStl,
+      onExportIgs,
       onToggle,
       className,
     },
     ref
   ) => {
-    const [isAdvancedFeaturesOpen, setIsAdvancedFeaturesOpen] = React.useState(false)
-    const OFF_G1 = 0.57
-    const OFF_G2 = 0.83
+    // Hooks must be called unconditionally — before any early return.
+    const [isTileHovered, setIsTileHovered] = React.useState(false)
+    const [isTileFocused, setIsTileFocused] = React.useState(false)
+    const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
 
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
@@ -100,8 +104,27 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-        {/* ── Lattice Tile row ── */}
-        <div style={sectionStyle}>
+        {/* ── Lattice Tile row — whole section is the click target ── */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Open tile configuration"
+          onClick={onOpenTileMenu}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenTileMenu() } }}
+          onMouseEnter={() => setIsTileHovered(true)}
+          onMouseLeave={() => setIsTileHovered(false)}
+          onFocus={() => setIsTileFocused(true)}
+          onBlur={() => setIsTileFocused(false)}
+          style={{
+            ...sectionStyle,
+            cursor: 'pointer',
+            backgroundColor: isTileHovered ? 'var(--bg-tertiary)' : 'transparent',
+            borderRadius: 4,
+            transition: 'background-color 120ms ease',
+            outline: isTileFocused ? '2px solid var(--border-focus)' : 'none',
+            outlineOffset: 2,
+          }}
+        >
           <span style={sectionLabelStyle}>Lattice Tile</span>
           <div style={tileSummaryRowStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -113,14 +136,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               />
               <span style={tileNameStyle}>{tileName}</span>
             </div>
-            <button
-              type="button"
-              aria-label="Open tile configuration"
-              onClick={onOpenTileMenu}
-              style={plusButtonStyle}
-            >
+            {/* PlusIcon is now decorative — click is handled by the parent div */}
+            <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
-            </button>
+            </span>
           </div>
         </div>
 
@@ -128,7 +147,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         {/* ── Num Tiles ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Num Tiles</span>
+          <span style={sectionLabelStyle}>Tiles Counts</span>
           <div style={numTilesRowStyle}>
             <NumberInput label="X" value={nt1} min={1} max={99} onChange={onNt1Change} aria-label="X tiles" />
             <NumberInput label="Y" value={nt2} min={1} max={99} onChange={onNt2Change} aria-label="Y tiles" />
@@ -136,52 +155,47 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           </div>
         </div>
 
-        <Divider />
 
+
+        <Divider />
 
         {/* ── Calculation mode ── */}
         <div style={sectionStyle}>
-          <span style={{ ...sectionLabelStyle, fontSize: 'var(--text-size-xxs)' }}>Calculation Mode</span>
+          <span style={sectionLabelStyle}>Calculation Mode</span>
           <Dropdown
             options={CALC_MODE_OPTIONS}
             value={calculationMode}
-            onChange={v => onCalculationModeChange(v as 'extrusion' | 'revolution')}
+            onChange={v => onCalculationModeChange(v as CalcMode)}
           />
         </div>
 
         <Divider />
 
-        {/* ── Export buttons ── */}
+        {/* ── Export button ── */}
         <div style={exportRowStyle}>
           <Button
             variant="secondary"
             disabled={!canExport}
-            onClick={() => onExport('stl')}
+            onClick={onExportStl}
           >
             Export STL
           </Button>
           <Button
             variant="secondary"
             disabled={!canExport}
-            onClick={() => onExport('igs')}
+            onClick={onExportIgs}
           >
             Export IGS
           </Button>
         </div>
-        
-        {/* ── Grading sliders ── */}
+
         <Divider />
 
-        <Button onClick={()=>
-          {
-            setIsAdvancedFeaturesOpen(!isAdvancedFeaturesOpen)
-
-            onG1Change(OFF_G1)
-            onG2Change(OFF_G2)
-            }}>
-          Advanced Features
-        </Button>
-        {isAdvancedFeaturesOpen ? 
+        {/* ── Grading sliders ── */}
+        <Button onClick={()=>{setUseAdvancedFeatures(!useAdvancedFeatures)}} variant="secondary">{useAdvancedFeatures?"- " :"+ "}Use Advanced Features</Button>
+        {
+          useAdvancedFeatures
+          ?
         <div style={sectionStyle}>
           <Slider
             label="Grading Start"
@@ -191,6 +205,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={[g1]}
             showValue
             valuePrecision={2}
+            fontSize={12}
             onValueChange={([v]) => onG1Change(v)}
           />
           <Slider
@@ -201,11 +216,13 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={[g2]}
             showValue
             valuePrecision={2}
+            fontSize={12}
             onValueChange={([v]) => onG2Change(v)}
-            />
+          />
         </div>
-        :<></>
-                }
+          :<></>
+
+        }
       </div>
     )
   }
@@ -257,11 +274,11 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-sm)',
-  width: 196,
+  width: 235,
   backgroundColor: 'var(--bg-primary)',
   borderRadius: 14,
   boxShadow: '1px 2px 9px 0px rgba(0,0,0,0.10)',
-  padding: '15px 0 13px',
+  padding: '19px 0 16px',
   overflowY: 'auto',
   maxHeight: '100%',
 }
@@ -306,7 +323,7 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
+  fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
 }
@@ -328,7 +345,6 @@ const tileNameStyle: React.CSSProperties = {
 const plusButtonStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  cursor: 'pointer',
   color: 'var(--text-secondary)',
   padding: 2,
   display: 'flex',

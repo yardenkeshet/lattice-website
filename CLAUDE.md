@@ -40,7 +40,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 
 **`templates/index.html`** — legacy single-page app shell.
 
-**`react_frontend/`** — new React + TypeScript frontend (Vite). Currently in development; see [React Frontend](#react-frontend) section below.
+**`react_frontend/`** — new React + TypeScript frontend (Vite). Two pages (`HomePage`, `ToolPage`) with a full UI component library and a React Three Fiber viewer. See [React Frontend](#react-frontend) section below.
 
 ## Key Configuration (hardcoded in `main.py`)
 
@@ -72,7 +72,7 @@ Visit `/viewlog007` for a real-time log tail, or `/viewfulllog007` for the full 
 
 ## React Frontend
 
-A new Vite + React + TypeScript frontend is being built in `react_frontend/` to replace `static/client.js`.
+A new Vite + React + TypeScript frontend is being built in `react_frontend/` to replace `static/client.js`. Routing uses `react-router-dom` with two pages: `/` (HomePage) and `/tool` (ToolPage).
 
 **Dev server:**
 ```bash
@@ -81,7 +81,54 @@ npm install
 npm run dev   # http://localhost:5173
 ```
 
-**Typed API layer** lives in `react_frontend/src/api/`:
+**Storybook** (component development / visual testing):
+```bash
+cd react_frontend
+npm run storybook   # http://localhost:6006
+```
+Every component in `components/ui/` has a `.stories.tsx` file alongside it.
+
+### Pages
+
+| Page | File | Description |
+|------|------|-------------|
+| `HomePage` | `src/pages/HomePage.tsx` | TAMC description text + image Carousel |
+| `ToolPage` | `src/pages/ToolPage.tsx` | Full lattice tool: LatticeMenu, Toolbar, ViewerScene, TileMenu |
+
+### UI Components (`src/components/ui/`)
+
+| Component | Purpose |
+|-----------|---------|
+| `Banner` | Top-of-page branding strip |
+| `Navbar` | Navigation bar with `activePage` prop (`"home"` \| `"tool"`) |
+| `Footer` | Page footer |
+| `Carousel` | Auto-playing image slideshow (used on HomePage) |
+| `Button` / `IconButton` | Standard button variants |
+| `Dropdown` | Select/dropdown input |
+| `NumberInput` | Numeric text input |
+| `Slider` | Range slider with editable value badge |
+| `TileCard` | Card showing a tile type option |
+| `TileMenu` | Right-side panel: tile type picker + per-tile sliders; slider drags update state only, commits (mouse-up / badge Enter) fire `calculateTile` |
+| `LatticeMenu` | Left-side collapsible panel: tile preview, nt1/nt2/nt3/g1/g2 params, calculation mode, export button |
+| `Toolbar` | Center top bar: file-add button, calculate button, zoom control, camera-mode toggle |
+
+### 3D Viewer
+
+**`src/components/ViewerScene.tsx`** — React Three Fiber canvas. Accepts:
+- `uploadedFile` — raw `File` shown before calculation
+- `resultStlGzB64` — `base64(gzip(ASCII-STL))` from server; takes priority when set
+- `cameraMode` — `'perspective'` | `'orthographic'`
+- `zoom` — 10–500 (default 100); scroll-wheel fires `onZoomChange`
+- `onFileDrop` — called when user drags a `.stl`/`.obj`/`.3mf` file onto the canvas
+
+### Utilities (`src/lib/`)
+
+| File | Exports |
+|------|---------|
+| `stl.ts` | `stlGzB64ToBlobUrl(s)` — decodes server STL payload to a Blob URL; `useStlBlobUrl(s)` — React hook that wraps it with automatic revocation |
+| `utils.ts` | General helpers (cn, etc.) |
+
+### Typed API layer (`src/api/`)
 
 | File | Purpose |
 |------|---------|
@@ -94,6 +141,7 @@ npm run dev   # http://localhost:5173
 - The raw `result` event (emitted twice by the server after `calculate`) is normalized into a discriminated union `ResultPayload = STLResult | TokenResult`. Branch on `payload.kind`.
 - Each `onXxx()` method on `LatticeSocketClient` returns an unsubscribe function suitable for React `useEffect` cleanup.
 - No raw event strings appear outside `socketClient.ts`.
+- Tile slider drags are local state only; backend `calculateTile` is called only on commit (mouse-up or badge Enter key).
 
 **Reference docs:**
 - `frontend_features.md` — full inventory of features from the legacy frontend (use as a checklist during the refactor)

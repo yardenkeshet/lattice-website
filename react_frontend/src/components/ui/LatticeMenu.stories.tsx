@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { LatticeMenu } from './LatticeMenu'
-import type { TileType } from '../../api/types'
+import type { TileType, CalcMode } from '../../api/types'
 
 const meta: Meta<typeof LatticeMenu> = {
   title: 'UI/LatticeMenu',
@@ -30,7 +30,7 @@ function Demo({ initialOpen = true }: { initialOpen?: boolean }) {
   const [nt3, setNt3] = useState(10)
   const [g1, setG1] = useState(0.57)
   const [g2, setG2] = useState(0.83)
-  const [mode, setMode] = useState<'extrusion' | 'revolution'>('extrusion')
+  const [mode, setMode] = useState<CalcMode>('extrusion')
 
   return (
     <LatticeMenu
@@ -69,7 +69,7 @@ export const ExportEnabled: Story = {
     const [nt3, setNt3] = useState(10)
     const [g1, setG1] = useState(0.57)
     const [g2, setG2] = useState(0.83)
-    const [mode, setMode] = useState<'extrusion' | 'revolution'>('extrusion')
+    const [mode, setMode] = useState<CalcMode>('extrusion')
     return (
       <LatticeMenu
         tileType="diagonal"

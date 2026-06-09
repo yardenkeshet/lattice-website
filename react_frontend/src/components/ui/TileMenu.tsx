@@ -1,17 +1,19 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { useStlBlobUrl } from '../../lib/stl'
-import type { TileType } from '../../api/types'
+import type { TileType, ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
+import crossImg from '../../assets/TileTypes/cross.png'
+import diagonalImg from '../../assets/TileTypes/diagonal.png'
+import crossDiagonalImg from '../../assets/TileTypes/cross-diagonal.png'
 
 /* ─── Per-tile-type slider definitions ─── */
 
 interface SliderDef {
   label: string
   min: number
-  /** null means the max is dynamic (driven by another slider's value) */
-  max: number | null
+  max: number
   defaultValue: number
   step: number
 }
@@ -24,11 +26,11 @@ const TILE_PARAMS: Record<TileType, SliderDef[]> = {
   diagonal: [
     { label: 'Center Size',       min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
     { label: 'End-Arm Size',      min: 0.01, max: 0.5,  defaultValue: 0.25, step: 0.01 },
-    { label: 'Smoothing of Arms', min: 0.0,  max: 1.0,  defaultValue: 0.5,  step: 0.01 },
+    { label: 'Smoothing of Arms', min: 0.0,  max: 1.0,  defaultValue: 0.3,  step: 0.01 },
   ],
   cross: [
     { label: 'Outer Radius', min: 0.01, max: 0.5,  defaultValue: 0.3,  step: 0.01 },
-    { label: 'Inner Radius', min: 0.0,  max: null, defaultValue: 0.15, step: 0.01 },
+    { label: 'Inner Radius', min: 0.0,  max: 0.5,  defaultValue: 0.15, step: 0.01 },
   ],
 }
 
@@ -52,16 +54,21 @@ export interface TileMenuProps {
   /** Called on slider release or badge commit — triggers model recalculation. */
   onSliderCommit?: (values: number[]) => void
   onClose: () => void
+  /**
+   * Called whenever the tile's validation state changes.
+   * source is always 'tile'. Pass [] to clear errors.
+   */
+  onValidationChange?: (source: string, errors: ValidationError[]) => void
   className?: string
 }
 
-const TILE_OPTIONS: { type: TileType; label: string }[] = [
-  { type: 'cross',          label: 'Cross' },
-  { type: 'diagonal',       label: 'Diagonal' },
-  { type: 'cross_diagonal', label: 'Cross Diagonal' },
+const TILE_OPTIONS: { type: TileType; label: string; imageUrl: string }[] = [
+  { type: 'cross',          label: 'Cross',          imageUrl: crossImg },
+  { type: 'diagonal',       label: 'Diagonal',        imageUrl: diagonalImg },
+  { type: 'cross_diagonal', label: 'Cross Diagonal',  imageUrl: crossDiagonalImg },
 ]
 
-const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
+const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
   (
     {
       tileType,
@@ -71,6 +78,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onSliderChange,
       onSliderCommit,
       onClose,
+      onValidationChange,
       className,
     },
     ref
@@ -78,12 +86,23 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
     const previewUrl = useStlBlobUrl(previewStlGzB64)
     const defs = TILE_PARAMS[tileType]
 
+    const innerRadiusError =
+      tileType === 'cross' && (sliderValues[1] ?? 0) >= (sliderValues[0] ?? Infinity)
+
+    // Keep a ref to onValidationChange so the effect never needs it as a dep
+    // (avoids re-running when parent re-renders with a new inline function).
+    const onValidationChangeRef = React.useRef(onValidationChange)
+    React.useEffect(() => { onValidationChangeRef.current = onValidationChange })
+
+    React.useEffect(() => {
+      onValidationChangeRef.current?.('tile', innerRadiusError
+        ? [{ message: 'Inner radius must be less than outer radius' }]
+        : [])
+    }, [innerRadiusError, tileType])
+
     const buildNext = (index: number, value: number): number[] => {
       const next = [...sliderValues]
       next[index] = value
-      if (tileType === 'cross' && index === 0) {
-        next[1] = Math.min(next[1], value)
-      }
       return next
     }
 
@@ -117,29 +136,35 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
         <Divider />
 
         {/* ── Live 166px preview ── */}
-        <TileCard
-          size="large"
-          modelUrl={previewUrl}
-          enableOrbit
-          aria-label="Tile live preview"
-        />
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <TileCard
+            size="large"
+            modelUrl={previewUrl}
+            enableOrbit
+            cameraResetKey={tileType}
+            aria-label="Tile live preview"
+          />
+        </div>
 
         <Divider />
 
         {/* ── Tile type selection ── */}
         <div style={sectionStyle}>
           <span style={sectionLabelStyle}>Tile Type</span>
-          <div style={tileGridStyle}>
-            {TILE_OPTIONS.map(({ type, label }) => (
-              <TileCard
-                key={type}
-                size="small"
-                label={label}
-                selected={tileType === type}
-                onClick={() => onTileTypeChange(type)}
-                aria-label={label}
-              />
-            ))}
+          <div style={tileGridWrapperStyle}>
+            <div style={tileGridStyle}>
+              {TILE_OPTIONS.map(({ type, label, imageUrl }) => (
+                <TileCard
+                  key={type}
+                  size="small"
+                  label={label}
+                  imageUrl={imageUrl}
+                  selected={tileType === type}
+                  onClick={() => onTileTypeChange(type)}
+                  aria-label={label}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -148,17 +173,19 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
         {/* ── Dynamic sliders ── */}
         <div style={sectionStyle}>
           {defs.map((def, i) => {
-            const maxVal = def.max ?? (tileType === 'cross' ? sliderValues[0] ?? 0.5 : 0.5)
+            const isInnerRadius = tileType === 'cross' && i === 1
             return (
               <div key={def.label} style={sliderRowStyle}>
                 <Slider
                   label={def.label}
                   min={def.min}
-                  max={maxVal}
+                  max={def.max}
                   step={def.step}
                   value={[sliderValues[i] ?? def.defaultValue]}
                   showValue
                   valuePrecision={2}
+                  fontSize={12}
+                  error={isInnerRadius && innerRadiusError}
                   onValueChange={([v]) => handleSliderChange(i, v)}
                   onValueCommit={([v]) => handleSliderCommit(i, v)}
                 />
@@ -171,7 +198,7 @@ const TileMenu = React.forwardRef<HTMLDivElement, TileMenuProps>(
   }
 )
 
-TileMenu.displayName = 'TileMenu'
+TileMenuInner.displayName = 'TileMenu'
 
 /* ─── Close icon ─── */
 
@@ -199,7 +226,7 @@ const containerStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-primary)',
   borderRadius: 14,
   boxShadow: '1px 2px 9px 0px rgba(0,0,0,0.10)',
-  padding: '9px 0 16px',
+  padding: '11px 0 20px',
   overflowY: 'auto',
   maxHeight: '100%',
 }
@@ -213,7 +240,7 @@ const headerStyle: React.CSSProperties = {
 
 const headerTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
+  fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
 }
@@ -245,15 +272,21 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
+  fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
+}
+
+const tileGridWrapperStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
 }
 
 const tileGridStyle: React.CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: '7px 9px',
+  width: '170px',
 }
 
 const sliderRowStyle: React.CSSProperties = {
@@ -262,4 +295,4 @@ const sliderRowStyle: React.CSSProperties = {
   gap: 5,
 }
 
-export { TileMenu }
+export const TileMenu = React.memo(TileMenuInner)

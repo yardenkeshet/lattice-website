@@ -22,6 +22,10 @@ export interface SliderProps
   getValueText?: (value: number) => string
   /** Called when the user finishes interacting (mouse up / key up / badge commit). */
   onValueCommit?: (value: number[]) => void
+  /** Override the label font size (defaults to var(--text-size-body)). */
+  fontSize?: string | number
+  /** When true, label and value badge text turn red to signal an invalid value. */
+  error?: boolean
 }
 
 // Note: ref is forwarded to SliderPrimitive.Root (the focusable/interactive
@@ -39,6 +43,8 @@ const Slider = React.forwardRef<
       label,
       asChild = false,
       length,
+      fontSize,
+      error = false,
       min = 0,
       max = 1,
       step = 0.01,
@@ -95,6 +101,8 @@ const Slider = React.forwardRef<
 
     // [C2] State-driven hover — no direct DOM mutation.
     const [hoveredThumb, setHoveredThumb] = React.useState<number | null>(null)
+    const [badgeHovered, setBadgeHovered] = React.useState(false)
+    const [badgeFocused, setBadgeFocused] = React.useState(false)
 
     // [R1] Associate the visible label with the Radix root via aria-labelledby.
     const labelId = React.useId()
@@ -115,7 +123,14 @@ const Slider = React.forwardRef<
           style={{ ...wrapperStyle, width: wrapperWidth }}
         >
           {label && (
-            <span id={labelId} style={labelStyle}>
+            <span
+              id={labelId}
+              style={{
+                ...labelStyle,
+                ...(fontSize != null ? { fontSize } : {}),
+                ...(error ? { color: 'var(--text-error)' } : {}),
+              }}
+            >
               {label}
             </span>
           )}
@@ -158,11 +173,21 @@ const Slider = React.forwardRef<
 
             {showValue && displayValue.length === 1 && (
               <input
-                style={badgeInputStyle}
+                style={{
+                  ...badgeInputStyle,
+                  borderColor: badgeFocused
+                    ? 'var(--border-focus)'
+                    : badgeHovered
+                    ? 'var(--border-base)'
+                    : 'transparent',
+                  ...(error ? { color: 'var(--text-error)' } : {}),
+                }}
                 value={inputStr}
                 onChange={e => setInputStr(e.target.value)}
-                onFocus={e => { inputFocused.current = true; e.target.select() }}
-                onBlur={() => { inputFocused.current = false; commitInput() }}
+                onMouseEnter={() => setBadgeHovered(true)}
+                onMouseLeave={() => setBadgeHovered(false)}
+                onFocus={e => { inputFocused.current = true; setBadgeFocused(true); e.target.select() }}
+                onBlur={() => { inputFocused.current = false; setBadgeFocused(false); commitInput() }}
                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                 aria-label={label ? `${label} value` : 'slider value'}
               />
@@ -244,7 +269,7 @@ const thumbBaseStyle: React.CSSProperties = {
 
 const thumbHoverStyle: React.CSSProperties = {
   ...thumbBaseStyle,
-  borderColor: 'var(--action-primary)',
+  border: '2px solid var(--action-primary)',
   boxShadow: 'var(--shadow-thumb-hover)',
 }
 
@@ -272,12 +297,13 @@ const badgeRangeStyle: React.CSSProperties = {
 
 const badgeInputStyle: React.CSSProperties = {
   ...badgeStyle,
-  background: 'transparent',
-  border: 'none',
+  border: '1px solid transparent',
   outline: 'none',
   cursor: 'text',
   textAlign: 'center',
   padding: '0 4px',
+  boxSizing: 'border-box',
+  transition: 'border-color 150ms ease',
 }
 
 export { Slider }

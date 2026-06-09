@@ -209,3 +209,17 @@ export const AllVariants: Story = {
     </div>
   ),
 }
+
+export const WithError: Story = {
+  args: {
+    label: 'Inner Radius',
+    min: 0,
+    max: 0.5,
+    step: 0.01,
+    value: [0.4],
+    showValue: true,
+    valuePrecision: 2,
+    fontSize: 12,
+    error: true,
+  },
+}

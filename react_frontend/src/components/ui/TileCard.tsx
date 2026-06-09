@@ -1,10 +1,11 @@
 import * as React from 'react'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
-import { OrbitControls, Center, Environment, Bounds } from '@react-three/drei'
+import { OrbitControls, Center } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
 import * as THREE from 'three'
+import { perspectiveFitDistance } from '../../lib/cameraFit'
 
 /* ─── Public API ─── */
 
@@ -36,10 +37,21 @@ export interface TileCardProps {
    */
   meshColor?: string
   /**
-   * Allow camera orbit interaction (drag to rotate).
+   * Allow camera orbit interaction (drag to rotate and scroll to zoom).
    * Disabled by default for small cards so click-to-select works cleanly.
    */
   enableOrbit?: boolean
+  /**
+   * When this key changes the camera resets to its default position.
+   * Pass `tileType` so the view resets on tile-type change but not on
+   * parameter recalculation (which updates modelUrl but not the key).
+   */
+  cameraResetKey?: string
+  /**
+   * Static image URL (e.g. imported PNG). When provided for non-large sizes,
+   * renders an <img> instead of the Three.js canvas.
+   */
+  imageUrl?: string
 }
 
 // Note: ref is forwarded to the outer wrapper div.
@@ -57,6 +69,8 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       'aria-label': ariaLabel,
       meshColor = '#c8c8c8',
       enableOrbit = false,
+      cameraResetKey,
+      imageUrl,
     },
     ref
   ) => {
@@ -108,33 +122,49 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
           }
         }}
       >
-        {/* Three.js canvas — leaves room for the label when present */}
-        <Canvas
-          style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
-          camera={{ position: [0, 0, 3], fov: 90 }}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[3, 4, 3]} intensity={0.8} />
-          <directionalLight position={[-3, -2, -3]} intensity={0.2} />
-
-          <React.Suspense fallback={<PlaceholderMesh color={meshColor} />}>
-            <Bounds fit clip observe margin={1.3}>
-              {modelUrl
-                ? <STLModel url={modelUrl} color={meshColor} />
-                : <PlaceholderMesh color={meshColor} />
-              }
-            </Bounds>
-          </React.Suspense>
-
-          {enableOrbit && (
-            <OrbitControls
-              enablePan={true}
-              enableZoom={true}
-              makeDefault
+        {/* Static image — used for tile selector cards with a known PNG */}
+        {imageUrl && size !== 'large'
+          ? (
+            <img
+              src={imageUrl}
+              alt=""
+              aria-hidden="true"
+              style={{
+                width: '100%',
+                height: label && size === 'small' ? 'calc(100% - 20px)' : '100%',
+                objectFit: 'contain',
+              }}
             />
-          )}
-        </Canvas>
+          )
+          : (
+            /* Three.js canvas — leaves room for the label when present */
+            <Canvas
+              frameloop="demand"
+              style={{ width: '100%', height: label && size === 'small' ? 'calc(100% - 20px)' : '100%' }}
+              camera={{ position: [0, 0, 3], fov: 45 }}
+              gl={{ antialias: true, alpha: true }}
+            >
+              <ambientLight intensity={0.7} />
+              <directionalLight position={[3, 4, 3]} intensity={0.8} />
+              <directionalLight position={[-3, -2, -3]} intensity={0.2} />
+
+              {enableOrbit && (
+                <OrbitControls
+                  enablePan={false}
+                  enableZoom={true}
+                  makeDefault
+                />
+              )}
+
+              <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
+                {modelUrl
+                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} />
+                  : <PlaceholderMesh color={meshColor} />
+                }
+              </React.Suspense>
+            </Canvas>
+          )
+        }
 
         {/* Label — small size only (mini and large have no label) */}
         {label && size === 'small' && (
@@ -151,20 +181,63 @@ TileCard.displayName = 'TileCard'
 
 /* ─── STL model loader ─── */
 
-function STLModel({ url, color }: { url: string; color: string }) {
+function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?: string }) {
   const geometry = useLoader(STLLoader, url)
-
-  // Center and normalise scale so any STL fits the card.
   const ref = React.useRef<THREE.Mesh>(null)
+  const { camera, invalidate } = useThree()
+  const controls               = useThree(s => s.controls) as any
+
+  const lastFitKeyRef   = React.useRef<string | undefined>(undefined)
+  const prevGeometryRef = React.useRef<THREE.BufferGeometry | undefined>(undefined)
+
   React.useLayoutEffect(() => {
     if (!ref.current) return
-    const box = new THREE.Box3().setFromObject(ref.current)
+
+    // 1. Reset to identity so the AABB is measured in raw local space.
+    ref.current.position.set(0, 0, 0)
+    ref.current.scale.setScalar(1)
+
+    // 2. Measure raw local AABB.
+    const box    = new THREE.Box3().setFromObject(ref.current)
     const center = box.getCenter(new THREE.Vector3())
-    const size = box.getSize(new THREE.Vector3())
+    const size   = box.getSize(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
-    ref.current.position.sub(center)
-    ref.current.scale.setScalar(2 / maxDim)
-  }, [geometry])
+    if (maxDim === 0) return
+
+    // 3. Normalise: targetSize = 2 for tile card.
+    //    Correct formula: position = -center * s so worldCenter = 0 for any geometry.
+    const s = 2 / maxDim
+    ref.current.scale.setScalar(s)
+    ref.current.position.set(-center.x * s, -center.y * s, -center.z * s)
+
+    // 4. Auto-fit only when BOTH the geometry AND the fitKey are new.
+    //    This prevents fitting to an old model when only the key changes (key
+    //    arrives before the new geometry), and prevents re-fitting on param recalcs
+    //    (geometry changes but key stays the same).
+    if (
+      fitKey !== undefined &&
+      geometry !== prevGeometryRef.current &&
+      fitKey  !== lastFitKeyRef.current
+    ) {
+      lastFitKeyRef.current   = fitKey
+      prevGeometryRef.current = geometry
+
+      // Bounding sphere of the normalised mesh.
+      const normBox = new THREE.Box3().setFromObject(ref.current)
+      const sphere  = new THREE.Sphere()
+      normBox.getBoundingSphere(sphere)
+
+      // TileCard is always perspective — no orthographic branch needed.
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const d = perspectiveFitDistance(sphere.radius, camera.fov, camera.aspect)
+        camera.position.set(0, 0, d)
+        camera.lookAt(0, 0, 0)
+        controls?.target?.set(0, 0, 0)
+        controls?.update?.()
+      }
+    }
+    invalidate()  // demand mode: trigger a frame after geometry/camera changes
+  }, [geometry, fitKey, controls, invalidate]) // camera is stable in R3F (never replaced)
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>

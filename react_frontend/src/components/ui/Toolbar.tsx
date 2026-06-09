@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { IconButton } from './IconButton'
 import { Button } from './Button'
+import type { CalcMode } from '../../api/types'
 
 /* ─── Public API ─── */
 
@@ -9,32 +10,40 @@ export interface ToolbarProps {
   zoom?: number          // 10–500, default 100
   cameraMode?: 'perspective' | 'orthographic'
   isCalculating?: boolean
+  calcLabel?: string
 
   onZoomChange?: (zoom: number) => void
   onCameraModeChange?: (mode: 'perspective' | 'orthographic') => void
-  /** Called when user picks a file via the Add button. Receives the raw File. */
-  onFileAdd?: (file: File) => void
+  /** Present only when in ruling mode — controls multi-file picker and routing. */
+  calcMode?: CalcMode
+  /** Called when user picks file(s) via the Add button. 1 item normally, up to 2 in ruling mode. */
+  onFilesAdd?: (files: File[]) => void
   onCalculate?: () => void
 
   className?: string
+
+  fileNames: string[]
 }
 
 const ZOOM_STEP = 10
 const ZOOM_MIN  = 10
 const ZOOM_MAX  = 500
-export const ACCEPTED_3D = ['.iges', '.igs']
+const ACCEPTED_3D = '.igs'
 
-const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
+const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
     {
       zoom = 100,
       cameraMode = 'perspective',
       isCalculating = false,
+      calcLabel = 'Calculating…',
       onZoomChange,
       onCameraModeChange,
-      onFileAdd,
+      calcMode,
+      onFilesAdd,
       onCalculate,
       className,
+      fileNames
     },
     ref
   ) => {
@@ -42,10 +51,11 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
     const [modeOpen, setModeOpen] = React.useState(false)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) onFileAdd?.(file)
-      // Reset input so the same file can be re-selected
-      e.target.value = ''
+      const all = Array.from(e.target.files ?? [])
+      if (all.length === 0) return
+      const limited = calcMode === 'ruling' ? all.slice(0, 2) : [all[0]]
+      onFilesAdd?.(limited)
+      e.target.value = ''  // reset so the same file can be re-selected
     }
 
     return (
@@ -55,6 +65,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
           ref={fileInputRef}
           type="file"
           accept={ACCEPTED_3D}
+          multiple={calcMode === 'ruling'}
           style={{ display: 'none' }}
           onChange={handleFileChange}
           aria-hidden="true"
@@ -63,12 +74,11 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
 
         {/* ── Add (file upload) icon button ── */}
         <IconButton
-          aria-label="Add 3D file"
+          aria-label="Add IGS file"
           onClick={() => fileInputRef.current?.click()}
         >
           <PlusIcon />
         </IconButton>
-
         {/* ── Pill: zoom + camera mode ── */}
         <div style={pillStyle}>
 
@@ -138,15 +148,15 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
           </div>
 
           <PillDivider />
+          {fileNames?<ul> {fileNames.map((name)=><li key={name}><CubeIcon3D/> {name}</li>)}</ul> :<></>}
 
           {/* Calculate button */}
           <Button
             variant="secondary"
             disabled={isCalculating}
             onClick={onCalculate}
-            style={{ boxShadow: 'none', height: 31 }}
           >
-            {isCalculating ? 'Calculating…' : 'Calculate'}
+            {isCalculating ? calcLabel : 'Calculate'}
           </Button>
         </div>
       </div>
@@ -154,7 +164,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
   }
 )
 
-Toolbar.displayName = 'Toolbar'
+ToolbarInner.displayName = 'Toolbar'
 
 /* ─── Icons ─── */
 
@@ -190,6 +200,30 @@ function ChevronDownIcon({ open }: { open: boolean }) {
     </svg>
   )
 }
+
+export const CubeIcon3D = ({ size = 24, className = "" }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25em' }}
+    >
+      {/* Top Face */}
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      {/* Left Face */}
+      <path d="M2 17l10 5V12L2 7v10z" />
+      {/* Right Face */}
+      <path d="M22 7l-10 5v10l10-5V7z" />
+    </svg>
+  );
+};
 
 /* ─── Pill divider ─── */
 
@@ -300,4 +334,4 @@ const dropdownItemActiveStyle: React.CSSProperties = {
   fontWeight: 600,
 }
 
-export { Toolbar }
+export const Toolbar = React.memo(ToolbarInner)

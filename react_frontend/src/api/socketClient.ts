@@ -2,8 +2,11 @@ import { io, Socket } from 'socket.io-client';
 import type {
   CalculatePayload,
   CalculateTilePayload,
-  Result,
+  ResultPayload,
+  TileSTLResult,
+  ModelSTLResult,
   ErrorPayload,
+  UpdatePayload,
   LogLine,
   TileSTLResult,
   ModelSTLResult,
@@ -13,10 +16,10 @@ import type {
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
 
 interface RawResult {
+  kind?: string;
   filename?: string;
   stl_gz_b64?: string;
-  kind?: string;
-  timings?: ModelSTLResult['timings'];
+  timings?: TileSTLResult['timings'];
   args_echo?: ModelSTLResult['args_echo'];
   download_token?: string;
 }
@@ -81,10 +84,10 @@ export class LatticeSocketClient {
   }
 
   /**
-   * Unified result handler — receives both STLResult and TokenResult.
+   * Unified result handler — receives TileSTLResult and ModelSTLResult.
    * Use the `kind` discriminant to branch:
-   *   if (payload.kind === 'stl') { ... }
-   *   if (payload.kind === 'token') { ... }
+   *   if (payload.kind === 'tile_stl') { ... }
+   *   if (payload.kind === 'model_stl') { ... }
    */
   onResult(handler: ResultHandler): () => void {
     this.resultHandlers.add(handler);
@@ -97,6 +100,11 @@ export class LatticeSocketClient {
     };
     this.socket.on('error', wrapper);
     return () => this.socket.off('error', wrapper);
+  }
+
+  onUpdate(handler: (payload: UpdatePayload) => void): () => void {
+    this.socket.on('update', handler);
+    return () => this.socket.off('update', handler);
   }
 
   onLogUpdate(handler: LogHandler): () => void {
@@ -114,23 +122,21 @@ export class LatticeSocketClient {
   private resultHandlers = new Set<ResultHandler>();
 
   private handleRawResult(raw: RawResult): void {
-    console.log("Raw result: ", raw);
-    const payload: Result = (raw.kind === 'tile_stl')
-    ? {
-      kind: 'tile_stl',
-      filename: raw.filename ?? '',
-      stl_gz_b64: raw.stl_gz_b64!,
-      timings: raw.timings!,
-      args_echo: raw.args_echo,
-    } as TileSTLResult
-    : {
-      kind: (raw.kind ?? 'model_stl') as 'model_stl' | 'model_preview_stl',
-      filename: raw.filename ?? '',
-      stl_gz_b64: raw.stl_gz_b64!,
-      timings: raw.timings!,
-      args_echo: raw.args_echo,
-      download_token: raw.download_token ?? '',
-    } as ModelSTLResult;
+    const payload: ResultPayload = raw.kind === 'model_stl'
+      ? {
+          kind: 'model_stl',
+          filename: raw.filename ?? '',
+          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          download_token: raw.download_token ?? '',
+          timings: raw.timings!,
+          args_echo: raw.args_echo,
+        }
+      : {
+          kind: 'tile_stl',
+          filename: raw.filename ?? '',
+          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          timings: raw.timings!,
+        };
 
     this.resultHandlers.forEach((h) => h(payload));
   }

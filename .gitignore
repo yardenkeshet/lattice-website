@@ -1,14 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Backend runtime output
 client_data/
-front/
-gershon/
-GUI/
-igs/
-Input/
 last_results/
 last_tiles_results/
-logs/
-/models/
-output/
-results/
-results_tiles/
-uploads/
+
+# Node / React
+react_frontend/node_modules/
+react_frontend/dist/
+react_frontend/.storybook-static/
+
+# Editor / OS
+.claude/settings.local.json
+.DS_Store
+Thumbs.db

@@ -1,27 +1,35 @@
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
-import { Navbar } from '../components/ui/Navbar'
 import { Footer } from '../components/ui/Footer'
 import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
-import { ViewerSceneAndDrop } from '../components/ViewerSceneAndDrop'
+import { ViewerScene } from '../components/ViewerScene'
+import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
-import { downloadResults } from '../api/httpClient'
-import { STLLoader } from 'three/addons/loaders/STLLoader.js';
-import pako from 'pako'
-import type { TileType } from '../api/types'
-import type { FileType } from '../components/types'
-import type { BufferGeometry } from 'three'
+import { downloadResults, convertIgsToStl } from '../api/httpClient'
+import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
+import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
+import type { TileType, CalcMode, ValidationError } from '../api/types'
+import { DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT } from '../lib/utils'
 
-/* ─── STL decode helper ─── */
-function stlGzB64ToGeometry2(gzB64: string): BufferGeometry {
-  const compressed = Uint8Array.from(atob(gzB64), c => c.charCodeAt(0))
-  const decompressed = pako.inflate(compressed)
-  const stlText = new TextDecoder().decode(decompressed)
-  console.log('[STL] decompressed:', stlText.slice(0, 100))
-  return new STLLoader().parse(stlText.trimStart())
+/* ─── IGS conversion utility ─── */
+
+/**
+ * Sends a .igs file to the server's convert_igs_to_stl endpoint.
+ * Returns the base64-encoded STL string and a synthetic STL File so
+ * ViewerScene can render the converted mesh before calculation.
+ */
+async function convertIgsFile(file: File): Promise<{ stlB64: string; stlFile: File }> {
+  const stlB64 = await convertIgsToStl(file)
+  const binary = atob(stlB64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  const stlName = file.name.replace(/\.igs$/i, '.stl')
+  const stlFile = new File([bytes], stlName, { type: 'application/octet-stream' })
+  console.log("converted to: ", {stlB64, stlFile})
+  return { stlB64, stlFile }
 }
 
 function stlGzB64ToGeometry(gzB64: string): BufferGeometry {
@@ -66,169 +74,297 @@ export function ToolPage() {
 
   /* ── UI state ── */
   const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(true)
-  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(false)
+  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(true)
   const [zoom, setZoom]                           = React.useState(100)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>('perspective')
+  const [viewerResetKey, setViewerResetKey]       = React.useState('initial')
+  /* Tracks what kind of action triggered the last backend call so the result
+     handler knows whether to reset the viewer camera. null = no reset. */
+  const pendingResetKey = React.useRef<string | null>(null)
 
   /* ── Tile state ── */
-  const [tileParams, setTileParams] = React.useState<TileState>({
-    type: 'diagonal',
-    sliderValues: defaultSliderValues('diagonal'),
-    previewGzB64: null,
-  })
-
-  /* ── File & geometry state ── */
-  const [uploadedFile, setUploadedFile]         = React.useState<File | null>(null)
-  const [previewStlGzB64, setPreviewStlGzB64]       = React.useState<string | null>(null)
-  const [calculatedStlGzB64, setCalculatedStlGzB64] = React.useState<string | null>(null)
-
-  const tileGeometry = React.useMemo(
-    () => tileParams.previewGzB64 ? stlGzB64ToGeometry(tileParams.previewGzB64) : null,
-    [tileParams.previewGzB64]
-  )
-  const previewGeometry = React.useMemo(
-    () => previewStlGzB64 ? stlGzB64ToGeometry(previewStlGzB64) : null,
-    [previewStlGzB64]
-  )
-  const calculatedGeometry = React.useMemo(
-    () => calculatedStlGzB64 ? stlGzB64ToGeometry2(calculatedStlGzB64) : null,
-    [calculatedStlGzB64]
-  )
-
-  /* ── Calculation status ── */
-  const [isCalculating, setIsCalculating]   = React.useState(false)
-  const [downloadToken, setDownloadToken]   = React.useState<string | null>(null)
-  const [errorMsg, setErrorMsg]             = React.useState<string | null>(null)
+  const [tileType, setTileType]           = React.useState<TileType>('diagonal')
+  const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues('diagonal'))
+  const [tilePreviewGzB64, setTilePreviewGzB64] = React.useState<string | null>(null)
 
   /* ── Lattice params ── */
-  const [nt1, setNt1]           = React.useState(10)
-  const [nt2, setNt2]           = React.useState(10)
-  const [nt3, setNt3]           = React.useState(1)
-  const [g1, setG1]             = React.useState(0.57)
-  const [g2, setG2]             = React.useState(0.83)
-  const [calcMode, setCalcMode] = React.useState<'extrusion' | 'revolution'>('extrusion')
+  const [nt1, setNt1]               = React.useState(DEFAULT_X_COUNT)
+  const [nt2, setNt2]               = React.useState(DEFAULT_Y_COUNT)
+  const [nt3, setNt3]               = React.useState(DEFAULT_Z_COUNT)
+  const [g1, setG1]                 = React.useState(0.57)
+  const [g2, setG2]                 = React.useState(0.83)
+  const [calcMode, setCalcMode]     = React.useState<CalcMode>('extrusion')
+
+  /* ── File / result state ── */
+  const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
+  const [uploadedB64, setUploadedB64]     = React.useState<string | null>(null)
+  const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
+  const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
+  const [isCalculating, setIsCalculating] = React.useState(false)
+  const [calcLabel, setCalcLabel]         = React.useState('Calculating…')
+  const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
+
+  /* ── Second file slot for ruling mode ── */
+  const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
+
+  /* ── Validation errors aggregated from child components ── */
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
+  const handleValidationChange = React.useCallback((source: string, errors: ValidationError[]) => {
+    setValidationErrors(prev => ({ ...prev, [source]: errors }))
+  }, [])
+
+  /* Ref so socket callbacks always see the current calcMode without a stale closure */
+  const calcModeRef = React.useRef<CalcMode>(calcMode)
+  React.useEffect(() => { calcModeRef.current = calcMode }, [calcMode])
+
+
+  /* Blob URL for the tile mini preview in LatticeMenu */
+  const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
+
+  /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
+  React.useEffect(() => {
+    fetch(defaultTileUrl)
+      .then(r => r.text())
+      .then(text => {
+        setTilePreviewGzB64(stlTextToGzB64(text))
+        setResultGzB64(stlTextToGzB64(text))
+      })
+      .catch(() => {/* preview stays null; first slider commit will populate it */})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /* ── Socket subscriptions ── */
 
   React.useEffect(() => {
-    const unsubResult = socket.onResult((payload) => {
-      console.log('Received result payload:', payload)
-
-      if (payload.kind === 'model_stl') {
-        try {
-          // Validate before storing — decode once to check for empty mesh
-          const geometry = stlGzB64ToGeometry2(payload.stl_gz_b64)
-          if (!geometry.attributes.position || geometry.attributes.position.count === 0) {
-            throw new Error('DLL returned an empty mesh (0 vertices)')
+    const unsubResult = socket.onResult(payload => {
+      console.log("socket: onResult: ", payload)
+      if (payload.kind === 'tile_stl') {
+        // Tile preview from calculate_tile — update mini-preview and main viewer
+        // (main viewer only in non-ruling mode; ruling mode shows two surfaces, not a tile)
+        setTilePreviewGzB64(payload.stl_gz_b64)
+        if (calcModeRef.current !== 'ruling') {
+          setResultGzB64(payload.stl_gz_b64)
+          if (pendingResetKey.current !== null) {
+            setViewerResetKey(pendingResetKey.current)
+            pendingResetKey.current = null
           }
-          setCalculatedStlGzB64(payload.stl_gz_b64)
-          setDownloadToken(payload.download_token)
-          setIsCalculating(false)
-        } catch (e) {
-          console.error('[model_stl] parse failed:', e)
-          setIsCalculating(false)
-          setErrorMsg(e instanceof Error ? e.message : 'Failed to parse result geometry')
         }
-      } else if (payload.kind === 'tile_stl') {
-        setTileParams(prev => ({ ...prev, previewGzB64: payload.stl_gz_b64 }))
-      } else if (payload.kind === 'model_preview_stl') {
-        setPreviewStlGzB64(payload.stl_gz_b64)
       } else {
-        console.warn('Received unknown result kind:', (payload as any).kind)
+        // model_stl from calculate — full lattice result
+        setIsCalculating(false)
+        setCalcLabel('Calculating…')
+        setResultGzB64(payload.stl_gz_b64)
+        setDownloadToken(payload.download_token)
+        if (pendingResetKey.current !== null) {
+          setViewerResetKey(pendingResetKey.current)
+          pendingResetKey.current = null
+        }
       }
     })
 
     const unsubError = socket.onError(err => {
       console.error('Socket error:', err)
       setIsCalculating(false)
+      setCalcLabel('Calculating…')
       setErrorMsg(err.message)
     })
-
-    return () => {
-      unsubResult()
-      unsubError()
-    }
+    const unsubUpdate = socket.onUpdate(upd => {
+      if (upd.type === 'progress_start')  setCalcLabel(upd.message)
+      else if (upd.type === 'progress_update') setCalcLabel(`Calculating… ${upd.progress}%`)
+      else setCalcLabel('Calculating… 100%')
+    })
+    return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
 
-  /* ── Tile param commit ── */
+  /* ── Tile param change → update state only (no backend call on drag) ── */
+  const handleTileSliderChange = React.useCallback((values: number[]) => {
+    setTileSliderValues(values)
+  }, [])
+
+  /* ── Tile param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
+    pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
     socket.calculateTile({ type: tileParams.type, values: padded })
   }, [socket, tileParams.type])
 
-  const handleTileTypeChange = (type: TileType) => {
+  const handleTileTypeChange = React.useCallback((type: TileType) => {
+    pendingResetKey.current = type
+    setTileType(type)
     const defaults = defaultSliderValues(type)
     setTileParams({ type, sliderValues: defaults, previewGzB64: tileParams.previewGzB64 })
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
     socket.calculateTile({ type, values: padded })
-  }
+  }, [socket])
 
-  const handleTileSliderChange = React.useCallback((values: number[]) => {
-    setTileParams(prev => ({ ...prev, sliderValues: values }))
+  const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
+    setResultGzB64(null)
+    setDownloadToken(null)
+    setErrorMsg(null)
+    setUploadedFile2(null)
+    setCalcMode(mode)
   }, [])
 
   /* ── File upload ── */
-  const handleFileAdd = async (file: File) => {
-    try {
-      // BUG FIX: was not saving the file, so handleCalculate had no file to read.
-      setUploadedFile(file)
-      setPreviewStlGzB64(null)
-      setCalculatedStlGzB64(null)
-      setDownloadToken(null)
-      setErrorMsg(null)
-
-      const fileContent = await file.text()
-      socket.convertIGESToSTL({ filename: file.name, data: fileContent })
-    } catch (err) {
-      console.error('Failed to read file:', err)
-    }
-  }
-
-  /* ── Calculate ── */
-  const handleCalculate = () => {
-    // BUG FIX: was referencing undefined `userModel.file` and `upl.file`
-    // instead of the `uploadedFile` state variable.
-    if (!uploadedFile) return
-
-    setCalculatedStlGzB64(null)
+  const handleFilesAdd = React.useCallback(async (files: File[]) => {
+    setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
+
+    if (calcMode === 'ruling') {
+      if (files.length >= 2) {
+        setViewerResetKey('file-' + Date.now())
+        try {
+          const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
+          setUploadedFile(r1.stlFile)
+          setUploadedFile2(r2.stlFile)
+          setUploadedB64(r1.stlB64)
+        } catch { setErrorMsg('Failed to convert IGS file') }
+      } else {
+        const file = files[0]
+        if (!uploadedFile) {
+          setViewerResetKey('file-' + Date.now())
+          try {
+            const { stlB64, stlFile } = await convertIgsFile(file)
+            setUploadedFile(stlFile)
+            setUploadedB64(stlB64)
+          } catch { setErrorMsg('Failed to convert IGS file') }
+        } else if (!uploadedFile2) {
+          try {
+            const { stlFile } = await convertIgsFile(file)
+            setUploadedFile2(stlFile)
+          } catch { setErrorMsg('Failed to convert IGS file') }
+        } else {
+          setViewerResetKey('file-' + Date.now())
+          try {
+            const { stlB64, stlFile } = await convertIgsFile(file)
+            setUploadedFile(stlFile)
+            setUploadedB64(stlB64)
+          } catch { setErrorMsg('Failed to convert IGS file') }
+        }
+      }
+    } else {
+      const file = files[0]
+      setViewerResetKey('file-' + Date.now())
+      try {
+        const { stlB64, stlFile } = await convertIgsFile(file)
+        setUploadedFile(stlFile)
+        setUploadedB64(stlB64)
+      } catch { setErrorMsg('Failed to convert IGS file') }
+    }
+  }, [calcMode, uploadedFile, uploadedFile2])
+
+  const handleFile1Drop = React.useCallback(async (file: File) => {
+    setResultGzB64(null)
+    try {
+      const { stlB64, stlFile } = await convertIgsFile(file)
+      setUploadedFile(stlFile)
+      setUploadedB64(stlB64)
+    } catch { setErrorMsg('Failed to convert IGS file') }
+  }, [])
+
+  const handleFile2Drop = React.useCallback(async (file: File) => {
+    setResultGzB64(null)
+    try {
+      const { stlFile } = await convertIgsFile(file)
+      setUploadedFile2(stlFile)
+    } catch { setErrorMsg('Failed to convert IGS file') }
+  }, [])
+
+  /* ── Clear handlers ── */
+  const handleClearSingle = React.useCallback(() => {
+    setUploadedFile(null)
+    setUploadedB64(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
+  }, [])
+
+  const handleClear1 = React.useCallback(() => {
+    setUploadedFile(null)
+    setUploadedB64(null)
+  }, [])
+
+  const handleClear2 = React.useCallback(() => {
+    setUploadedFile2(null)
+  }, [])
+
+  /* ── Calculate ── */
+  const handleCalculate = React.useCallback(() => {
+    const allErrors = Object.values(validationErrors).flat()
+    if (allErrors.length > 0) {
+      setErrorMsg(allErrors[0].message)
+      return
+    }
+
+    if (calcMode === 'ruling') {
+      if (!uploadedFile && !uploadedFile2) {
+        setErrorMsg('Please upload both surface files')
+        return
+      }
+      if (!uploadedFile) {
+        setErrorMsg('Please upload Surface 1')
+        return
+      }
+      if (!uploadedFile2) {
+        setErrorMsg('Please upload Surface 2')
+        return
+      }
+      if (!uploadedB64) {
+        setErrorMsg('Surface 1 is still loading — please wait a moment')
+        return
+      }
+    } else {
+      if (!uploadedFile || !uploadedB64) {
+        setErrorMsg('Please upload a 3D file first')
+        return
+      }
+    }
+    pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const base64String = (reader.result as string).split(',')[1]
-
-      socket.calculate({
-        filename: uploadedFile.name,
-        igs_b64: base64String,
-        client_ts: Date.now(),
-        args: {
-          tileType: tileParams.type,
-          nt1, nt2, nt3, g1, g2,
-          p1: tileParams.sliderValues[0],
-          p2: tileParams.sliderValues[1],
-          p3: tileParams.sliderValues[2],
-        },
-      })
-    }
-    reader.onerror = () => {
-      setIsCalculating(false)
-      setErrorMsg('Error reading file')
-    }
-    reader.readAsDataURL(uploadedFile)
-  }
+    setCalcLabel('Calculating…')
+    setResultGzB64(null)
+    setDownloadToken(null)
+    setErrorMsg(null)
+    console.log("socket please calculate with: ",{
+      filename: uploadedFile!.name,
+      stl_text_b64: uploadedB64!,
+      client_ts: performance.now(),
+      args: {
+        filename: uploadedFile!.name,
+        client_ts: performance.now(),
+        args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+      },
+    })
+    socket.calculate({
+      filename: uploadedFile!.name,
+      client_ts: performance.now(),
+      args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+    })
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedB64, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */
-  const handleExport = (type: FileType) => {
+  const handleExportStl = React.useCallback(() => {
     if (!downloadToken) return
-    downloadResults(downloadToken, type).catch(() => setErrorMsg('Download failed'))
-  }
+    downloadResults(downloadToken, 'stl').catch(() => setErrorMsg('Download failed'))
+  }, [downloadToken])
+
+  const handleExportIgs = React.useCallback(() => {
+    if (!downloadToken) return
+    downloadResults(downloadToken, 'igs').catch(() => setErrorMsg('Download failed'))
+  }, [downloadToken])
+
+  /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
+  const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
+  const handleTileMenuClose  = React.useCallback(() => setIsTileMenuOpen(false), [])
+
+  const fileNames = React.useMemo(
+    () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
+    [uploadedFile, uploadedFile2]
+  )
 
   return (
     <div style={pageStyle}>
-      <Banner />
-      <Navbar activePage="tool" onNavigate={page => navigate(page === 'home' ? '/' : '/tool')} />
+      <Banner onLeftLogoClick={() => navigate('/')} />
 
       <div style={workspaceStyle}>
 
@@ -243,9 +379,10 @@ export function ToolPage() {
             isOpen={isLatticeMenuOpen}
             onNt1Change={setNt1} onNt2Change={setNt2} onNt3Change={setNt3}
             onG1Change={setG1} onG2Change={setG2}
-            onCalculationModeChange={setCalcMode}
+            onCalculationModeChange={handleCalcModeChange}
             onOpenTileMenu={() => setIsTileMenuOpen(true)}
-            onExport={handleExport}
+            onExportStl={handleExportStl}
+            onExportIgs={handleExportIgs}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
           />
         </div>
@@ -253,13 +390,16 @@ export function ToolPage() {
         <div style={centerStyle}>
           <div style={toolbarRowStyle}>
             <Toolbar
+              calcMode={calcMode}
               zoom={zoom}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
+              calcLabel={calcLabel}
               onZoomChange={setZoom}
               onCameraModeChange={setCameraMode}
-              onFileAdd={handleFileAdd}
+              onFilesAdd={handleFilesAdd}
               onCalculate={handleCalculate}
+              fileNames={fileNames}
             />
           </div>
 
@@ -271,13 +411,34 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            <ViewerSceneAndDrop
-              model={calculatedGeometry ?? previewGeometry}
-              cameraMode={cameraMode}
-              zoom={zoom}
-              onZoomChange={setZoom}
-              onFileDrop={handleFileAdd}
-            />
+            {calcMode === 'ruling' && !resultGzB64
+              ? (
+                <DualViewerLayout
+                  file1={uploadedFile}
+                  file2={uploadedFile2}
+                  onFile1Drop={handleFile1Drop}
+                  onFile2Drop={handleFile2Drop}
+                  cameraMode={cameraMode}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  onClear1={handleClear1}
+                  onClear2={handleClear2}
+                  style={{ height: '100%' }}
+                />
+              )
+              : (
+                <ViewerScene
+                  uploadedFile={uploadedFile}
+                  resultStlGzB64={resultGzB64}
+                  cameraMode={cameraMode}
+                  zoom={zoom}
+                  cameraResetKey={viewerResetKey}
+                  onZoomChange={setZoom}
+                  onFileDrop={handleViewerFileDrop}
+                  onClear={handleClearSingle}
+                />
+              )
+            }
           </div>
         </div>
 
@@ -290,7 +451,8 @@ export function ToolPage() {
               onTileTypeChange={handleTileTypeChange}
               onSliderChange={handleTileSliderChange}
               onSliderCommit={handleTileSliderCommit}
-              onClose={() => setIsTileMenuOpen(false)}
+              onClose={handleTileMenuClose}
+              onValidationChange={handleValidationChange}
             />
           </div>
         )}
@@ -313,7 +475,6 @@ const pageStyle: React.CSSProperties = {
 const workspaceStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
-  alignItems: 'flex-start',
   gap: 0,
   backgroundColor: '#e3e3e3',
   padding: 0,
@@ -333,6 +494,8 @@ const centerStyle: React.CSSProperties = {
   gap: 8,
   padding: 20,
   minWidth: 0,
+  minHeight: 0,
+  // maxHeight: 395,
 }
 
 const toolbarRowStyle: React.CSSProperties = {
@@ -341,7 +504,8 @@ const toolbarRowStyle: React.CSSProperties = {
 }
 
 const viewerStyle: React.CSSProperties = {
-  minHeight: 500,
+  flex: 1,
+  minHeight: 0,
   borderRadius: 12,
   overflow: 'hidden',
   height: 0,
@@ -350,7 +514,6 @@ const viewerStyle: React.CSSProperties = {
 const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
   padding: '20px 20px 20px 0',
-  alignSelf: 'flex-start',
 }
 
 const errorStyle: React.CSSProperties = {
