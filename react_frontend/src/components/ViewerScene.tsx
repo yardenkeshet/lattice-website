@@ -196,9 +196,11 @@ function ViewerSceneFn({
         orthographic={cameraMode === 'orthographic'}
         gl={{ antialias: true, alpha: true }}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[4, 5, 4]} intensity={0.9} />
-        <directionalLight position={[-3, -2, -3]} intensity={0.25} />
+        <ambientLight intensity={0.4} />
+        <directionalLight color={0xfff5e0} position={[5, 8, 6]} intensity={1.2} />
+        <directionalLight color={0xffd9a0} position={[-6, 2, 4]} intensity={0.3} />
+        <directionalLight color={0xffffff} position={[0, -4, -8]} intensity={0.25} />
+        <directionalLight color={0xffeedd} position={[0, -8, 0]} intensity={0.2} />
 
         {/* Camera zoom controller — scales around the auto-fit base */}
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
@@ -331,7 +333,7 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshStandardMaterial color="#c8c8c8" roughness={0.55} metalness={0.1} />
+      <meshPhongMaterial color={0x00aaff} specular={0x111111} shininess={50} />
     </mesh>
   )
 }

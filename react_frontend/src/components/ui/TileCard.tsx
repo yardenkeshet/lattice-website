@@ -67,7 +67,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       asChild = false,
       className,
       'aria-label': ariaLabel,
-      meshColor = '#c8c8c8',
+      meshColor = '#00aaff',
       enableOrbit = false,
       cameraResetKey,
       imageUrl,
@@ -144,9 +144,11 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
               camera={{ position: [0, 0, 3], fov: 45 }}
               gl={{ antialias: true, alpha: true }}
             >
-              <ambientLight intensity={0.7} />
-              <directionalLight position={[3, 4, 3]} intensity={0.8} />
-              <directionalLight position={[-3, -2, -3]} intensity={0.2} />
+              <ambientLight intensity={0.4} />
+              <directionalLight color={0xfff5e0} position={[5, 8, 6]} intensity={1.2} />
+              <directionalLight color={0xffd9a0} position={[-6, 2, 4]} intensity={0.3} />
+              <directionalLight color={0xffffff} position={[0, -4, -8]} intensity={0.25} />
+              <directionalLight color={0xffeedd} position={[0, -8, 0]} intensity={0.2} />
 
               {enableOrbit && (
                 <OrbitControls
@@ -241,7 +243,7 @@ function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?:
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>
-      <meshStandardMaterial color={color} roughness={0.55} metalness={0.1} />
+      <meshPhongMaterial color={color} specular={0x111111} shininess={50} />
     </mesh>
   )
 }
@@ -253,7 +255,7 @@ function PlaceholderMesh({ color }: { color: string }) {
     <Center>
       <mesh castShadow>
         <torusKnotGeometry args={[0.6, 0.2, 128, 32]} />
-        <meshStandardMaterial color={color} roughness={0.55} metalness={0.1} />
+        <meshPhongMaterial color={color} specular={0x111111} shininess={50} />
       </mesh>
     </Center>
   )
