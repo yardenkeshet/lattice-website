@@ -48,7 +48,7 @@ export interface LatticeMenuProps {
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
   (
     {
-      // tileType,
+      tileType,
       tileLabel,
       tilePreviewUrl,
       nt1, nt2, nt3, g1, g2,
@@ -127,6 +127,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               <TileCard
                 size="mini"
                 modelUrl={tilePreviewUrl}
+                cameraResetKey={tileType}
                 aria-label={`Current tile: ${tileName}`}
                 selected
               />

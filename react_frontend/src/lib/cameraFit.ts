@@ -1,5 +1,5 @@
 /** Fraction of the viewport the model should fill on auto-fit (65%). */
-export const FILL_FRACTION = 0.65
+export const FILL_FRACTION = 0.95
 
 /**
  * Computes the camera distance along +Z so that a sphere of radius `r`

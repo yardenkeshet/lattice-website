@@ -112,10 +112,11 @@ export function ToolPage() {
     const unsubResult = socket.onResult(payload => {
       console.log("socket: onResult: ", payload)
       if (payload.kind === 'tile_stl') {
-        // Tile preview from calculate_tile — update mini-preview and main viewer
-        // (main viewer only in non-ruling mode; ruling mode shows two surfaces, not a tile)
+        // Tile preview from calculate_tile — update mini-preview, and the main
+        // viewer only when it has nothing else to show (no uploaded file or
+        // calculation result, and not in ruling mode)
         setTilePreviewGzB64(payload.stl_gz_b64)
-        if (calcModeRef.current !== RULING) {
+        if (calcModeRef.current !== RULING && !uploadedFileRef.current && !downloadTokenRef.current) {
           setResultGzB64(payload.stl_gz_b64)
           if (pendingResetKey.current !== null) {
             setViewerResetKey(pendingResetKey.current)
