@@ -1,7 +1,8 @@
-import type { TileType } from "../calculation_params";
+import type { CalcMode, TileType } from "../calculation_params";
 
 export interface CalculateArgs {
   tileType: TileType;
+  calcMode: CalcMode;
   nt1: number;
   nt2: number;
   nt3: number;

@@ -296,21 +296,13 @@ export function ToolPage() {
     setResultGzB64(null)
     setDownloadToken(null)
     setErrorMsg(null)
-    console.log("socket please calculate with: ",{
-      filename: uploadedFile!.name,
-      stl_text_b64: uploadedB64!,
-      client_ts: performance.now(),
-      args: {
-        filename: uploadedFile!.name,
-        client_ts: performance.now(),
-        args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
-      },
-    })
-    socket.calculate({
+    let calculateArgs = {
       filename: uploadedFile!.name,
       client_ts: performance.now(),
-      args: { tileType, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
-    })
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+    }
+    console.log("socket please calculate with: ",calculateArgs);
+    socket.calculate(calculateArgs)
   }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedB64, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */

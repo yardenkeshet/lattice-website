@@ -139,6 +139,10 @@ MSDLL_TILE_CROSS          = 0
 MSDLL_TILE_DIAGONAL       = 1
 MSDLL_TILE_CROSS_DIAGONAL = 2
 
+CALC_MODE_EXTRUSION  = 'extrusion'
+CALC_MODE_REVOLUTION = 'revolution'
+CALC_MODE_RULING     = 'ruling'
+
 TILE_TYPE_MAP = {
     "cross":          MSDLL_TILE_CROSS,
     "diagonal":       MSDLL_TILE_DIAGONAL,
@@ -373,7 +377,7 @@ def twist_mesh(triangles, twist_angle_deg=45, axis='z'):
 DOWNLOAD_CACHE = {}
 
 
-def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
+def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     download_token = str(uuid.uuid4())
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
@@ -382,7 +386,7 @@ def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
     _dll_from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
-        MSDLL_TILE_CROSS,
+        tile_type_int,
         tile_params,
         out_igs, out_stl,
     )
@@ -393,7 +397,7 @@ def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params):
     return download_token, stl_content
 
 
-def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
+def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     download_token = str(uuid.uuid4())
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
     os.makedirs(new_folder, exist_ok=True)
@@ -403,7 +407,7 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
         igs_path.encode('ascii') if isinstance(igs_path, str) else igs_path,
         10.0,
         num_tiles, grading_params,
-        MSDLL_TILE_DIAGONAL,
+        tile_type_int,
         tile_params,
         out_igs, out_stl,
     )
@@ -421,7 +425,7 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params):
     return download_token, stl_content
 
 
-def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
+def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     download_token = str(uuid.uuid4())
 
     new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
@@ -434,7 +438,7 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
     _dll_from_ruling(
         srf_path, srf_path,
         num_tiles, grading_params,
-        MSDLL_TILE_CROSS_DIAGONAL,
+        tile_type_int,
         tile_params,
         out_igs, out_stl,
     )
@@ -444,6 +448,13 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params):
         'sid': sid, 'out_stl': 'MSRuled.stl', 'out_igs': 'MSRuled.igs'
     }
     return download_token, stl_content
+
+
+CALC_MODE_DISPATCH = {
+    CALC_MODE_EXTRUSION:  do_extrusion,
+    CALC_MODE_REVOLUTION: do_revolution,
+    CALC_MODE_RULING:     do_Ruling,
+}
 
 
 def calculate_tile(tile_params, graded, tile_type_str, sid):
@@ -611,6 +622,7 @@ def handle_calculate(data):
     args      = data.get('args', {})
 
     tile_type = args.get('tileType')
+    calc_mode = args.get('calcMode')
     try:
         nt1 = int(args.get('nt1', 2))
         nt2 = int(args.get('nt2', 2))
@@ -627,13 +639,19 @@ def handle_calculate(data):
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
     logger.info(
-        f"[CALC] {filename}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})",
+        f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})",
         extra={'sid': sid},
     )
 
     if tile_type_int is None:
         logger.error(f"[CALC] Unknown tileType: {tile_type!r}", extra={'sid': sid})
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
+        return
+
+    dispatch_fn = CALC_MODE_DISPATCH.get(calc_mode)
+    if dispatch_fn is None:
+        logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra={'sid': sid})
+        emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
 
     safe_base      = os.path.splitext(os.path.basename(filename))[0] or "upload"
@@ -659,15 +677,9 @@ def handle_calculate(data):
     stl_content = download_token = None
 
     try:
-        dispatch_map = {
-            MSDLL_TILE_CROSS:          ('revolution',  do_revolution),
-            MSDLL_TILE_DIAGONAL:       ('extrusion',   do_extrusion),
-            MSDLL_TILE_CROSS_DIAGONAL: ('ruling',      do_Ruling),
-        }
-        dispatch_name, dispatch_fn = dispatch_map[tile_type_int]
-        logger.info(f"[CALC] -> {dispatch_name}  igs={os.path.basename(igs_disk_path)}", extra={'sid': sid})
+        logger.info(f"[CALC] -> {calc_mode}  igs={os.path.basename(igs_disk_path)}", extra={'sid': sid})
         download_token, stl_content = dispatch_fn(
-            sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded
+            sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
         )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}", extra={'sid': sid})
