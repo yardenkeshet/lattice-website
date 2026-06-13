@@ -91,6 +91,14 @@ export function ToolPage() {
   const calcModeRef = React.useRef<CalcMode>(calcMode)
   React.useEffect(() => { calcModeRef.current = calcMode }, [calcMode])
 
+  /* Refs so the result handler can tell whether the main canvas already has
+     an uploaded file or a calculation result to show, without a stale closure */
+  const uploadedFileRef = React.useRef<File | null>(uploadedFile)
+  React.useEffect(() => { uploadedFileRef.current = uploadedFile }, [uploadedFile])
+
+  const downloadTokenRef = React.useRef<string | null>(downloadToken)
+  React.useEffect(() => { downloadTokenRef.current = downloadToken }, [downloadToken])
+
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
