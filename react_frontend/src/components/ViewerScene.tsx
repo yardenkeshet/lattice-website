@@ -217,7 +217,7 @@ function ViewerSceneFn({
           )}
         </React.Suspense>
 
-        <OrbitControls makeDefault enablePan enableZoom={false} />
+        <OrbitControls makeDefault enablePan enableZoom={true} />
       </Canvas>
     </div>
   )

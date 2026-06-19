@@ -49,7 +49,6 @@ export function ToolPage() {
   /* ── UI state ── */
   const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(DEFAULT_LATTICE_MENU_OPEN)
   const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(DEFAULT_TILE_MENU_OPEN)
-  const [zoom, setZoom]                           = React.useState(DEFAULT_ZOOM)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>(DEFAULT_CAMERA_MODE)
   const [viewerResetKey, setViewerResetKey]       = React.useState(INITIAL_VIEWER_RESET_KEY)
   /* Tracks what kind of action triggered the last backend call so the result
@@ -71,7 +70,6 @@ export function ToolPage() {
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
-  const [uploadedB64, setUploadedB64]     = React.useState<string | null>(null)
   const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
@@ -198,7 +196,6 @@ export function ToolPage() {
           const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
           setUploadedFile(r1.stlFile)
           setUploadedFile2(r2.stlFile)
-          setUploadedB64(r1.stlB64)
         } catch { setErrorMsg('Failed to convert IGS file') }
       } else {
         const file = files[0]
@@ -207,7 +204,6 @@ export function ToolPage() {
           try {
             const { stlB64, stlFile } = await convertIgsFile(file)
             setUploadedFile(stlFile)
-            setUploadedB64(stlB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
@@ -219,7 +215,6 @@ export function ToolPage() {
           try {
             const { stlB64, stlFile } = await convertIgsFile(file)
             setUploadedFile(stlFile)
-            setUploadedB64(stlB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         }
       }
@@ -229,7 +224,6 @@ export function ToolPage() {
       try {
         const { stlB64, stlFile } = await convertIgsFile(file)
         setUploadedFile(stlFile)
-        setUploadedB64(stlB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
   }, [calcMode, uploadedFile, uploadedFile2])
@@ -239,7 +233,6 @@ export function ToolPage() {
     try {
       const { stlB64, stlFile } = await convertIgsFile(file)
       setUploadedFile(stlFile)
-      setUploadedB64(stlB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
 
@@ -254,14 +247,12 @@ export function ToolPage() {
   /* ── Clear handlers ── */
   const handleClearSingle = React.useCallback(() => {
     setUploadedFile(null)
-    setUploadedB64(null)
     setResultGzB64(null)
     setDownloadToken(null)
   }, [])
 
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
-    setUploadedB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
@@ -289,12 +280,8 @@ export function ToolPage() {
         setErrorMsg('Please upload Surface 2')
         return
       }
-      if (!uploadedB64) {
-        setErrorMsg('Surface 1 is still loading — please wait a moment')
-        return
-      }
     } else {
-      if (!uploadedFile || !uploadedB64) {
+      if (!uploadedFile) {
         setErrorMsg('Please upload a 3D file first')
         return
       }
@@ -312,7 +299,7 @@ export function ToolPage() {
     }
     console.log("socket please calculate with: ",calculateArgs);
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedB64, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -336,7 +323,7 @@ export function ToolPage() {
 
   return (
     <div style={pageStyle}>
-      <Banner onLeftLogoClick={() => navigate('/')} />
+      <Banner onClick={() => navigate('/')}/>
 
       {/* ── Workspace ── */}
       <div style={workspaceStyle}>
@@ -358,22 +345,23 @@ export function ToolPage() {
             onExportStl={handleExportStl}
             onExportIgs={handleExportIgs}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
-          />
+            onFilesAdd={handleFilesAdd}
+            fileNames={fileNames}
+            calcMode={calcMode}
+            />
         </div>
 
         {/* Centre: Toolbar + ViewerScene */}
         <div style={centerStyle}>
           <div style={toolbarRowStyle}>
             <Toolbar
+              onCalculate={handleCalculate}
               calcMode={calcMode}
-              zoom={zoom}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
               calcLabel={calcLabel}
-              onZoomChange={setZoom}
               onCameraModeChange={setCameraMode}
               onFilesAdd={handleFilesAdd}
-              onCalculate={handleCalculate}
               fileNames={fileNames}
             />
           </div>
@@ -400,8 +388,6 @@ export function ToolPage() {
                   onFile1Drop={handleFile1Drop}
                   onFile2Drop={handleFile2Drop}
                   cameraMode={cameraMode}
-                  zoom={zoom}
-                  onZoomChange={setZoom}
                   onClear1={handleClear1}
                   onClear2={handleClear2}
                   style={{ height: '100%' }}
@@ -412,9 +398,7 @@ export function ToolPage() {
                   uploadedFile={uploadedFile}
                   resultStlGzB64={resultGzB64}
                   cameraMode={cameraMode}
-                  zoom={zoom}
                   cameraResetKey={viewerResetKey}
-                  onZoomChange={setZoom}
                   onFileDrop={handleViewerFileDrop}
                   onClear={handleClearSingle}
                 />

@@ -19,8 +19,8 @@ export const TILE_DEFS: Record<string, TileDef> = {
         label: 'Cross',
         imageUrl: crossImg,
         sliders: [
-            { label: 'Outer Radius', min: 0.01, max: 0.5, defaultValue: 0.3, step: 0.01 },
-            { label: 'Inner Radius', min: 0.0, max: 0.5, defaultValue: 0.15, step: 0.01 },
+            { label: 'Outer Radius', min: 0.01, max: 0.5, defaultValue: 0.15, step: 0.01 },
+            { label: 'Inner Radius', min: 0.0, max: 0.5, defaultValue: 0.05, step: 0.01 },
         ],
     },
     [DIAGONAL]: {

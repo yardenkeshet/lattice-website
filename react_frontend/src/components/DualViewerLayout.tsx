@@ -11,8 +11,6 @@ export interface DualViewerLayoutProps {
   /** Called when the user clears panel 2 (Surface 2). */
   onClear2?: () => void
   cameraMode: 'perspective' | 'orthographic'
-  zoom: number
-  onZoomChange: (zoom: number) => void
   className?: string
   style?: React.CSSProperties
 }
@@ -25,8 +23,6 @@ function DualViewerLayoutFn({
   onClear1,
   onClear2,
   cameraMode,
-  zoom,
-  onZoomChange,
   className,
   style,
 }: DualViewerLayoutProps) {
@@ -45,8 +41,6 @@ function DualViewerLayoutFn({
         <ViewerScene
           uploadedFile={file1}
           cameraMode={cameraMode}
-          zoom={zoom}
-          onZoomChange={onZoomChange}
           onFileDrop={onFile1Drop}
           onClear={onClear1}
           style={{ width: '100%', height: '100%' }}
@@ -56,8 +50,6 @@ function DualViewerLayoutFn({
         <ViewerScene
           uploadedFile={file2}
           cameraMode={cameraMode}
-          zoom={zoom}
-          onZoomChange={onZoomChange}
           onFileDrop={onFile2Drop}
           onClear={onClear2}
           style={{ width: '100%', height: '100%' }}

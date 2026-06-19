@@ -32,7 +32,7 @@ export interface BannerProps {
    * When provided, the TAMC logo (left section) becomes a button that fires this callback.
    * Intended use: navigate to home page. Omit on the home page itself.
    */
-  onLeftLogoClick?: () => void
+  onClick?: () => void
   /** Override banner height. Defaults to var(--banner-height) = 157px. */
   height?: number | string
   /** Render the outer element as its child (Slot / asChild pattern) */
@@ -49,7 +49,7 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
       leftLogo    = { src: defaultLabLogo,   alt: 'Technion center for Additive Manufacturing and 3D Printing' },
       centerLogo  = { src: defaultCenter,    alt: 'Lattice World' },
       rightLogo   = { src: defaultRightLogo, alt: 'Technion — Israel Institute of Technology' },
-      onLeftLogoClick,
+      onClick,
       height,
       asChild = false,
       className,
@@ -67,6 +67,7 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
 
     return (
       <Wrapper
+       onClick={onClick}
         ref={ref as React.Ref<HTMLElement>}
         className={cn('banner', className)}
         style={{ ...wrapperStyle, height: resolvedHeight }}
@@ -85,10 +86,10 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
             />
           </div>
           {/* Lab logo — button if onLeftLogoClick provided, plain img otherwise */}
-          {onLeftLogoClick ? (
+          {
             <button
               type="button"
-              onClick={onLeftLogoClick}
+              onClick={onClick}
               onFocus={() => setIsLogoFocused(true)}
               onBlur={() => setIsLogoFocused(false)}
               title="Go to home"
@@ -106,13 +107,7 @@ const Banner = React.forwardRef<HTMLElement, BannerProps>(
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </button>
-          ) : (
-            <img
-              src={leftLogo.src}
-              alt={leftLogo.alt}
-              style={labLogoStyle}
-            />
-          )}
+          }
         </div>
 
         {/* ── Centre: main wordmark ── */}

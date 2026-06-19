@@ -83,25 +83,6 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
         <div style={pillStyle}>
 
           {/* Zoom control */}
-          <div style={zoomGroupStyle}>
-            <span style={zoomLabelStyle}>{zoom}%</span>
-            <button
-              type="button"
-              aria-label="Zoom out"
-              onClick={() => onZoomChange?.(Math.max(ZOOM_MIN, zoom - ZOOM_STEP))}
-              style={pillButtonStyle}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              onClick={() => onZoomChange?.(Math.min(ZOOM_MAX, zoom + ZOOM_STEP))}
-              style={pillButtonStyle}
-            >
-              +
-            </button>
-          </div>
 
           <PillDivider />
 
@@ -111,44 +92,16 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
               type="button"
               aria-haspopup="listbox"
               aria-expanded={modeOpen}
-              onClick={() => setModeOpen(o => !o)}
+              onClick={() => onCameraModeChange(cameraMode == 'orthographic'? 'perspective' : 'orthographic')}
               style={cameraPillButtonStyle}
             >
               <CameraIcon />
               <span style={pillTextStyle}>{cameraMode}</span>
-              <ChevronDownIcon open={modeOpen} />
             </button>
 
-            {modeOpen && (
-              <ul
-                role="listbox"
-                aria-label="Camera mode"
-                style={dropdownListStyle}
-                onBlur={() => setModeOpen(false)}
-              >
-                {(['perspective', 'orthographic'] as const).map(mode => (
-                  <li
-                    key={mode}
-                    role="option"
-                    aria-selected={cameraMode === mode}
-                    onClick={() => {
-                      onCameraModeChange?.(mode)
-                      setModeOpen(false)
-                    }}
-                    style={{
-                      ...dropdownItemStyle,
-                      ...(cameraMode === mode ? dropdownItemActiveStyle : {}),
-                    }}
-                  >
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           <PillDivider />
-          {fileNames?<ul> {fileNames.map((name)=><li key={name}><CubeIcon3D/> {name}</li>)}</ul> :<></>}
 
           {/* Calculate button */}
           <Button
@@ -299,6 +252,7 @@ const cameraPillButtonStyle: React.CSSProperties = {
 
 const pillTextStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
+  textTransform: 'capitalize',
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',

@@ -7,6 +7,7 @@ import { Dropdown } from './Dropdown'
 import { TileCard } from './TileCard'
 import { IconButton } from './IconButton'
 import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_params'
+import { CubeIcon3D } from './Toolbar'
 
 const CALC_MODE_OPTIONS = Object.entries(CALC_MODE_DEFS).map(([mode, value]) => ({ value: mode, label: value.label }))
 
@@ -41,7 +42,9 @@ export interface LatticeMenuProps {
   onExportStl: () => void
   onExportIgs: () => void
   onToggle: () => void
-
+  onFilesAdd?: (files: File[]) => void
+  calcMode: CalcMode
+  fileNames: string[]
   className?: string
 }
 
@@ -63,6 +66,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       onExportIgs,
       onToggle,
       className,
+      calcMode,
+      onFilesAdd,
+      fileNames
     },
     ref
   ) => {
@@ -71,6 +77,19 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     const [isTileFocused, setIsTileFocused] = React.useState(false)
     const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
 
+
+
+    const tileName = tileLabel
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const all = Array.from(e.target.files ?? [])
+      if (all.length === 0) return
+      const limited = calcMode === 'ruling' ? all.slice(0, 2) : [all[0]]
+      onFilesAdd?.(limited)
+      e.target.value = ''  // reset so the same file can be re-selected
+    }
     /* ── Collapsed state: just a floating menu icon button ── */
     if (!isOpen) {
       return (
@@ -81,9 +100,6 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         </div>
       )
     }
-
-    const tileName = tileLabel
-
     return (
       <div
         ref={ref}
@@ -167,7 +183,32 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         </div>
 
         <Divider />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={'.igs'}
+          multiple={calcMode === 'ruling'}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
 
+        {/* ── Add (file upload) icon button ── */}
+        <IconButton
+          aria-label="Add IGS file"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <PlusIcon />
+        </IconButton>
+        {fileNames
+                  ?<ul> {
+                    fileNames.map((name)=>
+                      <li key={name}><Button onClick={()=>console.log("remove", name)}>
+                          <CubeIcon3D/> {name}</Button>
+                        </li>)
+                    }</ul> 
+                  :<></>}
         {/* ── Export button ── */}
         <div style={exportRowStyle}>
           <Button
