@@ -37,6 +37,8 @@ export interface ViewerSceneProps {
   cameraResetKey?: string
   className?: string
   style?: React.CSSProperties
+  meshColor: string
+  backgroundColor: string
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -56,6 +58,8 @@ function ViewerSceneFn({
   onClear,
   className,
   style,
+  meshColor,
+  backgroundColor
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -196,6 +200,7 @@ function ViewerSceneFn({
         orthographic={cameraMode === 'orthographic'}
         gl={{ antialias: true, alpha: true }}
       >
+        <color attach="background" args={[backgroundColor]}/>
         <ambientLight intensity={0.4} />
         <directionalLight color={0xfff5e0} position={[5, 8, 6]} intensity={1.2} />
         <directionalLight color={0xffd9a0} position={[-6, 2, 4]} intensity={0.3} />
@@ -213,6 +218,8 @@ function ViewerSceneFn({
               fitKey={cameraResetKey}
               onFitDistance={handleFitDistance}
               onFitOrthoZoom={handleFitOrthoZoom}
+              meshColor={meshColor}
+              
             />
           )}
         </React.Suspense>
@@ -267,9 +274,10 @@ interface STLMeshProps {
   fitKey?: string
   onFitDistance?:  (d: number) => void
   onFitOrthoZoom?: (z: number) => void
+  meshColor: string
 }
 
-function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
+function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -333,7 +341,7 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom }: STLMeshProps) {
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshPhongMaterial color={0x00aaff} specular={0x111111} shininess={50} />
+      <meshPhongMaterial color={meshColor} specular={0x111111} shininess={50} />
     </mesh>
   )
 }

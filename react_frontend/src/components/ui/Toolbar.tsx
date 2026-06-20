@@ -11,11 +11,9 @@ export interface ToolbarProps {
   cameraMode?: 'perspective' | 'orthographic'
   isCalculating?: boolean
   calcLabel?: string
-
-  onZoomChange?: (zoom: number) => void
-  onCameraModeChange?: (mode: 'perspective' | 'orthographic') => void
+  onCameraModeChange: (mode: 'perspective' | 'orthographic') => void
   /** Present only when in ruling mode — controls multi-file picker and routing. */
-  calcMode?: CalcMode
+  calcMode: CalcMode
   /** Called when user picks file(s) via the Add button. 1 item normally, up to 2 in ruling mode. */
   onFilesAdd?: (files: File[]) => void
   onCalculate?: () => void
@@ -25,30 +23,23 @@ export interface ToolbarProps {
   fileNames: string[]
 }
 
-const ZOOM_STEP = 10
-const ZOOM_MIN  = 10
-const ZOOM_MAX  = 500
 const ACCEPTED_3D = '.igs'
 
 const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
     {
-      zoom = 100,
       cameraMode = 'perspective',
       isCalculating = false,
       calcLabel = 'Calculating…',
-      onZoomChange,
       onCameraModeChange,
       calcMode,
       onFilesAdd,
       onCalculate,
       className,
-      fileNames
     },
     ref
   ) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null)
-    const [modeOpen, setModeOpen] = React.useState(false)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
@@ -91,8 +82,7 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
             <button
               type="button"
               aria-haspopup="listbox"
-              aria-expanded={modeOpen}
-              onClick={() => onCameraModeChange(cameraMode == 'orthographic'? 'perspective' : 'orthographic')}
+              onClick={() => {onCameraModeChange(cameraMode == 'orthographic'? 'perspective' : 'orthographic')}}
               style={cameraPillButtonStyle}
             >
               <CameraIcon />
@@ -139,20 +129,6 @@ function CameraIcon() {
   )
 }
 
-function ChevronDownIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      aria-hidden="true"
-      style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }}
-    >
-      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 export const CubeIcon3D = ({ size = 24, className = "" }) => {
   return (
@@ -203,33 +179,6 @@ const pillStyle: React.CSSProperties = {
   boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
 }
 
-const zoomGroupStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  padding: '0 4px',
-}
-
-const zoomLabelStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)',
-  fontSize: 12,
-  fontWeight: 600,
-  color: 'var(--text-base)',
-  minWidth: 38,
-  textAlign: 'center',
-}
-
-const pillButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'var(--font-body)',
-  fontSize: 14,
-  fontWeight: 700,
-  color: 'var(--text-secondary)',
-  padding: '0 2px',
-  lineHeight: 1,
-}
 
 const pillDividerStyle: React.CSSProperties = {
   width: 3,
@@ -259,33 +208,5 @@ const pillTextStyle: React.CSSProperties = {
   width: 70,
 }
 
-const dropdownListStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 'calc(100% + 4px)',
-  left: 0,
-  minWidth: 140,
-  backgroundColor: 'var(--bg-primary)',
-  borderRadius: 'var(--radius-card)',
-  boxShadow: 'var(--dropdown-shadow)',
-  border: '1px solid var(--border-base)',
-  listStyle: 'none',
-  margin: 0,
-  padding: '4px 0',
-  zIndex: 20,
-}
-
-const dropdownItemStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
-  fontWeight: 500,
-  color: 'var(--text-base)',
-  cursor: 'pointer',
-}
-
-const dropdownItemActiveStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg-tertiary)',
-  fontWeight: 600,
-}
 
 export const Toolbar = React.memo(ToolbarInner)

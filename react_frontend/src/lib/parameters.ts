@@ -9,11 +9,11 @@ export const CROSS_DIAGONAL = 'cross_diagonal'
 export const DEFAULT_CALC_MODE: CalcMode = EXTRUSION
 
 //Calculation parameters:
-export const DEFAULT_X_COUNT = 3
-export const DEFAULT_Y_COUNT = 3
-export const DEFAULT_Z_COUNT = 3
-export const DEFAULT_G1 = 0.57
-export const DEFAULT_G2 = 0.83
+export const DEFAULT_X_COUNT = 1
+export const DEFAULT_Y_COUNT = 1
+export const DEFAULT_Z_COUNT = 10
+export const DEFAULT_G1 = 1
+export const DEFAULT_G2 = 1
 
 //UI parameters:
 export const DEFAULT_CAMERA_MODE = 'perspective' as const
@@ -22,7 +22,8 @@ export const DEFAULT_LATTICE_MENU_OPEN = true
 export const DEFAULT_TILE_MENU_OPEN = true
 export const INITIAL_VIEWER_RESET_KEY = 'initial'
 
-
+export const DEFAULT_MODEL_COLOR = "#00aaff"
+export const DEFAULT_BACKGROUND_COLOR = "#fff"
 
 //Tile types and parameters:
 

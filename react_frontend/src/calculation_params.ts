@@ -1,11 +1,11 @@
 import { CROSS, CROSS_DIAGONAL, DIAGONAL, EXTRUSION, REVOLUTION, RULING, type TileDef } from "./lib/parameters";
 
 
-interface CalcModeDef { label: string} 
+interface CalcModeDef { label: string, requiredFilesCount: number} 
 export const CALC_MODE_DEFS: Record<string, CalcModeDef> = {
-    [EXTRUSION]: { label: 'Extrusion' },
-    [REVOLUTION]: { label: 'Revolution' },
-    [RULING]: { label: 'Ruling' },
+    [EXTRUSION]: { label: 'Extrusion', requiredFilesCount: 1 },
+    [REVOLUTION]: { label: 'Revolution', requiredFilesCount: 1 },
+    [RULING]: { label: 'Ruling', requiredFilesCount: 2 },
 }
 
 export type CalcMode = keyof typeof CALC_MODE_DEFS

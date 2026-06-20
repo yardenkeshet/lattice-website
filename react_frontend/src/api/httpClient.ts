@@ -9,7 +9,6 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 export async function convertIgsToStl(file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);
-  console.log("COnverting@@@");
   const response = await fetch(`${BASE_URL}/convert_igs_to_stl`, {
     method: 'POST',
     body: form,

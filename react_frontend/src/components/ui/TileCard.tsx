@@ -35,7 +35,8 @@ export interface TileCardProps {
    * Color of the 3D mesh material.
    * Defaults to a neutral gray matching the Figma screenshots.
    */
-  meshColor?: string
+  meshColor: string
+  backgroundColor: string
   /**
    * Allow camera orbit interaction (drag to rotate and scroll to zoom).
    * Disabled by default for small cards so click-to-select works cleanly.
@@ -67,7 +68,8 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       asChild = false,
       className,
       'aria-label': ariaLabel,
-      meshColor = '#00aaff',
+      meshColor,
+      backgroundColor,
       enableOrbit = false,
       cameraResetKey,
       imageUrl,
@@ -144,6 +146,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
               camera={{ position: [0, 0, 3], fov: 45 }}
               gl={{ antialias: true, alpha: true }}
             >
+              <color attach="background" args={[backgroundColor]} />
               <ambientLight intensity={0.4} />
               <directionalLight color={0xfff5e0} position={[5, 8, 6]} intensity={1.2} />
               <directionalLight color={0xffd9a0} position={[-6, 2, 4]} intensity={0.3} />
@@ -160,7 +163,7 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
 
               <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
                 {modelUrl
-                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} />
+                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey}/>
                   : <PlaceholderMesh color={meshColor} />
                 }
               </React.Suspense>
@@ -255,7 +258,7 @@ function PlaceholderMesh({ color }: { color: string }) {
     <Center>
       <mesh castShadow>
         <torusKnotGeometry args={[0.6, 0.2, 128, 32]} />
-        <meshPhongMaterial color={color} specular={0x111111} shininess={50} />
+        <meshPhongMaterial color={color} specular={0x111111} shininess={50}/>
       </mesh>
     </Center>
   )

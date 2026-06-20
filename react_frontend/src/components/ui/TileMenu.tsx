@@ -34,6 +34,8 @@ export interface TileMenuProps {
    */
   onValidationChange?: (source: string, errors: ValidationError[]) => void
   className?: string
+  meshColor: string
+  backgroundColor: string
 }
 
 
@@ -49,6 +51,8 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onClose,
       onValidationChange,
       className,
+      meshColor,
+      backgroundColor
     },
     ref
   ) => {
@@ -108,6 +112,8 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <TileCard
             size="large"
+            meshColor={meshColor}
+            backgroundColor={backgroundColor}
             modelUrl={previewUrl}
             enableOrbit
             cameraResetKey={tileType}
@@ -131,6 +137,8 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
                   selected={tileType === type}
                   onClick={() => onTileTypeChange(type)}
                   aria-label={def.label}
+                  meshColor={meshColor}
+                  backgroundColor={backgroundColor}
                 />
               ))}
             </div>

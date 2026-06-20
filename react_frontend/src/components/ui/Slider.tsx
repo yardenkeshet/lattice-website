@@ -214,7 +214,7 @@ const wrapperStyle: React.CSSProperties = {
   gap: 'var(--space-sm)',
 }
 
-const labelStyle: React.CSSProperties = {
+export const labelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   fontSize: 'var(--text-size-body)',
   fontWeight: 500,
@@ -254,7 +254,7 @@ const rangeStyle: React.CSSProperties = {
   backgroundColor: 'var(--gray-400)',
 }
 
-const thumbBaseStyle: React.CSSProperties = {
+export const thumbBaseStyle: React.CSSProperties = {
   display: 'block',
   width: 'var(--slider-thumb-width)',
   height: 'var(--slider-thumb-height)',
@@ -267,13 +267,13 @@ const thumbBaseStyle: React.CSSProperties = {
   // [C3] outline removed here — focus ring is handled by .slider-thumb:focus-visible
 }
 
-const thumbHoverStyle: React.CSSProperties = {
+export const thumbHoverStyle: React.CSSProperties = {
   ...thumbBaseStyle,
   border: '2px solid var(--action-primary)',
   boxShadow: 'var(--shadow-thumb-hover)',
 }
 
-const badgeStyle: React.CSSProperties = {
+export const badgeStyle: React.CSSProperties = {
   width: 'var(--slider-badge-width)',
   flexShrink: 0,
   padding: '0 10px',
@@ -295,7 +295,7 @@ const badgeRangeStyle: React.CSSProperties = {
   width: 'var(--slider-badge-width-range)',
 }
 
-const badgeInputStyle: React.CSSProperties = {
+export const badgeInputStyle: React.CSSProperties = {
   ...badgeStyle,
   border: '1px solid transparent',
   outline: 'none',

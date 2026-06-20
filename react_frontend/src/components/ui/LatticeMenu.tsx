@@ -3,13 +3,18 @@ import { cn } from '../../lib/utils'
 import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
-import { Dropdown } from './Dropdown'
+import { Dropdown, type DropdownOption } from './Dropdown'
 import { TileCard } from './TileCard'
 import { IconButton } from './IconButton'
 import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
+import { ColorPicker } from './ColorPicker'
+import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
+import Popup from './Popup'
 
-const CALC_MODE_OPTIONS = Object.entries(CALC_MODE_DEFS).map(([mode, value]) => ({ value: mode, label: value.label }))
+const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
+  ([mode, def]) => ({ value: mode, label: def.label })
+)
 
 /* ─── Public API ─── */
 
@@ -43,9 +48,14 @@ export interface LatticeMenuProps {
   onExportIgs: () => void
   onToggle: () => void
   onFilesAdd?: (files: File[]) => void
+  onFileRemove?: (name: string) => void
   calcMode: CalcMode
   fileNames: string[]
   className?: string
+  modelColor: string
+  setModelColor: (color: string) => void
+  backgroundColor: string
+  setBackgroundColor: (color: string) => void
 }
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -68,7 +78,12 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       className,
       calcMode,
       onFilesAdd,
-      fileNames
+      onFileRemove,
+      fileNames,
+      modelColor,
+      setModelColor,
+      backgroundColor,
+      setBackgroundColor
     },
     ref
   ) => {
@@ -76,6 +91,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     const [isTileHovered, setIsTileHovered] = React.useState(false)
     const [isTileFocused, setIsTileFocused] = React.useState(false)
     const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
+    const [isExportPopupOpen, setIsExportPopupOpen] = React.useState(false)
+    const [isAddFilesHovered, setIsAddFilesHovered] = React.useState(false)
+    const [isAddFilesFocused, setIsAddFilesFocused] = React.useState(false)
 
 
 
@@ -86,7 +104,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
-      const limited = calcMode === 'ruling' ? all.slice(0, 2) : [all[0]]
+      const limited = CALC_MODE_DEFS[calcMode].requiredFilesCount == 2 ? all.slice(0, 2) : [all[0]]
       onFilesAdd?.(limited)
       e.target.value = ''  // reset so the same file can be re-selected
     }
@@ -144,6 +162,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 size="mini"
                 modelUrl={tilePreviewUrl}
                 cameraResetKey={tileType}
+                meshColor={modelColor}
+                backgroundColor={backgroundColor}
                 aria-label={`Current tile: ${tileName}`}
                 selected
               />
@@ -183,82 +203,159 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         </div>
 
         <Divider />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={'.igs'}
-          multiple={calcMode === 'ruling'}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-          aria-hidden="true"
-          tabIndex={-1}
-        />
 
-        {/* ── Add (file upload) icon button ── */}
-        <IconButton
+        {/* ── Add Files row — whole row is the click target ── */}
+        <div
+          role="button"
+          tabIndex={0}
           aria-label="Add IGS file"
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
+          onMouseEnter={() => setIsAddFilesHovered(true)}
+          onMouseLeave={() => setIsAddFilesHovered(false)}
+          onFocus={() => setIsAddFilesFocused(true)}
+          onBlur={() => setIsAddFilesFocused(false)}
+          style={{
+            ...sectionStyle,
+            cursor: 'pointer',
+            backgroundColor: isAddFilesHovered ? 'var(--bg-tertiary)' : 'transparent',
+            borderRadius: 4,
+            transition: 'background-color 120ms ease',
+            outline: isAddFilesFocused ? '2px solid var(--border-focus)' : 'none',
+            outlineOffset: 2,
+          }}
         >
-          <PlusIcon />
-        </IconButton>
-        {fileNames
-                  ?<ul> {
-                    fileNames.map((name)=>
-                      <li key={name}><Button onClick={()=>console.log("remove", name)}>
-                          <CubeIcon3D/> {name}</Button>
-                        </li>)
-                    }</ul> 
-                  :<></>}
+          <div style={tileSummaryRowStyle}>
+            <span style={sectionLabelStyle}>Add Files:</span>
+            <span aria-hidden="true" style={plusButtonStyle}>
+              <PlusIcon />
+            </span>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={'.igs'}
+            multiple={calcMode === 'ruling'}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        </div>
+
+        {fileNames.length > 0 && (
+          <ul style={fileListStyle}>
+            {fileNames.map(name => (
+              <li key={name} style={fileListItemStyle}>
+                <span style={fileItemLeftStyle}>
+                  <CubeIcon3D size={14} />
+                  <span style={fileNameTextStyle}>{name}</span>
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() => onFileRemove?.(name)}
+                  style={removeFileButtonStyle}
+                >
+                  &times;
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {/* ── Export button ── */}
         <div style={exportRowStyle}>
-          <Button
-            variant="secondary"
-            disabled={!canExport}
-            onClick={onExportStl}
-          >
-            Export STL
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!canExport}
-            onClick={onExportIgs}
-          >
-            Export IGS
-          </Button>
+          {
+            canExport ?
+              <Button
+                variant="primary"
+                disabled={!canExport}
+                onClick={() => setIsExportPopupOpen(true)}
+              >
+                Export
+              </Button> :
+              <Button
+                variant="secondary"
+                disabled={true}
+              >
+                Export
+              </Button>
+          }
         </div>
+        <Popup isOpen={isExportPopupOpen} onClose={() => setIsExportPopupOpen(false)}>
+          <div style={exportRowStyle}>
+            <Button
+              variant="primary"
+              disabled={!canExport}
+              onClick={() => { setIsExportPopupOpen(false); onExportStl() }}
+            >
+              Export STL
+            </Button>
+            <Divider />
+            <Button
+              variant="primary"
+              disabled={!canExport}
+              onClick={() => { setIsExportPopupOpen(false); onExportIgs() }}
+            >
+              Export IGS
+            </Button>
+          </div>
+        </Popup>
 
         <Divider />
 
         {/* ── Grading sliders ── */}
-        <Button onClick={()=>{setUseAdvancedFeatures(!useAdvancedFeatures)}} variant="secondary">{useAdvancedFeatures?"- " :"+ "}Use Advanced Features</Button>
+        <Button onClick={() => { setUseAdvancedFeatures(!useAdvancedFeatures) }} variant="secondary">{useAdvancedFeatures ? "- " : "+ "}Use Advanced Features</Button>
         {
           useAdvancedFeatures
-          ?
-        <div style={sectionStyle}>
-          <Slider
-            label="Grading Start"
-            min={0}
-            max={1}
-            step={0.01}
-            value={[g1]}
-            showValue
-            valuePrecision={2}
-            fontSize={12}
-            onValueChange={([v]) => onG1Change(v)}
-          />
-          <Slider
-            label="Grading End"
-            min={0}
-            max={1}
-            step={0.01}
-            value={[g2]}
-            showValue
-            valuePrecision={2}
-            fontSize={12}
-            onValueChange={([v]) => onG2Change(v)}
-          />
-        </div>
-          :<></>
+            ?
+            <div style={sectionStyle}>
+              <Slider
+                label="Grading Start"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[g1]}
+                showValue
+                valuePrecision={2}
+                fontSize={12}
+                onValueChange={([v]) => onG1Change(v)}
+              />
+              <Slider
+                label="Grading End"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[g2]}
+                showValue
+                valuePrecision={2}
+                fontSize={12}
+                onValueChange={([v]) => onG2Change(v)}
+              />
+              <Divider />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                Mesh Color:
+                <ColorPicker
+                  disableAlpha
+                  value={modelColor}
+                  onChange={setModelColor}
+                />
+              </div>
+              <Divider />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Background Color:</span>
+                <ColorPicker
+                  disableAlpha
+                  value={backgroundColor}
+                  onChange={setBackgroundColor}
+                />
+              </div>
+              <Divider />
+              <Button onClick={() => { setModelColor(DEFAULT_MODEL_COLOR); setBackgroundColor(DEFAULT_BACKGROUND_COLOR) }} variant="secondary">
+                Reset Colors
+              </Button>
+            </div>
+            : <></>
 
         }
       </div>
@@ -312,7 +409,7 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-sm)',
-  width: 235,
+  width: 300,
   backgroundColor: 'var(--bg-primary)',
   borderRadius: 14,
   boxShadow: '1px 2px 9px 0px rgba(0,0,0,0.10)',
@@ -395,8 +492,53 @@ const numTilesRowStyle: React.CSSProperties = {
   alignItems: 'center',
 }
 
+const fileListStyle: React.CSSProperties = {
+  listStyle: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  margin: 0,
+  padding: '0 var(--space-md)',
+}
+
+const fileListItemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+}
+
+const fileItemLeftStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  minWidth: 0,
+}
+
+const fileNameTextStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--text-size-xs)',
+  color: 'var(--text-base)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
+const removeFileButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 14,
+  lineHeight: 1,
+  color: 'var(--text-secondary)',
+  flexShrink: 0,
+  padding: 2,
+}
+
 const exportRowStyle: React.CSSProperties = {
   display: 'flex',
+  flexDirection: 'row',
+  gap: '5px',
   justifyContent: 'center',
   padding: '0 var(--space-md)',
 }

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { ViewerScene } from './ViewerScene'
+import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../lib/parameters'
 
 export interface DualViewerLayoutProps {
   file1: File | null
@@ -39,6 +40,8 @@ function DualViewerLayoutFn({
     >
       <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
         <ViewerScene
+          backgroundColor={DEFAULT_BACKGROUND_COLOR}
+          meshColor={DEFAULT_MODEL_COLOR}
           uploadedFile={file1}
           cameraMode={cameraMode}
           onFileDrop={onFile1Drop}
@@ -48,6 +51,8 @@ function DualViewerLayoutFn({
       </div>
       <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
         <ViewerScene
+        backgroundColor={DEFAULT_BACKGROUND_COLOR}
+        meshColor={DEFAULT_MODEL_COLOR}
           uploadedFile={file2}
           cameraMode={cameraMode}
           onFileDrop={onFile2Drop}

@@ -14,10 +14,12 @@ import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
   DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
-  DEFAULT_ZOOM, DEFAULT_G1, DEFAULT_G2,
+  DEFAULT_G1, DEFAULT_G2,
   DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
   RULING,
+  DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
+  DEFAULT_BACKGROUND_COLOR,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
 import type { ValidationError } from '../api/types'
@@ -67,6 +69,9 @@ export function ToolPage() {
   const [g1, setG1]                 = React.useState(DEFAULT_G1)
   const [g2, setG2]                 = React.useState(DEFAULT_G2)
   const [calcMode, setCalcMode]     = React.useState<CalcMode>(DEFAULT_CALC_MODE)
+  const [meshColor, setMeshColor]     = React.useState<string>(DEFAULT_MESH_COLOR)
+  const [backgroundColor, setBackgroundColor]     = React.useState<string>(DEFAULT_BACKGROUND_COLOR)
+
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
@@ -176,8 +181,6 @@ export function ToolPage() {
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
-    setResultGzB64(null)
-    setDownloadToken(null)
     setErrorMsg(null)
     setUploadedFile2(null)
     setCalcMode(mode)
@@ -186,7 +189,6 @@ export function ToolPage() {
   /* ── File upload ── */
   const handleFilesAdd = React.useCallback(async (files: File[]) => {
     setResultGzB64(null)
-    setDownloadToken(null)
     setErrorMsg(null)
 
     if (calcMode === RULING) {
@@ -202,18 +204,18 @@ export function ToolPage() {
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlB64, stlFile } = await convertIgsFile(file)
+            const stlFile  = (await convertIgsFile(file)).stlFile
             setUploadedFile(stlFile)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
-            const { stlFile } = await convertIgsFile(file)
+            const stlFile  = (await convertIgsFile(file)).stlFile
             setUploadedFile2(stlFile)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlB64, stlFile } = await convertIgsFile(file)
+            const stlFile  = (await convertIgsFile(file)).stlFile
             setUploadedFile(stlFile)
           } catch { setErrorMsg('Failed to convert IGS file') }
         }
@@ -222,7 +224,7 @@ export function ToolPage() {
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
-        const { stlB64, stlFile } = await convertIgsFile(file)
+        const stlFile  = (await convertIgsFile(file)).stlFile
         setUploadedFile(stlFile)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
@@ -231,7 +233,7 @@ export function ToolPage() {
   const handleFile1Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const { stlB64, stlFile } = await convertIgsFile(file)
+      const  stlFile  = (await convertIgsFile(file)).stlFile
       setUploadedFile(stlFile)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
@@ -239,7 +241,7 @@ export function ToolPage() {
   const handleFile2Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const { stlFile } = await convertIgsFile(file)
+      const stlFile  = (await convertIgsFile(file)).stlFile
       setUploadedFile2(stlFile)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
@@ -289,8 +291,6 @@ export function ToolPage() {
     pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
     setCalcLabel('Calculating…')
-    setResultGzB64(null)
-    setDownloadToken(null)
     setErrorMsg(null)
     let calculateArgs = {
       filename: uploadedFile!.name,
@@ -321,6 +321,11 @@ export function ToolPage() {
     [uploadedFile, uploadedFile2]
   )
 
+  const handleFileRemove = React.useCallback((name: string) => {
+    if (uploadedFile?.name === name) handleClear1()
+    else if (uploadedFile2?.name === name) handleClear2()
+  }, [uploadedFile, uploadedFile2, handleClear1, handleClear2])
+
   return (
     <div style={pageStyle}>
       <Banner onClick={() => navigate('/')}/>
@@ -346,8 +351,13 @@ export function ToolPage() {
             onExportIgs={handleExportIgs}
             onToggle={() => setIsLatticeMenuOpen(o => !o)}
             onFilesAdd={handleFilesAdd}
+            onFileRemove={handleFileRemove}
             fileNames={fileNames}
             calcMode={calcMode}
+            modelColor={meshColor}
+            setModelColor={setMeshColor}
+            backgroundColor={backgroundColor}
+            setBackgroundColor={setBackgroundColor}
             />
         </div>
 
@@ -401,6 +411,8 @@ export function ToolPage() {
                   cameraResetKey={viewerResetKey}
                   onFileDrop={handleViewerFileDrop}
                   onClear={handleClearSingle}
+                  meshColor={meshColor}
+                  backgroundColor={backgroundColor}
                 />
               )
             }
@@ -419,6 +431,8 @@ export function ToolPage() {
               onSliderCommit={handleTileSliderCommit}
               onClose={handleTileMenuClose}
               onValidationChange={handleValidationChange}
+              meshColor={meshColor}
+              backgroundColor={backgroundColor}
             />
           </div>
         )}

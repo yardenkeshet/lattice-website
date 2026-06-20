@@ -171,14 +171,7 @@ const circleBlobImgStyle: React.CSSProperties = {
   objectFit: 'cover',
 }
 
-const labLogoStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: '-25px',
-  top: '5px',
-  width: '239px',
-  height: '148px',
-  objectFit: 'contain',
-}
+
 
 /* TAMC logo button (when onLeftLogoClick is provided) */
 const labLogoButtonStyle: React.CSSProperties = {

@@ -19,6 +19,7 @@ vi.mock('socket.io-client', () => ({
 
 import { LatticeSocketClient } from '../socketClient'
 import type { CalculatePayload, CalculateTilePayload } from '../types'
+import { EXTRUSION } from '../../lib/parameters'
 
 /* ─── Helpers ─── */
 
@@ -48,7 +49,7 @@ describe('LatticeSocketClient', () => {
       filename: 'part.stl',
       
       client_ts: 1000,
-      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3 },
+      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3, calcMode: EXTRUSION },
     }
     client.calculate(payload)
     expect(mockEmit).toHaveBeenCalledWith('calculate', payload)

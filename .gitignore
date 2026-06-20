@@ -17,6 +17,7 @@ last_tiles_results/TileCross.stl
 
 # Node / React
 react_frontend/node_modules/
+node_modules
 react_frontend/dist/
 react_frontend/.storybook-static/
 
