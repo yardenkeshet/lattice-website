@@ -463,22 +463,19 @@ CALC_MODE_DISPATCH = {
 def calculate_tile(tile_params, graded, tile_type_str, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
-
-    tile_filename_map = {
-        MSDLL_TILE_DIAGONAL:       'TileDiagnoal.stl',
-        MSDLL_TILE_CROSS:          'TileCross.stl',
-        MSDLL_TILE_CROSS_DIAGONAL: 'TileCrossDiagnoal.stl',
-    }
-    stl_filename = tile_filename_map.get(tile_type_int)
-    if stl_filename is None:
+    if tile_type_int is None:
         logger.error(f"[TILE] Unknown tile type: {tile_type_str}", extra=_log_extra(sid))
         return
 
-    stl_tile_path = os.path.join(os.getcwd(), LAST_TILES_RESULTS_DIR, stl_filename)
+    stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
     _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
 
     t_processed = time.time()
-    if os.path.exists(stl_tile_path):
+    if not os.path.exists(stl_tile_path):
+        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+        return
+
+    try:
         stl_content = read_ascii_stl_file(stl_tile_path)
         try:
             buf = BytesIO()
@@ -506,13 +503,16 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
             extra=_log_extra(sid),
         )
         emit('result', {
-            'filename': stl_tile_path,
+            'filename': 'tile.stl',
             'kind': 'tile_stl',
             'stl_gz_b64': compressed_b64,
             'timings': timings,
         })
-    else:
-        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+    finally:
+        try:
+            os.remove(stl_tile_path)
+        except OSError:
+            logger.warning(f"[TMP] failed to remove temp file: {stl_tile_path}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
