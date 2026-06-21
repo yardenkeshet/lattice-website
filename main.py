@@ -293,6 +293,7 @@ calc_logger.setLevel(logging.INFO)
 calc_fh = logging.FileHandler(CALC_LOG_FILE, encoding='utf-8')
 calc_fh.setFormatter(fmt)
 calc_logger.addHandler(calc_fh)
+calc_logger.propagate = False
 
 
 # ──────────────────────────────────────────────────────────────────────────────
