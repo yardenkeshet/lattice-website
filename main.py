@@ -548,6 +548,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
 # ──────────────────────────────────────────────────────────────────────────────
 
 log_thread = None
+calc_log_thread = None
 thread_stop_event = False
 
 
@@ -598,7 +599,7 @@ def worker_loop(state):
 
 @socketio.on('connect')
 def on_connect():
-    global log_thread
+    global log_thread, calc_log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
     logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
@@ -625,6 +626,14 @@ def on_connect():
     if log_thread is None:
         log_thread = socketio.start_background_task(
             target=follow_log, file_name=LOG_FILE_NAME, socketio_instance=socketio
+        )
+
+    for line in get_initial_log_content(CALC_LOG_FILE):
+        emit('log_update', {'data': line})
+
+    if calc_log_thread is None:
+        calc_log_thread = socketio.start_background_task(
+            target=follow_log, file_name=CALC_LOG_FILE, socketio_instance=socketio
         )
 
 
