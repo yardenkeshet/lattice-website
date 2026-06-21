@@ -9,6 +9,7 @@ import json
 from threading import Thread
 import threading
 import uuid
+import contextlib
 import logging
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
@@ -380,6 +381,25 @@ def twist_mesh(triangles, twist_angle_deg=45, axis='z'):
 # ──────────────────────────────────────────────────────────────────────────────
 # DLL surface-type dispatch functions
 # ──────────────────────────────────────────────────────────────────────────────
+
+TMP_DIR = 'tmp'
+os.makedirs(TMP_DIR, exist_ok=True)
+
+
+@contextlib.contextmanager
+def temp_igs_file(igs_bytes: bytes):
+    """Write igs_bytes to a uniquely-named temp .igs file; delete it on exit."""
+    path = os.path.join(os.getcwd(), TMP_DIR, f"{uuid.uuid4().hex}.igs")
+    with open(path, 'wb') as f:
+        f.write(igs_bytes)
+    try:
+        yield path
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            logger.warning(f"[TMP] failed to remove temp file: {path}")
+
 
 DOWNLOAD_CACHE = {}
 
@@ -777,31 +797,31 @@ def handle_convert_igs_to_stl():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
-    igs_file  = request.files['file']
-    safe_base = os.path.splitext(os.path.basename(igs_file.filename))[0] or uuid.uuid4().hex
+    igs_bytes = request.files['file'].read()
 
     try:
-        igs_bytes = igs_file.read()
-        igs_disk  = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.igs"))
-        stl_disk  = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}_preview.stl"))
+        with temp_igs_file(igs_bytes) as igs_path:
+            stl_path = igs_path[:-4] + '_preview.stl'
+            t_igs_start = time.time()
+            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), 0.0)
+            t_igs_ms = round((time.time() - t_igs_start) * 1000)
+            if err:
+                logger.warning(f"[IGS2STL] DLL warning: {err}")
 
-        with open(igs_disk, 'wb') as f:
-            f.write(igs_bytes)
+            if not os.path.exists(stl_path):
+                return jsonify({'error': 'IGS conversion produced no output'}), 500
 
-        t_igs_start = time.time()
-        err = _dll_iges2stl(igs_disk.encode('ascii'), stl_disk.encode('ascii'), 0.0)
-        t_igs_ms = round((time.time() - t_igs_start) * 1000)
-        if err:
-            logger.warning(f"[IGS2STL] DLL warning: {err}")
-
-        if not os.path.exists(stl_disk):
-            return jsonify({'error': 'IGS conversion produced no output'}), 500
-
-        with open(stl_disk, 'rb') as f:
-            stl_content = f.read()
+            try:
+                with open(stl_path, 'rb') as f:
+                    stl_content = f.read()
+            finally:
+                try:
+                    os.remove(stl_path)
+                except OSError:
+                    logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
 
         b64_str = base64.b64encode(stl_content).decode('utf-8')
-        logger.info(f"[IGS2STL] {safe_base}  {len(stl_content) // 1024}KB  {t_igs_ms}ms")
+        logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
         return jsonify({'stl_b64': b64_str})
 
     except Exception as exc:
