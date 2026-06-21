@@ -231,15 +231,31 @@ LOG_FILE_NAME         = LOGFILE
 os.makedirs(DATA_DIR, exist_ok=True)
 
 class _JsonFormatter(logging.Formatter):
+    # Maps output JSON key -> the attribute read off the LogRecord.
+    # 'filename' and 'args' are also *standard* logging.LogRecord attributes
+    # (source filename / %-format args) present on every record regardless
+    # of `extra=`. Reading them under their own names via getattr() would
+    # leak e.g. record.filename ("main.py") into every existing log line
+    # that never opted in. To keep this a strictly additive change for
+    # existing logger.info(...) calls, calc-log callers pass their custom
+    # data under non-colliding attribute names ('calc_filename', 'calc_args')
+    # via extra=, which are then surfaced under the desired 'filename'/'args'
+    # JSON keys here.
+    EXTRA_FIELDS = (
+        ('sid', 'sid'),
+        ('ip', 'ip'),
+        ('filename', 'calc_filename'),
+        ('args', 'calc_args'),
+        ('image', 'image'),
+    )
+
     def format(self, record):
         record.message = record.getMessage()
         obj = {'ts': self.formatTime(record), 'level': record.levelname, 'msg': record.message}
-        sid = getattr(record, 'sid', None)
-        ip  = getattr(record, 'ip', None)
-        if sid:
-            obj['sid'] = sid
-        if ip:
-            obj['ip'] = ip
+        for json_key, attr_name in self.EXTRA_FIELDS:
+            value = getattr(record, attr_name, None)
+            if value:
+                obj[json_key] = value
         if record.exc_info:
             obj['exc'] = self.formatException(record.exc_info)
         return json.dumps(obj)
@@ -266,6 +282,17 @@ logger.addHandler(fh)
 ch = logging.StreamHandler()
 ch.setFormatter(fmt)
 logger.addHandler(ch)
+
+CALC_LOG_DIR        = 'calc_log'
+CALC_LOG_IMAGES_DIR = os.path.join(CALC_LOG_DIR, 'images')
+CALC_LOG_FILE       = os.path.join(CALC_LOG_DIR, 'log.jsonl')
+os.makedirs(CALC_LOG_IMAGES_DIR, exist_ok=True)
+
+calc_logger = logging.getLogger('lattice.calc')
+calc_logger.setLevel(logging.INFO)
+calc_fh = logging.FileHandler(CALC_LOG_FILE, encoding='utf-8')
+calc_fh.setFormatter(fmt)
+calc_logger.addHandler(calc_fh)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -837,6 +864,49 @@ def handle_convert_igs_to_stl():
     except Exception as exc:
         logger.exception(f"[IGS2STL] {exc}")
         return jsonify({'error': f'Internal server error: {exc}'}), 500
+
+
+@app.route('/log-calculation', methods=['POST'])
+def handle_log_calculation():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+
+    try:
+        metadata = json.loads(request.form.get('metadata', '{}'))
+    except (TypeError, ValueError):
+        metadata = {}
+    filename = metadata.get('filename', '')
+    args     = metadata.get('args', {})
+
+    entry_id   = uuid.uuid4().hex
+    image_name = f'{entry_id}.png'
+    image_disk = os.path.join(CALC_LOG_IMAGES_DIR, image_name)
+    try:
+        request.files['image'].save(image_disk)
+    except OSError as exc:
+        logger.warning(f"[CALC_LOG] failed to save snapshot: {exc}")
+        return jsonify({'error': 'Failed to save snapshot'}), 500
+
+    calc_logger.info(
+        f"[CALC_LOG] {filename}"
+        f"  tile={args.get('tileType')}  mode={args.get('calcMode')}"
+        f"  tiles=({args.get('nt1')},{args.get('nt2')},{args.get('nt3')})"
+        f"  g=({args.get('g1')},{args.get('g2')})"
+        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})",
+        extra={'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}'},
+    )
+    return jsonify({'ok': True})
+
+
+@app.route('/calc-log-image/<name>')
+def calc_log_image(name):
+    safe_name = os.path.basename(name)
+    if safe_name != name or not safe_name.lower().endswith('.png'):
+        return jsonify({'error': 'Invalid image name'}), 400
+    path = os.path.join(CALC_LOG_IMAGES_DIR, safe_name)
+    if not os.path.exists(path):
+        return jsonify({'error': 'Image not found'}), 404
+    return send_file(path, mimetype='image/png')
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP routes
