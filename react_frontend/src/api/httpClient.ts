@@ -60,6 +60,7 @@ export async function downloadResults(token: string, fileType: 'stl' | 'igs'): P
   URL.revokeObjectURL(url);
 }
 
+
 /**
  * Uploads a canvas snapshot PNG plus the calculation params that produced it
  * to the permanent calc_log archive. Fire-and-forget from the caller's

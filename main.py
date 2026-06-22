@@ -558,7 +558,7 @@ def get_initial_log_content(file_path, num_lines=50):
             lines = f.readlines()
             return [line.strip() for line in lines[-num_lines:]]
     except FileNotFoundError:
-        return [f"Error: Log file '{LOG_FILE_NAME}' not found."]
+        return [f"Error: Log file '{file_path}' not found."]
     except Exception as exc:
         return [f"An error occurred reading initial log: {exc}"]
 
