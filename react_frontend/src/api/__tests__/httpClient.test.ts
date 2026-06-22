@@ -90,7 +90,10 @@ describe('logCalculation()', () => {
     expect(url).toMatch(/\/log-calculation$/)
     expect(init.method).toBe('POST')
     const form = init.body as FormData
-    expect(form.get('image')).toBe(blob)
+    const imageEntry = form.get('image') as File
+    expect(imageEntry.size).toBe(blob.size)
+    expect(imageEntry.type).toBe(blob.type)
+    expect(imageEntry.name).toBe('snapshot.png')
     const metadata = JSON.parse(form.get('metadata') as string)
     expect(metadata.filename).toBe('mypart.igs')
     expect(metadata.args).toEqual(args)
