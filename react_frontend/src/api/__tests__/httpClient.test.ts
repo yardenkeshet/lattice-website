@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { downloadResults } from '../httpClient'
+import { downloadResults, logCalculation } from '../httpClient'
+import type { CalculateArgs } from '../types'
 
 /* ─── Tests ─── */
 
@@ -59,5 +60,46 @@ describe('downloadResults()', () => {
 
     expect(anchorMock.download).toBe('results.zip')
     expect(anchorMock.click).toHaveBeenCalledOnce()
+  })
+})
+
+describe('logCalculation()', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const args: CalculateArgs = {
+    tileType: 'cross', calcMode: 'revolution',
+    nt1: 2, nt2: 2, nt3: 2, g1: 0.2, g2: 1.5, p1: 0.2, p2: 0, p3: 0.4,
+  }
+
+  it('POSTs the image and metadata as multipart form data', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"ok":true}', { status: 200 }))
+
+    const blob = new Blob(['fake-png-bytes'], { type: 'image/png' })
+    await logCalculation(blob, 'mypart.igs', args)
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://localhost:5003/log-calculation')
+    expect(init.method).toBe('POST')
+    const form = init.body as FormData
+    expect(form.get('image')).toBe(blob)
+    const metadata = JSON.parse(form.get('metadata') as string)
+    expect(metadata.filename).toBe('mypart.igs')
+    expect(metadata.args).toEqual(args)
+  })
+
+  it('throws when the server returns a non-ok status', async () => {
+    fetchSpy.mockResolvedValue(new Response('', { status: 500, statusText: 'Internal Server Error' }))
+
+    await expect(logCalculation(new Blob(['x']), 'f.igs', args))
+      .rejects.toThrow('Calc log failed: 500')
   })
 })

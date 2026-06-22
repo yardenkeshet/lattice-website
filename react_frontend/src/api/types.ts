@@ -15,10 +15,10 @@ export interface CalculateArgs {
 
 export interface CalculatePayload {
   filename: string;
-  // /** base64-encoded STL file bytes (ASCII or binary) */
-  // stl_text_b64: string;
-  /** true when the original file was a binary STL */
-  binary?: boolean;
+  /** base64-encoded bytes of the uploaded surface IGS file. */
+  surface_b64: string;
+  /** base64-encoded bytes of the second surface, ruling mode only. */
+  surface2_b64?: string;
   /** performance.now() value captured just before emit, for round-trip timing */
   client_ts: number;
   args: CalculateArgs;
