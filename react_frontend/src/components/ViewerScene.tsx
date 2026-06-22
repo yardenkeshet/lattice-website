@@ -30,6 +30,12 @@ export interface ViewerSceneProps {
   /** Called when the user clicks the clear button. Clears the loaded content. */
   onClear?: () => void
   /**
+   * Called once after the camera finishes auto-fitting to a newly loaded
+   * mesh (fires for both perspective and orthographic modes). Receives the
+   * underlying canvas DOM element so the caller can capture a snapshot.
+   */
+  onAutoFitComplete?: (canvas: HTMLCanvasElement | null) => void
+  /**
    * Opaque string controlled by the parent. When this key changes the camera
    * resets to its default position. Unchanged on tile-param recalculations so
    * the user's orbit/zoom is preserved across param tweaks.
@@ -56,6 +62,7 @@ function ViewerSceneFn({
   onFileDrop,
   onZoomChange,
   onClear,
+  onAutoFitComplete,
   className,
   style,
   meshColor,
@@ -70,6 +77,9 @@ function ViewerSceneFn({
   // Ref so the wheel handler always reads the latest zoom without a stale closure.
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
+
+  // Holds the actual <canvas> DOM element once R3F creates the renderer.
+  const canvasElRef = React.useRef<HTMLCanvasElement | null>(null)
 
   // Container ref for attaching the wheel listener with passive:false.
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -89,13 +99,15 @@ function ViewerSceneFn({
   const handleFitDistance = React.useCallback((d: number) => {
     setBaseZ(d)
     onZoomChange?.(100)
-  }, [onZoomChange])
+    onAutoFitComplete?.(canvasElRef.current)
+  }, [onZoomChange, onAutoFitComplete])
 
   // Called by STLMesh after an orthographic auto-fit.
   const handleFitOrthoZoom = React.useCallback((z: number) => {
     setBaseOrthoZoom(z)
     onZoomChange?.(100)
-  }, [onZoomChange])
+    onAutoFitComplete?.(canvasElRef.current)
+  }, [onZoomChange, onAutoFitComplete])
 
   /* Convert gz+b64 result to a Blob URL */
   const resultBlobUrl = useStlBlobUrl(resultStlGzB64)
@@ -198,7 +210,8 @@ function ViewerSceneFn({
             : undefined
         }
         orthographic={cameraMode === 'orthographic'}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        onCreated={(state) => { canvasElRef.current = state.gl.domElement }}
       >
         <color attach="background" args={[backgroundColor]}/>
         <ambientLight intensity={0.4} />

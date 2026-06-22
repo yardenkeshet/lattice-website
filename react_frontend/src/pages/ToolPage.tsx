@@ -8,7 +8,7 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
-import { downloadResults, convertIgsToStl } from '../api/httpClient'
+import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
@@ -22,7 +22,7 @@ import {
   DEFAULT_BACKGROUND_COLOR,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
-import type { ValidationError } from '../api/types'
+import type { CalculateArgs, ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
 
@@ -116,6 +116,13 @@ export function ToolPage() {
   const downloadTokenRef = React.useRef<string | null>(downloadToken)
   React.useEffect(() => { downloadTokenRef.current = downloadToken }, [downloadToken])
 
+  /* Stashes the filename + args of the most recent completed calculation so
+     the auto-fit-complete handler can upload a snapshot once the camera
+     finishes fitting to the newly rendered result. Cleared (read-once) by
+     handleAutoFitComplete regardless of whether it was set, so unrelated
+     auto-fits (plain uploads, tile previews) never reuse stale data. */
+  const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs } | null>(null)
+
 
   /* Blob URL for the tile mini preview in LatticeMenu */
   const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
@@ -154,6 +161,9 @@ export function ToolPage() {
         setCalcLabel('Calculating…')
         setResultGzB64(payload.stl_gz_b64)
         setDownloadToken(payload.download_token)
+        if (payload.args_echo) {
+          pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
+        }
         if (pendingResetKey.current !== null) {
           setViewerResetKey(pendingResetKey.current)
           pendingResetKey.current = null
@@ -342,6 +352,20 @@ export function ToolPage() {
   const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
   const handleTileMenuClose  = React.useCallback(() => setIsTileMenuOpen(false), [])
 
+  /* ── Auto-fit-complete → upload a calc-log snapshot, but only when the
+     fit was triggered by a completed calculation (pendingSnapshotRef set) ── */
+  const handleAutoFitComplete = React.useCallback((canvas: HTMLCanvasElement | null) => {
+    const pending = pendingSnapshotRef.current
+    pendingSnapshotRef.current = null
+    if (!pending || !canvas) return
+    canvas.toBlob(blob => {
+      if (!blob) return
+      logCalculation(blob, pending.filename, pending.args).catch(err => {
+        console.warn('calc log snapshot failed to upload', err)
+      })
+    }, 'image/png')
+  }, [])
+
   const fileNames = React.useMemo(
     () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
     [uploadedFile, uploadedFile2]
@@ -437,6 +461,7 @@ export function ToolPage() {
                   cameraResetKey={viewerResetKey}
                   onFileDrop={handleViewerFileDrop}
                   onClear={handleClearSingle}
+                  onAutoFitComplete={handleAutoFitComplete}
                   meshColor={meshColor}
                   backgroundColor={backgroundColor}
                 />
