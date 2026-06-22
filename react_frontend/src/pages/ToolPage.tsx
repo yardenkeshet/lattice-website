@@ -27,19 +27,31 @@ import type { ValidationError } from '../api/types'
 /* ─── IGS conversion utility ─── */
 
 /**
- * Sends a .igs file to the server's convert_igs_to_stl endpoint.
- * Returns the base64-encoded STL string and a synthetic STL File so
- * ViewerScene can render the converted mesh before calculation.
+ * Sends a .igs file to the server's convert_igs_to_stl endpoint for preview
+ * purposes, and also returns the original IGS bytes (base64) so the caller
+ * can resend them at Calculate time — the backend no longer persists
+ * uploaded files between requests.
  */
-async function convertIgsFile(file: File): Promise<{ stlB64: string; stlFile: File }> {
-  const stlB64 = await convertIgsToStl(file)
+async function convertIgsFile(file: File): Promise<{ stlFile: File; igsB64: string }> {
+  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file), fileToBase64(file)])
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   const stlName = file.name.replace(/\.igs$/i, '.stl')
   const stlFile = new File([bytes], stlName, { type: 'application/octet-stream' })
-  console.log("converted to: ", {stlB64, stlFile})
-  return { stlB64, stlFile }
+  return { stlFile, igsB64 }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
 }
 
 /* ─── ToolPage ─── */
@@ -75,6 +87,7 @@ export function ToolPage() {
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
+  const [uploadedIgsB64, setUploadedIgsB64] = React.useState<string | null>(null)
   const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
@@ -83,6 +96,7 @@ export function ToolPage() {
 
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
+  const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -197,26 +211,31 @@ export function ToolPage() {
         try {
           const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
           setUploadedFile(r1.stlFile)
+          setUploadedIgsB64(r1.igsB64)
           setUploadedFile2(r2.stlFile)
+          setUploadedIgsB64_2(r2.igsB64)
         } catch { setErrorMsg('Failed to convert IGS file') }
       } else {
         const file = files[0]
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile(stlFile)
+            setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile2(stlFile)
+            setUploadedIgsB64_2(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
           setViewerResetKey('file-' + Date.now())
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile(stlFile)
+            setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         }
       }
@@ -224,8 +243,9 @@ export function ToolPage() {
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
-        const stlFile  = (await convertIgsFile(file)).stlFile
+        const { stlFile, igsB64 } = await convertIgsFile(file)
         setUploadedFile(stlFile)
+        setUploadedIgsB64(igsB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
   }, [calcMode, uploadedFile, uploadedFile2])
@@ -233,32 +253,37 @@ export function ToolPage() {
   const handleFile1Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const  stlFile  = (await convertIgsFile(file)).stlFile
+      const { stlFile, igsB64 } = await convertIgsFile(file)
       setUploadedFile(stlFile)
+      setUploadedIgsB64(igsB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
 
   const handleFile2Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const stlFile  = (await convertIgsFile(file)).stlFile
+      const { stlFile, igsB64 } = await convertIgsFile(file)
       setUploadedFile2(stlFile)
+      setUploadedIgsB64_2(igsB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
 
   /* ── Clear handlers ── */
   const handleClearSingle = React.useCallback(() => {
     setUploadedFile(null)
+    setUploadedIgsB64(null)
     setResultGzB64(null)
     setDownloadToken(null)
   }, [])
 
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
+    setUploadedIgsB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
     setUploadedFile2(null)
+    setUploadedIgsB64_2(null)
   }, [])
 
   /* ── Calculate ── */
@@ -274,16 +299,16 @@ export function ToolPage() {
         setErrorMsg('Please upload both surface files')
         return
       }
-      if (!uploadedFile) {
+      if (!uploadedFile || !uploadedIgsB64) {
         setErrorMsg('Please upload Surface 1')
         return
       }
-      if (!uploadedFile2) {
+      if (!uploadedFile2 || !uploadedIgsB64_2) {
         setErrorMsg('Please upload Surface 2')
         return
       }
     } else {
-      if (!uploadedFile) {
+      if (!uploadedFile || !uploadedIgsB64) {
         setErrorMsg('Please upload a 3D file first')
         return
       }
@@ -292,14 +317,15 @@ export function ToolPage() {
     setIsCalculating(true)
     setCalcLabel('Calculating…')
     setErrorMsg(null)
-    let calculateArgs = {
+    const calculateArgs = {
       filename: uploadedFile!.name,
+      surface_b64: uploadedIgsB64!,
+      ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
       args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
     }
-    console.log("socket please calculate with: ",calculateArgs);
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
