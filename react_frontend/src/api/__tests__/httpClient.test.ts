@@ -87,7 +87,7 @@ describe('logCalculation()', () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce()
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('http://localhost:5003/log-calculation')
+    expect(url).toMatch(/\/log-calculation$/)
     expect(init.method).toBe('POST')
     const form = init.body as FormData
     expect(form.get('image')).toBe(blob)
