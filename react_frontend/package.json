@@ -20,6 +20,7 @@
     "clsx": "^2.1.1",
     "pako": "^2.1.0",
     "react": "^19.2.5",
+    "react-color": "^2.19.3",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.15.0",
     "socket.io-client": "^4.8.3",
