@@ -42,6 +42,40 @@ async function convertIgsFile(file: File): Promise<{ stlB64: string; stlFile: Fi
   return { stlB64, stlFile }
 }
 
+function stlGzB64ToGeometry(gzB64: string): BufferGeometry {
+  const compressed = Uint8Array.from(atob(gzB64), c => c.charCodeAt(0))
+  const decompressed = pako.inflate(compressed)
+
+  const header = new TextDecoder().decode(decompressed.slice(0, 256)).trimStart()
+  const looksLikeAscii = header.startsWith('solid') && header.includes('facet normal')
+
+  console.log('[STL] header start:', JSON.stringify(header.slice(0, 30)))
+  console.log('[STL] looksLikeAscii:', looksLikeAscii)
+
+  const loader = new STLLoader()
+  if (looksLikeAscii) {
+    return loader.parse(new TextDecoder().decode(decompressed).trimStart())
+  } else {
+    // Binary STL — must pass a copy, STLLoader reads from offset 0 of the buffer.
+    // decompressed.buffer may have an offset if pako returned a subarray view,
+    // so slice to get a clean ArrayBuffer.
+    return loader.parse(decompressed.buffer.slice(
+      decompressed.byteOffset,
+      decompressed.byteOffset + decompressed.byteLength
+    ) as ArrayBuffer)
+  }
+}
+
+/* ─── Types ─── */
+
+interface TileState {
+  type: TileType
+  sliderValues: number[]
+  previewGzB64: string | null
+}
+
+
+
 /* ─── ToolPage ─── */
 
 export function ToolPage() {
@@ -119,6 +153,7 @@ export function ToolPage() {
   }, [])
 
   /* ── Socket subscriptions ── */
+
   React.useEffect(() => {
     const unsubResult = socket.onResult(payload => {
       console.log("socket: onResult: ", payload)
@@ -146,7 +181,9 @@ export function ToolPage() {
         }
       }
     })
+
     const unsubError = socket.onError(err => {
+      console.error('Socket error:', err)
       setIsCalculating(false)
       setCalcLabel('Calculating…')
       setErrorMsg(err.message)
@@ -168,14 +205,14 @@ export function ToolPage() {
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
-    socket.calculateTile({ type: tileType, values: padded })
-  }, [socket, tileType])
+    socket.calculateTile({ type: tileParams.type, values: padded })
+  }, [socket, tileParams.type])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
     pendingResetKey.current = type
     setTileType(type)
     const defaults = defaultSliderValues(type)
-    setTileSliderValues(defaults)
+    setTileParams({ type, sliderValues: defaults, previewGzB64: tileParams.previewGzB64 })
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
     socket.calculateTile({ type, values: padded })
   }, [socket])
@@ -330,14 +367,12 @@ export function ToolPage() {
     <div style={pageStyle}>
       <Banner onClick={() => navigate('/')}/>
 
-      {/* ── Workspace ── */}
       <div style={workspaceStyle}>
 
-        {/* Left: LatticeMenu (collapsible) */}
         <div style={leftPanelStyle}>
           <LatticeMenu
-            tileType={tileType}
-            tilePreviewUrl={tilePreviewUrl}
+            tileType={tileParams.type}
+            tilePreviewUrl=""
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
             calculationMode={calcMode}
@@ -361,7 +396,6 @@ export function ToolPage() {
             />
         </div>
 
-        {/* Centre: Toolbar + ViewerScene */}
         <div style={centerStyle}>
           <div style={toolbarRowStyle}>
             <Toolbar
@@ -376,16 +410,10 @@ export function ToolPage() {
             />
           </div>
 
-          {/* Error message */}
           {errorMsg && (
-            <div style={errorStyle} role="alert">
+            <div style={errorStyle}>
               {errorMsg}
-              <button
-                type="button"
-                aria-label="Dismiss error"
-                onClick={() => setErrorMsg(null)}
-                style={errorDismissStyle}
-              >✕</button>
+              <button style={errorDismissStyle} onClick={() => setErrorMsg(null)}>✕</button>
             </div>
           )}
 
@@ -419,13 +447,12 @@ export function ToolPage() {
           </div>
         </div>
 
-        {/* Right: TileMenu (conditionally shown) */}
         {isTileMenuOpen && (
           <div style={rightPanelStyle}>
             <TileMenu
-              tileType={tileType}
-              sliderValues={tileSliderValues}
-              previewStlGzB64={tilePreviewGzB64 ?? undefined}
+              tileType={tileParams.type}
+              sliderValues={tileParams.sliderValues}
+              previewStlGzB64={tileParams.previewGzB64 ?? undefined}
               onTileTypeChange={handleTileTypeChange}
               onSliderChange={handleTileSliderChange}
               onSliderCommit={handleTileSliderCommit}
@@ -488,6 +515,7 @@ const viewerStyle: React.CSSProperties = {
   minHeight: 0,
   borderRadius: 12,
   overflow: 'hidden',
+  height: 0,
 }
 
 const rightPanelStyle: React.CSSProperties = {

@@ -9,17 +9,7 @@ import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
 /* ─── Public API ─── */
 
 export interface ViewerSceneProps {
-  /**
-   * Raw 3D file selected via the Add button or drag-dropped onto the viewer.
-   * Displayed as-is (the source mesh before lattice generation).
-   */
-  uploadedFile?: File | null
-  /**
-   * base64( gzip( ASCII-STL ) ) — calculated lattice result from the server.
-   * When present, takes priority over uploadedFile.
-   */
-  resultStlGzB64?: string | null
-  /** 'perspective' (default) or 'orthographic'. */
+  model: BufferGeometry | null , 
   cameraMode?: 'perspective' | 'orthographic'
   /** Zoom level. 100 = default, range 10–500. */
   zoom?: number
@@ -166,12 +156,10 @@ function ViewerSceneFn({
         </div>
       )}
 
-      {isDragOver && (
-        <div style={dragOverlayStyle}>
-          <UploadCloudIcon />
-          <span style={placeholderTextStyle}>Drop to load</span>
-        </div>
-      )}
+      {cameraMode === 'perspective'
+        ? <PerspectiveCamera makeDefault position={[100, 0, 100]} fov={60} />
+        : <OrthographicCamera makeDefault position={[100, 0, 100]} zoom={1} />
+      }
 
       {/* ── Clear button — top-right, only when content is loaded ── */}
       {!isEmpty && onClear && (
@@ -229,6 +217,8 @@ function ViewerSceneFn({
     </div>
   )
 }
+  // const [isDragOver, setIsDragOver] = React.useState(false)
+  // const [activeUrl, setActiveUrl] = React.useState<string | null>(null)
 
 
 /* ─── Camera zoom controller ─── */
@@ -264,10 +254,16 @@ function CameraZoom({
     invalidate()  // demand mode: trigger a frame after camera update
   }, [zoom, mode, camera, baseZ, baseOrthoZoom, invalidate])
 
-  return null
-}
+  //   let url: string | null = null
 
-/* ─── STL mesh loader ─── */
+  //   if (model.data instanceof File) {
+  //     // It's a local upload
+  //     url = URL.createObjectURL(model.data)
+  //   } else if (typeof model.data === 'string' && model.type === 'iges') {
+  //     // It's raw IGES text content
+  //     const blob = new Blob([model.data], { type: 'text/plain' })
+  //     url = URL.createObjectURL(blob)
+  //   }
 
 interface STLMeshProps {
   url: string
@@ -360,30 +356,30 @@ function UploadCloudIcon() {
 
 /* ─── Styles ─── */
 
-const placeholderStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 'var(--space-md)',
-  pointerEvents: 'none',
-  zIndex: 1,
-}
+// const placeholderStyle: React.CSSProperties = {
+//   position: 'absolute',
+//   inset: 0,
+//   display: 'flex',
+//   flexDirection: 'column',
+//   alignItems: 'center',
+//   justifyContent: 'center',
+//   gap: 'var(--space-md)',
+//   pointerEvents: 'none',
+//   zIndex: 1,
+// }
 
-const dragOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 'var(--space-md)',
-  backgroundColor: 'rgba(4, 107, 210, 0.08)',
-  zIndex: 10,
-  pointerEvents: 'none',
-}
+// const dragOverlayStyle: React.CSSProperties = {
+//   position: 'absolute',
+//   inset: 0,
+//   display: 'flex',
+//   flexDirection: 'column',
+//   alignItems: 'center',
+//   justifyContent: 'center',
+//   gap: 'var(--space-md)',
+//   backgroundColor: 'rgba(4, 107, 210, 0.08)',
+//   zIndex: 10,
+//   pointerEvents: 'none',
+// }
 
 const placeholderTextStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',

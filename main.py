@@ -2,6 +2,7 @@
 import os
 import argparse
 import shutil
+import sys
 import time
 import base64
 import gzip
@@ -875,6 +876,5 @@ def download_results():
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    logger.info(f"Server starting on http://localhost:{5003}")
-    socketio.run(app, host='0.0.0.0', port=5003, debug=False, use_reloader=False)
+    print("Starting Flask-SocketIO server on http://localhost:5003")
+    socketio.run(app, host='0.0.0.0', port=5003, allow_unsafe_werkzeug=True)
