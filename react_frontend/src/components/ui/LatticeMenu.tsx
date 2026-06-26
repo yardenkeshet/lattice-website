@@ -8,6 +8,7 @@ import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
+import { Tooltip } from './Tooltip'
 
 const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
   ([mode, def]) => ({ value: mode, label: def.label })
@@ -80,14 +81,18 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       >
         {/* ── Header ── */}
         <div style={headerStyle}>
-          <span style={headerTitleStyle}>Lattice Maker</span>
+          <Tooltip content="The lattice maker's main widget">
+            <span style={headerTitleStyle}>Lattice Maker</span>
+          </Tooltip>
         </div>
 
         <Divider />
 
         {/* ── Tiles Counts ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Tiles Counts</span>
+          <Tooltip content="Number of tiles to place along the two (XY) axes of the parametric domain of the input surfaces and Z (out of the two surfaces). Must be a number between 1 and 10, in each axis.">
+            <span style={sectionLabelStyle}>Tiles Counts</span>
+          </Tooltip>
           <div style={numTilesRowStyle}>
             <NumberInput label="X" value={nt1} min={1} onChange={onNt1Change} aria-label="X tiles" />
             <NumberInput label="Y" value={nt2} min={1} onChange={onNt2Change} aria-label="Y tiles" />
@@ -99,7 +104,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         {/* ── Macro-shape Construction ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Macro-shape Construction</span>
+          <Tooltip content={"Three types of volumetric macro-shape volumetric (trivariate) construction are supported:\n1. Extrusion – the input IGES surface is extruded in +Z by a desired extrusion length.\n2. Revolution – the input IGES surface is revolved around the +Z axis.\n3. Ruling – the two input IGES surfaces are ruled in between.\nEach IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface, with no interior knots. UV/degrees could be anything."}>
+            <span style={sectionLabelStyle}>Macro-shape Construction</span>
+          </Tooltip>
           <Dropdown
             options={CALC_MODE_OPTIONS}
             value={calculationMode}
@@ -131,7 +138,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <span style={sectionLabelStyle}>Load surfaces as IGES Files</span>
+            <Tooltip content="The Extrusion and Revolution constructors of the macro-shape require that one IGES file surface be specified here. The Ruling constructor requires two IGES file surfaces. Each IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface with no interior knots. U/V degrees could be anything.">
+              <span style={sectionLabelStyle}>Load surfaces as IGES Files</span>
+            </Tooltip>
             <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
             </span>
@@ -177,36 +186,44 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         </Button>
         {useAdvancedFeatures && (
           <div style={sectionStyle}>
-            <Slider
-              label="Grading Start"
-              min={0}
-              max={1}
-              step={0.01}
-              value={[g1]}
-              showValue
-              valuePrecision={2}
-              fontSize={12}
-              onValueChange={([v]) => onG1Change(v)}
-            />
-            <Slider
-              label="Grading End"
-              min={0}
-              max={1}
-              step={0.01}
-              value={[g2]}
-              showValue
-              valuePrecision={2}
-              fontSize={12}
-              onValueChange={([v]) => onG2Change(v)}
-            />
+            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between zero and one.">
+              <div>
+                <Slider
+                  label="Grading Start"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[g1]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onG1Change(v)}
+                />
+                <Slider
+                  label="Grading End"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[g2]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onG2Change(v)}
+                />
+              </div>
+            </Tooltip>
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              Mesh Color:
+              <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">
+                <span>Mesh Color:</span>
+              </Tooltip>
               <ColorPicker disableAlpha value={modelColor} onChange={setModelColor} />
             </div>
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>Background Color:</span>
+              <Tooltip content="The background color of the graphics display.">
+                <span>Background Color:</span>
+              </Tooltip>
               <ColorPicker disableAlpha value={backgroundColor} onChange={setBackgroundColor} />
             </div>
             <Divider />

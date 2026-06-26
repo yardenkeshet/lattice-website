@@ -6,6 +6,7 @@ import { TileCard } from './TileCard'
 import { Slider } from './Slider'
 import { CROSS } from '../../lib/parameters'
 import { TILE_DEFS, type TileType } from '../../calculation_params'
+import { Tooltip } from './Tooltip'
 
 /* ─── Per-tile-type definitions ─── */
 
@@ -93,7 +94,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       >
         {/* ── Header ── */}
         <div style={headerStyle}>
-          <span style={headerTitleStyle}>Lattice Tile</span>
+          <Tooltip content="Tile selection. Three types of tiles are supported here – a 6-arms 3D cross tile, an 8-arms diagonal tile, and a tile with 14 arms, cross and diagonal. The parameters of the arms and core sizes could be set below.">
+            <span style={headerTitleStyle}>Lattice Tile</span>
+          </Tooltip>
         </div>
 
         <Divider />
@@ -115,7 +118,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
         {/* ── Tile type selection ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Tile Type</span>
+          <Tooltip content="The three tile types to select from.">
+            <span style={sectionLabelStyle}>Tile Type</span>
+          </Tooltip>
           <div style={tileGridWrapperStyle}>
             <div style={tileGridStyle}>
               {Object.entries(TILE_DEFS).map(([type, def]) => (
@@ -139,6 +144,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
         {/* ── Dynamic sliders ── */}
         <div style={sectionStyle}>
+          <Tooltip content="Tile-specific parameters, controlling arm thicknesses, etc.">
+            <span style={sectionLabelStyle}>Parameters</span>
+          </Tooltip>
           {defs.map((def, i: number) => {
             const isInnerRadius = tileType === CROSS && i === 1
             return (

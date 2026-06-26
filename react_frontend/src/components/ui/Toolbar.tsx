@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 import { Button } from './Button'
 import Popup from './Popup'
+import { Tooltip } from './Tooltip'
 
 export interface ToolbarProps {
   cameraMode?: 'perspective' | 'orthographic'
@@ -37,15 +38,17 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
         {/* ── Pill: camera mode + export + calculate ── */}
         <div style={pillStyle}>
           {/* Camera mode toggle */}
-          <button
-            type="button"
-            aria-haspopup="listbox"
-            onClick={() => onCameraModeChange(cameraMode === 'orthographic' ? 'perspective' : 'orthographic')}
-            style={cameraPillButtonStyle}
-          >
-            <CameraIcon />
-            <span style={pillTextStyle}>{cameraMode}</span>
-          </button>
+          <Tooltip content="Toggles between perspective and orthographic views.">
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              onClick={() => onCameraModeChange(cameraMode === 'orthographic' ? 'perspective' : 'orthographic')}
+              style={cameraPillButtonStyle}
+            >
+              <CameraIcon />
+              <span style={pillTextStyle}>{cameraMode}</span>
+            </button>
+          </Tooltip>
 
           <PillDivider />
 
