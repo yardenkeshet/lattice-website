@@ -9,13 +9,12 @@ import { ViewerScene } from '../components/ViewerScene'
 import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
-import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
+import { stlTextToGzB64 } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
   DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
   DEFAULT_G1, DEFAULT_G2,
-  DEFAULT_LATTICE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
@@ -61,7 +60,6 @@ export function ToolPage() {
   const socket = getLatticeSocket()
 
   /* ── UI state ── */
-  const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(DEFAULT_LATTICE_MENU_OPEN)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>(DEFAULT_CAMERA_MODE)
   const [viewerResetKey, setViewerResetKey]       = React.useState(INITIAL_VIEWER_RESET_KEY)
   /* Tracks what kind of action triggered the last backend call so the result
@@ -122,9 +120,6 @@ export function ToolPage() {
      auto-fits (plain uploads, tile previews) never reuse stale data. */
   const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs } | null>(null)
 
-
-  /* Blob URL for the tile mini preview in LatticeMenu */
-  const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
 
   /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
   React.useEffect(() => {
@@ -385,19 +380,12 @@ export function ToolPage() {
         <div style={leftPanelStyle}>
           <LatticeMenu
             tileType={tileType}
-            tilePreviewUrl={tilePreviewUrl}
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
             calculationMode={calcMode}
-            canExport={!!downloadToken}
-            isOpen={isLatticeMenuOpen}
             onNt1Change={setNt1} onNt2Change={setNt2} onNt3Change={setNt3}
             onG1Change={setG1} onG2Change={setG2}
             onCalculationModeChange={handleCalcModeChange}
-            onOpenTileMenu={() => setIsTileMenuOpen(true)}
-            onExportStl={handleExportStl}
-            onExportIgs={handleExportIgs}
-            onToggle={() => setIsLatticeMenuOpen(o => !o)}
             onFilesAdd={handleFilesAdd}
             onFileRemove={handleFileRemove}
             fileNames={fileNames}
