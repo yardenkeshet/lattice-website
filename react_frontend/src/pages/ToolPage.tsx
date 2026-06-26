@@ -273,13 +273,6 @@ export function ToolPage() {
   }, [])
 
   /* ── Clear handlers ── */
-  const handleClearSingle = React.useCallback(() => {
-    setUploadedFile(null)
-    setUploadedIgsB64(null)
-    setResultGzB64(null)
-    setDownloadToken(null)
-  }, [])
-
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
     setUploadedIgsB64(null)
@@ -379,7 +372,6 @@ export function ToolPage() {
         {/* Left: LatticeMenu */}
         <div style={leftPanelStyle}>
           <LatticeMenu
-            tileType={tileType}
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
             calculationMode={calcMode}

@@ -4,7 +4,7 @@ import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
 import { Dropdown, type DropdownOption } from './Dropdown'
-import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_params'
+import { CALC_MODE_DEFS, type CalcMode } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
@@ -15,7 +15,6 @@ const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
 )
 
 export interface LatticeMenuProps {
-  tileType: TileType
   nt1: number
   nt2: number
   nt3: number
