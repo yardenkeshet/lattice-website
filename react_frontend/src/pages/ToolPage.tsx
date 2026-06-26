@@ -376,7 +376,7 @@ export function ToolPage() {
       {/* ── Workspace ── */}
       <div style={workspaceStyle}>
 
-        {/* Left: LatticeMenu (collapsible) */}
+        {/* Left: LatticeMenu */}
         <div style={leftPanelStyle}>
           <LatticeMenu
             tileType={tileType}
