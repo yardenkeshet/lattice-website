@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 
 interface TooltipProps {
   content: string
@@ -40,7 +41,7 @@ export function Tooltip({ content, children }: TooltipProps) {
   return (
     <>
       {trigger}
-      {visible && typeof document !== 'undefined' && React.createPortal(
+      {visible && typeof document !== 'undefined' && createPortal(
         <div style={tooltipStyle(coords)}>{content}</div>,
         document.body,
       )}
