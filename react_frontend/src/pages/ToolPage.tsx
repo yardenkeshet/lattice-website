@@ -414,13 +414,13 @@ export function ToolPage() {
           <div style={toolbarRowStyle}>
             <Toolbar
               onCalculate={handleCalculate}
-              calcMode={calcMode}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
               calcLabel={calcLabel}
+              canExport={!!downloadToken}
               onCameraModeChange={setCameraMode}
-              onFilesAdd={handleFilesAdd}
-              fileNames={fileNames}
+              onExportStl={handleExportStl}
+              onExportIgs={handleExportIgs}
             />
           </div>
 
