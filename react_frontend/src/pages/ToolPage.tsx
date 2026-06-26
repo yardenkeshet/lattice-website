@@ -15,7 +15,7 @@ import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
   DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
   DEFAULT_G1, DEFAULT_G2,
-  DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
+  DEFAULT_LATTICE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
@@ -62,7 +62,6 @@ export function ToolPage() {
 
   /* ── UI state ── */
   const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(DEFAULT_LATTICE_MENU_OPEN)
-  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(DEFAULT_TILE_MENU_OPEN)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>(DEFAULT_CAMERA_MODE)
   const [viewerResetKey, setViewerResetKey]       = React.useState(INITIAL_VIEWER_RESET_KEY)
   /* Tracks what kind of action triggered the last backend call so the result
@@ -350,7 +349,6 @@ export function ToolPage() {
 
   /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
   const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
-  const handleTileMenuClose  = React.useCallback(() => setIsTileMenuOpen(false), [])
 
   /* ── Auto-fit-complete → upload a calc-log snapshot, but only when the
      fit was triggered by a completed calculation (pendingSnapshotRef set) ── */
@@ -467,23 +465,20 @@ export function ToolPage() {
           </div>
         </div>
 
-        {/* Right: TileMenu (conditionally shown) */}
-        {isTileMenuOpen && (
-          <div style={rightPanelStyle}>
-            <TileMenu
-              tileType={tileType}
-              sliderValues={tileSliderValues}
-              previewStlGzB64={tilePreviewGzB64 ?? undefined}
-              onTileTypeChange={handleTileTypeChange}
-              onSliderChange={handleTileSliderChange}
-              onSliderCommit={handleTileSliderCommit}
-              onClose={handleTileMenuClose}
-              onValidationChange={handleValidationChange}
-              meshColor={meshColor}
-              backgroundColor={backgroundColor}
-            />
-          </div>
-        )}
+        {/* Right: TileMenu (always visible) */}
+        <div style={rightPanelStyle}>
+          <TileMenu
+            tileType={tileType}
+            sliderValues={tileSliderValues}
+            previewStlGzB64={tilePreviewGzB64 ?? undefined}
+            onTileTypeChange={handleTileTypeChange}
+            onSliderChange={handleTileSliderChange}
+            onSliderCommit={handleTileSliderCommit}
+            onValidationChange={handleValidationChange}
+            meshColor={meshColor}
+            backgroundColor={backgroundColor}
+          />
+        </div>
       </div>
 
       <Footer />

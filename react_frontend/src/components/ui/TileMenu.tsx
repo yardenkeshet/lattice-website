@@ -27,7 +27,6 @@ export interface TileMenuProps {
   onSliderChange: (values: number[]) => void
   /** Called on slider release or badge commit — triggers model recalculation. */
   onSliderCommit?: (values: number[]) => void
-  onClose: () => void
   /**
    * Called whenever the tile's validation state changes.
    * source is always 'tile'. Pass [] to clear errors.
@@ -48,7 +47,6 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onTileTypeChange,
       onSliderChange,
       onSliderCommit,
-      onClose,
       onValidationChange,
       className,
       meshColor,
@@ -96,14 +94,6 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
         {/* ── Header ── */}
         <div style={headerStyle}>
           <span style={headerTitleStyle}>Lattice Tile</span>
-          <button
-            type="button"
-            aria-label="Close tile menu"
-            onClick={onClose}
-            style={closeButtonStyle}
-          >
-            <CloseIcon />
-          </button>
         </div>
 
         <Divider />
@@ -177,16 +167,6 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
 TileMenuInner.displayName = 'TileMenu'
 
-/* ─── Close icon ─── */
-
-function CloseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 /* ─── Divider ─── */
 
 function Divider() {
@@ -220,16 +200,6 @@ const headerTitleStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
-}
-
-const closeButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: 2,
-  color: 'var(--text-secondary)',
-  display: 'flex',
-  alignItems: 'center',
 }
 
 const dividerStyle: React.CSSProperties = {
