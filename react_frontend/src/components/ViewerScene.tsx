@@ -27,8 +27,6 @@ export interface ViewerSceneProps {
   onFileDrop?: (file: File) => void
   /** Called when the user scrolls over the viewer to zoom. */
   onZoomChange?: (zoom: number) => void
-  /** Called when the user clicks the clear button. Clears the loaded content. */
-  onClear?: () => void
   /**
    * Called once after the camera finishes auto-fitting to a newly loaded
    * mesh (fires for both perspective and orthographic modes). Receives the
@@ -61,7 +59,6 @@ function ViewerSceneFn({
   cameraResetKey,
   onFileDrop,
   onZoomChange,
-  onClear,
   onAutoFitComplete,
   className,
   style,
@@ -173,7 +170,7 @@ function ViewerSceneFn({
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>
-            Drop a .igs file here,<br />or use the + button above
+            Drop a .igs file here
           </span>
         </div>
       )}
@@ -183,20 +180,6 @@ function ViewerSceneFn({
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>Drop to load</span>
         </div>
-      )}
-
-      {/* ── Clear button — top-right, only when content is loaded ── */}
-      {!isEmpty && onClear && (
-        <button
-          type="button"
-          aria-label="Clear viewer"
-          onClick={e => { e.stopPropagation(); onClear() }}
-          style={clearButtonStyle}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
       )}
 
       {/* ── Three.js canvas — remounts when camera mode changes ── */}
@@ -404,25 +387,6 @@ const placeholderTextStyle: React.CSSProperties = {
   color: 'var(--text-tertiary)',
   textAlign: 'center',
   lineHeight: 1.5,
-}
-
-const clearButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 8,
-  right: 8,
-  zIndex: 20,
-  width: 22,
-  height: 22,
-  borderRadius: '50%',
-  backgroundColor: 'var(--bg-primary)',
-  border: '1.5px solid var(--border-base)',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'var(--text-secondary)',
-  padding: 0,
 }
 
 export const ViewerScene = React.memo(ViewerSceneFn)

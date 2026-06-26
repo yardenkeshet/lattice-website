@@ -448,8 +448,6 @@ export function ToolPage() {
                   onFile1Drop={handleFile1Drop}
                   onFile2Drop={handleFile2Drop}
                   cameraMode={cameraMode}
-                  onClear1={handleClear1}
-                  onClear2={handleClear2}
                   style={{ height: '100%' }}
                 />
               )
@@ -460,7 +458,6 @@ export function ToolPage() {
                   cameraMode={cameraMode}
                   cameraResetKey={viewerResetKey}
                   onFileDrop={handleViewerFileDrop}
-                  onClear={handleClearSingle}
                   onAutoFitComplete={handleAutoFitComplete}
                   meshColor={meshColor}
                   backgroundColor={backgroundColor}
