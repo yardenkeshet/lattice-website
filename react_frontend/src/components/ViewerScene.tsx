@@ -51,6 +51,17 @@ const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
 const SCROLL_ZOOM_MAX  = 500
 
+class STLErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    return this.state.hasError ? null : this.props.children
+  }
+}
+
 function ViewerSceneFn({
   uploadedFile = null,
   resultStlGzB64 = null,
@@ -207,18 +218,20 @@ function ViewerSceneFn({
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
         {/* Mesh — auto-fit fires inside STLMesh when both fitKey and geometry are new */}
-        <React.Suspense fallback={null}>
-          {activeUrl && (
-            <STLMesh
-              url={activeUrl}
-              fitKey={cameraResetKey}
-              onFitDistance={handleFitDistance}
-              onFitOrthoZoom={handleFitOrthoZoom}
-              meshColor={meshColor}
-              
-            />
-          )}
-        </React.Suspense>
+        <STLErrorBoundary key={activeUrl}>
+          <React.Suspense fallback={null}>
+            {activeUrl && (
+              <STLMesh
+                url={activeUrl}
+                fitKey={cameraResetKey}
+                onFitDistance={handleFitDistance}
+                onFitOrthoZoom={handleFitOrthoZoom}
+                meshColor={meshColor}
+
+              />
+            )}
+          </React.Suspense>
+        </STLErrorBoundary>
 
         <OrbitControls makeDefault enablePan enableZoom={true} />
       </Canvas>

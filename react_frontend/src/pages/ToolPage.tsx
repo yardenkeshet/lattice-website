@@ -344,12 +344,18 @@ export function ToolPage() {
     const pending = pendingSnapshotRef.current
     pendingSnapshotRef.current = null
     if (!pending || !canvas) return
-    canvas.toBlob(blob => {
-      if (!blob) return
-      logCalculation(blob, pending.filename, pending.args).catch(err => {
-        console.warn('calc log snapshot failed to upload', err)
+    // Two rAFs: the first fires before R3F's invalidate()-scheduled render (rAF-B),
+    // the second fires after it, so toBlob captures the newly rendered frame.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        canvas.toBlob(blob => {
+          if (!blob) return
+          logCalculation(blob, pending.filename, pending.args).catch(err => {
+            console.warn('calc log snapshot failed to upload', err)
+          })
+        }, 'image/png')
       })
-    }, 'image/png')
+    })
   }, [])
 
   const fileNames = React.useMemo(
