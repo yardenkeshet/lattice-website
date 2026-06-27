@@ -332,15 +332,30 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLM
 
       if (camera instanceof THREE.PerspectiveCamera) {
         const d = perspectiveFitDistance(r, camera.fov, camera.aspect)
-        camera.position.set(0, 0, d)
+        const az = Math.PI / 4  // 45° azimuth
+        const el = Math.PI / 6  // 30° elevation
+        camera.position.set(
+          d * Math.cos(el) * Math.sin(az),
+          d * Math.sin(el),
+          d * Math.cos(el) * Math.cos(az),
+        )
         camera.lookAt(0, 0, 0)
         controls?.target?.set(0, 0, 0)
         controls?.update?.()
         if (d > 0) onFitDistance?.(d)
       } else if (camera instanceof THREE.OrthographicCamera) {
         const z = orthographicFitZoom(r, Math.abs(camera.right), Math.abs(camera.top))
+        const az = Math.PI / 4
+        const el = Math.PI / 6
+        camera.position.set(
+          10 * Math.cos(el) * Math.sin(az),
+          10 * Math.sin(el),
+          10 * Math.cos(el) * Math.cos(az),
+        )
+        camera.lookAt(0, 0, 0)
         camera.zoom = z
         camera.updateProjectionMatrix()
+        controls?.target?.set(0, 0, 0)
         controls?.update?.()
         if (z > 0) onFitOrthoZoom?.(z)
       }
