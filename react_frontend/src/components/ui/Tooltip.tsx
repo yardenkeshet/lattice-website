@@ -15,9 +15,16 @@ export function Tooltip({ content, children }: TooltipProps) {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
     const flipBelow = rect.top < 80
+    const MARGIN = 8
+    const MAX_HALF = 160  // maxWidth / 2 = 320 / 2
+    const centerLeft = rect.left + rect.width / 2
+    const clampedLeft = Math.max(
+      MARGIN + MAX_HALF,
+      Math.min(centerLeft, window.innerWidth - MARGIN - MAX_HALF),
+    )
     setCoords({
       top: flipBelow ? rect.bottom + 8 : rect.top - 8,
-      left: rect.left + rect.width / 2,
+      left: clampedLeft,
       flipBelow,
     })
     setVisible(true)
