@@ -1,3 +1,5 @@
+import type { CalculateArgs } from './types';
+
 const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 
 /**
@@ -56,4 +58,26 @@ export async function downloadResults(token: string, fileType: 'stl' | 'igs'): P
   a.click();
 
   URL.revokeObjectURL(url);
+}
+
+
+/**
+ * Uploads a canvas snapshot PNG plus the calculation params that produced it
+ * to the permanent calc_log archive. Fire-and-forget from the caller's
+ * perspective — failures should be caught and ignored by the caller so a
+ * logging hiccup never affects the displayed calculation result.
+ */
+export async function logCalculation(image: Blob, filename: string, args: CalculateArgs): Promise<void> {
+  const form = new FormData();
+  form.append('image', image, 'snapshot.png');
+  form.append('metadata', JSON.stringify({ filename, args }));
+
+  const response = await fetch(`${BASE_URL}/log-calculation`, {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Calc log failed: ${response.status} ${response.statusText}`);
+  }
 }

@@ -4,49 +4,30 @@ import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
 import { Dropdown, type DropdownOption } from './Dropdown'
-import { TileCard } from './TileCard'
-import { IconButton } from './IconButton'
-import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../../calculation_params'
+import { CALC_MODE_DEFS, type CalcMode } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
-import Popup from './Popup'
+import { Tooltip } from './Tooltip'
+import { sliderRowStyle } from './TileMenu'
 
 const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
   ([mode, def]) => ({ value: mode, label: def.label })
 )
 
-/* ─── Public API ─── */
-
 export interface LatticeMenuProps {
-  /** Currently selected tile type — shown as mini preview. */
-  tileType: TileType
-  tileLabel?: string
-  /** Optional mini tile preview URL */
-  tilePreviewUrl?: string
-
   nt1: number
   nt2: number
   nt3: number
   g1: number
   g2: number
   calculationMode: CalcMode
-
-  /** Whether a download token is available (enables Export button). */
-  canExport?: boolean
-  /** Whether the panel is expanded (true) or collapsed to an icon (false). */
-  isOpen?: boolean
-
   onNt1Change: (v: number) => void
   onNt2Change: (v: number) => void
   onNt3Change: (v: number) => void
   onG1Change: (v: number) => void
   onG2Change: (v: number) => void
   onCalculationModeChange: (mode: CalcMode) => void
-  onOpenTileMenu: () => void
-  onExportStl: () => void
-  onExportIgs: () => void
-  onToggle: () => void
   onFilesAdd?: (files: File[]) => void
   onFileRemove?: (name: string) => void
   calcMode: CalcMode
@@ -61,20 +42,11 @@ export interface LatticeMenuProps {
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
   (
     {
-      tileType,
-      tileLabel,
-      tilePreviewUrl,
       nt1, nt2, nt3, g1, g2,
       calculationMode,
-      canExport = false,
-      isOpen = true,
       onNt1Change, onNt2Change, onNt3Change,
       onG1Change, onG2Change,
       onCalculationModeChange,
-      onOpenTileMenu,
-      onExportStl,
-      onExportIgs,
-      onToggle,
       className,
       calcMode,
       onFilesAdd,
@@ -83,41 +55,24 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       modelColor,
       setModelColor,
       backgroundColor,
-      setBackgroundColor
+      setBackgroundColor,
     },
     ref
   ) => {
-    // Hooks must be called unconditionally — before any early return.
-    const [isTileHovered, setIsTileHovered] = React.useState(false)
-    const [isTileFocused, setIsTileFocused] = React.useState(false)
-    const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
-    const [isExportPopupOpen, setIsExportPopupOpen] = React.useState(false)
+    const [useViewerSettingsMenu, setUseViewerSettingsMenu] = React.useState(false)
     const [isAddFilesHovered, setIsAddFilesHovered] = React.useState(false)
     const [isAddFilesFocused, setIsAddFilesFocused] = React.useState(false)
-
-
-
-    const tileName = tileLabel
 
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
-      const limited = CALC_MODE_DEFS[calcMode].requiredFilesCount == 2 ? all.slice(0, 2) : [all[0]]
+      const limited = CALC_MODE_DEFS[calcMode].requiredFilesCount === 2 ? all.slice(0, 2) : [all[0]]
       onFilesAdd?.(limited)
-      e.target.value = ''  // reset so the same file can be re-selected
+      e.target.value = ''
     }
-    /* ── Collapsed state: just a floating menu icon button ── */
-    if (!isOpen) {
-      return (
-        <div ref={ref} style={collapsedWrapperStyle} className={className}>
-          <IconButton aria-label="Open Lattice Maker menu" onClick={onToggle}>
-            <MenuIcon />
-          </IconButton>
-        </div>
-      )
-    }
+
     return (
       <div
         ref={ref}
@@ -126,75 +81,32 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       >
         {/* ── Header ── */}
         <div style={headerStyle}>
-          <span style={headerTitleStyle}>Lattice Maker</span>
-          <button type="button" aria-label="Collapse menu" onClick={onToggle} style={collapseButtonStyle}>
-            <ChevronLeftIcon />
-          </button>
+          <Tooltip content="The lattice maker's main widget">
+            <span style={headerTitleStyle}>Lattice Maker</span>
+          </Tooltip>
         </div>
 
         <Divider />
 
-        {/* ── Lattice Tile row — whole section is the click target ── */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Open tile configuration"
-          onClick={onOpenTileMenu}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenTileMenu() } }}
-          onMouseEnter={() => setIsTileHovered(true)}
-          onMouseLeave={() => setIsTileHovered(false)}
-          onFocus={() => setIsTileFocused(true)}
-          onBlur={() => setIsTileFocused(false)}
-          style={{
-            ...sectionStyle,
-            cursor: 'pointer',
-            backgroundColor: isTileHovered ? 'var(--bg-tertiary)' : 'transparent',
-            borderRadius: 4,
-            transition: 'background-color 120ms ease',
-            outline: isTileFocused ? '2px solid var(--border-focus)' : 'none',
-            outlineOffset: 2,
-          }}
-        >
-          <span style={sectionLabelStyle}>Lattice Tile</span>
-          <div style={tileSummaryRowStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <TileCard
-                size="mini"
-                modelUrl={tilePreviewUrl}
-                cameraResetKey={tileType}
-                meshColor={modelColor}
-                backgroundColor={backgroundColor}
-                aria-label={`Current tile: ${tileName}`}
-                selected
-              />
-              <span style={tileNameStyle}>{tileName}</span>
-            </div>
-            {/* PlusIcon is now decorative — click is handled by the parent div */}
-            <span aria-hidden="true" style={plusButtonStyle}>
-              <PlusIcon />
-            </span>
-          </div>
-        </div>
-
-        <Divider />
-
-        {/* ── Num Tiles ── */}
+        {/* ── Tiles Counts ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Tiles Counts</span>
+          <Tooltip content="Number of tiles to place along the two (XY) axes of the parametric domain of the input surfaces and Z (out of the two surfaces). Must be a number between 1 and 10, in each axis.">
+            <span style={sectionLabelStyle}>Tiles Counts</span>
+          </Tooltip>
           <div style={numTilesRowStyle}>
-            <NumberInput label="X" value={nt1} min={1} max={99} onChange={onNt1Change} aria-label="X tiles" />
-            <NumberInput label="Y" value={nt2} min={1} max={99} onChange={onNt2Change} aria-label="Y tiles" />
-            <NumberInput label="Z" value={nt3} min={1} max={99} onChange={onNt3Change} aria-label="Z tiles" />
+            <NumberInput label="X" value={nt1} min={1} onChange={onNt1Change} aria-label="X tiles" />
+            <NumberInput label="Y" value={nt2} min={1} onChange={onNt2Change} aria-label="Y tiles" />
+            <NumberInput label="Z" value={nt3} min={1} onChange={onNt3Change} aria-label="Z tiles" />
           </div>
         </div>
 
-
-
         <Divider />
 
-        {/* ── Calculation mode ── */}
+        {/* ── Macro-shape Construction ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Calculation Mode</span>
+          <Tooltip content={"Three types of volumetric macro-shape volumetric (trivariate) construction are supported:\n1. Extrusion – the input IGES surface is extruded in +Z by a desired extrusion length.\n2. Revolution – the input IGES surface is revolved around the +Z axis.\n3. Ruling – the two input IGES surfaces are ruled in between.\nEach IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface, with no interior knots. UV/degrees could be anything."}>
+            <span style={sectionLabelStyle}>Macro-shape Construction</span>
+          </Tooltip>
           <Dropdown
             options={CALC_MODE_OPTIONS}
             value={calculationMode}
@@ -204,11 +116,11 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-        {/* ── Add Files row — whole row is the click target ── */}
+        {/* ── Load surfaces as IGES Files ── */}
         <div
           role="button"
           tabIndex={0}
-          aria-label="Add IGS file"
+          aria-label="Load surfaces as IGES Files"
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
           onMouseEnter={() => setIsAddFilesHovered(true)}
@@ -226,7 +138,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <span style={sectionLabelStyle}>Add Files:</span>
+            <Tooltip content="The Extrusion and Revolution constructors of the macro-shape require that one IGES file surface be specified here. The Ruling constructor requires two IGES file surfaces. Each IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface with no interior knots. U/V degrees could be anything.">
+              <span style={sectionLabelStyle}>Load surfaces as IGES Files</span>
+            </Tooltip>
             <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
             </span>
@@ -234,7 +148,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <input
             ref={fileInputRef}
             type="file"
-            accept={'.igs'}
+            accept=".igs"
             multiple={calcMode === 'ruling'}
             style={{ display: 'none' }}
             onChange={handleFileChange}
@@ -263,101 +177,65 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             ))}
           </ul>
         )}
-        {/* ── Export button ── */}
-        <div style={exportRowStyle}>
-          {
-            canExport ?
-              <Button
-                variant="primary"
-                disabled={!canExport}
-                onClick={() => setIsExportPopupOpen(true)}
-              >
-                Export
-              </Button> :
-              <Button
-                variant="secondary"
-                disabled={true}
-              >
-                Export
-              </Button>
-          }
-        </div>
-        <Popup isOpen={isExportPopupOpen} onClose={() => setIsExportPopupOpen(false)}>
-          <div style={exportRowStyle}>
-            <Button
-              variant="primary"
-              disabled={!canExport}
-              onClick={() => { setIsExportPopupOpen(false); onExportStl() }}
-            >
-              Export STL
-            </Button>
-            <Divider />
-            <Button
-              variant="primary"
-              disabled={!canExport}
-              onClick={() => { setIsExportPopupOpen(false); onExportIgs() }}
-            >
-              Export IGS
-            </Button>
-          </div>
-        </Popup>
 
         <Divider />
 
-        {/* ── Grading sliders ── */}
-        <Button onClick={() => { setUseAdvancedFeatures(!useAdvancedFeatures) }} variant="secondary">{useAdvancedFeatures ? "- " : "+ "}Use Advanced Features</Button>
-        {
-          useAdvancedFeatures
-            ?
-            <div style={sectionStyle}>
-              <Slider
-                label="Grading Start"
-                min={0}
-                max={1}
-                step={0.01}
-                value={[g1]}
-                showValue
-                valuePrecision={2}
-                fontSize={12}
-                onValueChange={([v]) => onG1Change(v)}
-              />
-              <Slider
-                label="Grading End"
-                min={0}
-                max={1}
-                step={0.01}
-                value={[g2]}
-                showValue
-                valuePrecision={2}
-                fontSize={12}
-                onValueChange={([v]) => onG2Change(v)}
-              />
-              <Divider />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                Mesh Color:
-                <ColorPicker
-                  disableAlpha
-                  value={modelColor}
-                  onChange={setModelColor}
+            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between zero and one.">
+          <div style={sliderRowStyle}>
+                <Slider
+                  label="Grading Start"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[g1]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onG1Change(v)}
+                />
+                <Slider
+                  label="Grading End"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[g2]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onG2Change(v)}
                 />
               </div>
-              <Divider />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>Background Color:</span>
-                <ColorPicker
-                  disableAlpha
-                  value={backgroundColor}
-                  onChange={setBackgroundColor}
-                />
-              </div>
-              <Divider />
-              <Button onClick={() => { setModelColor(DEFAULT_MODEL_COLOR); setBackgroundColor(DEFAULT_BACKGROUND_COLOR) }} variant="secondary">
-                Reset Colors
-              </Button>
-            </div>
-            : <></>
+            </Tooltip>
+        {/* ── Viewer Settings ── */}
+        <Button onClick={() => setUseViewerSettingsMenu(v => !v)} variant="secondary">
+          {useViewerSettingsMenu ? '- ' : '+ '}Viewer Settings
+        </Button>
 
-        }
+        {useViewerSettingsMenu && (
+          <div style={sectionStyle}>
+            <Divider />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">
+                <span>Mesh Color:</span>
+              </Tooltip>
+              <ColorPicker disableAlpha value={modelColor} onChange={setModelColor} />
+            </div>
+            <Divider />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Tooltip content="The background color of the graphics display.">
+                <span>Background Color:</span>
+              </Tooltip>
+              <ColorPicker disableAlpha value={backgroundColor} onChange={setBackgroundColor} />
+            </div>
+            <Divider />
+            <Button
+              onClick={() => { setModelColor(DEFAULT_MODEL_COLOR); setBackgroundColor(DEFAULT_BACKGROUND_COLOR) }}
+              variant="secondary"
+            >
+              Reset Colors
+            </Button>
+          </div>
+        )}
       </div>
     )
   }
@@ -366,22 +244,6 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 LatticeMenu.displayName = 'LatticeMenu'
 
 /* ─── Icons ─── */
-
-function MenuIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function ChevronLeftIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M13 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 function PlusIcon() {
   return (
@@ -399,12 +261,6 @@ function Divider() {
 
 /* ─── Styles ─── */
 
-const collapsedWrapperStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  paddingTop: 8,
-}
-
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -421,7 +277,6 @@ const containerStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
   padding: '0 var(--space-md)',
 }
 
@@ -430,16 +285,6 @@ const headerTitleStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
-}
-
-const collapseButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: 2,
-  color: 'var(--text-secondary)',
-  display: 'flex',
-  alignItems: 'center',
 }
 
 const dividerStyle: React.CSSProperties = {
@@ -467,14 +312,6 @@ const tileSummaryRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-}
-
-const tileNameStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)',
-  fontSize: 'var(--text-size-xs)',
-  fontWeight: 600,
-  color: 'var(--text-base)',
-  whiteSpace: 'nowrap',
 }
 
 const plusButtonStyle: React.CSSProperties = {
@@ -533,14 +370,6 @@ const removeFileButtonStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   flexShrink: 0,
   padding: 2,
-}
-
-const exportRowStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'row',
-  gap: '5px',
-  justifyContent: 'center',
-  padding: '0 var(--space-md)',
 }
 
 export { LatticeMenu }

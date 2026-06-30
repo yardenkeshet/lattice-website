@@ -9,6 +9,7 @@ import json
 from threading import Thread
 import threading
 import uuid
+import contextlib
 import logging
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
@@ -184,8 +185,6 @@ def _dll_from_extrusion(srf_igs: bytes, extrude_length: float, num_tiles, graded
 def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
                       out_igs: bytes, out_stl: bytes):
     logger.debug(f"[DLL] FromRuling srf1={srf1}  srf2={srf2}")
-    # TODO: fix this dummy file
-    srf2 = b'C:\\Users\\yaniv\\Uni\\Sem_6\\Lattice Project\\lattice-website\\client_data\\RuledSrf2.igs'
     return _call(_dll.MSDLLMSFromRuling,
                  srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
 
@@ -232,15 +231,31 @@ LOG_FILE_NAME         = LOGFILE
 os.makedirs(DATA_DIR, exist_ok=True)
 
 class _JsonFormatter(logging.Formatter):
+    # Maps output JSON key -> the attribute read off the LogRecord.
+    # 'filename' and 'args' are also *standard* logging.LogRecord attributes
+    # (source filename / %-format args) present on every record regardless
+    # of `extra=`. Reading them under their own names via getattr() would
+    # leak e.g. record.filename ("main.py") into every existing log line
+    # that never opted in. To keep this a strictly additive change for
+    # existing logger.info(...) calls, calc-log callers pass their custom
+    # data under non-colliding attribute names ('calc_filename', 'calc_args')
+    # via extra=, which are then surfaced under the desired 'filename'/'args'
+    # JSON keys here.
+    EXTRA_FIELDS = (
+        ('sid', 'sid'),
+        ('ip', 'ip'),
+        ('filename', 'calc_filename'),
+        ('args', 'calc_args'),
+        ('image', 'image'),
+    )
+
     def format(self, record):
         record.message = record.getMessage()
         obj = {'ts': self.formatTime(record), 'level': record.levelname, 'msg': record.message}
-        sid = getattr(record, 'sid', None)
-        ip  = getattr(record, 'ip', None)
-        if sid:
-            obj['sid'] = sid
-        if ip:
-            obj['ip'] = ip
+        for json_key, attr_name in self.EXTRA_FIELDS:
+            value = getattr(record, attr_name, None)
+            if value:
+                obj[json_key] = value
         if record.exc_info:
             obj['exc'] = self.formatException(record.exc_info)
         return json.dumps(obj)
@@ -267,6 +282,18 @@ logger.addHandler(fh)
 ch = logging.StreamHandler()
 ch.setFormatter(fmt)
 logger.addHandler(ch)
+
+CALC_LOG_DIR        = 'calc_log'
+CALC_LOG_IMAGES_DIR = os.path.join(CALC_LOG_DIR, 'images')
+CALC_LOG_FILE       = os.path.join(CALC_LOG_DIR, 'log.jsonl')
+os.makedirs(CALC_LOG_IMAGES_DIR, exist_ok=True)
+
+calc_logger = logging.getLogger('lattice.calc')
+calc_logger.setLevel(logging.INFO)
+calc_fh = logging.FileHandler(CALC_LOG_FILE, encoding='utf-8')
+calc_fh.setFormatter(fmt)
+calc_logger.addHandler(calc_fh)
+calc_logger.propagate = False
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -381,15 +408,31 @@ def twist_mesh(triangles, twist_angle_deg=45, axis='z'):
 # DLL surface-type dispatch functions
 # ──────────────────────────────────────────────────────────────────────────────
 
+TMP_DIR = 'tmp'
+os.makedirs(TMP_DIR, exist_ok=True)
+
+
+@contextlib.contextmanager
+def temp_igs_file(igs_bytes: bytes):
+    """Write igs_bytes to a uniquely-named temp .igs file; delete it on exit."""
+    path = os.path.join(os.getcwd(), TMP_DIR, f"{uuid.uuid4().hex}.igs")
+    with open(path, 'wb') as f:
+        f.write(igs_bytes)
+    try:
+        yield path
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            logger.warning(f"[TMP] failed to remove temp file: {path}")
+
+
 DOWNLOAD_CACHE = {}
 
 
-def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
-    download_token = str(uuid.uuid4())
-    new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
-    os.makedirs(new_folder, exist_ok=True)
-    out_igs = os.path.join(new_folder, "MSRevolv.igs").encode('ascii')
-    out_stl = os.path.join(new_folder, "MSRevolv.stl").encode('ascii')
+def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+    out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
+    out_stl = os.path.join(out_folder, "MSRevolv.stl").encode('ascii')
     _dll_from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
@@ -398,20 +441,14 @@ def do_revolution(sid, igs_path, num_tiles, tile_params, grading_params, tile_ty
         out_igs, out_stl,
     )
     stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-    DOWNLOAD_CACHE[download_token] = {
-        'sid': sid, 'out_stl': 'MSRevolv.stl', 'out_igs': 'MSRevolv.igs'
-    }
-    return download_token, stl_content
+    return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
 
-def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
-    download_token = str(uuid.uuid4())
-    new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
-    os.makedirs(new_folder, exist_ok=True)
-    out_igs = os.path.join(new_folder, "MSExtrd.igs").encode('ascii')
-    out_stl = os.path.join(new_folder, "MSExtrd.stl").encode('ascii')
+def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+    out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
+    out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
     result = _dll_from_extrusion(
-        igs_path.encode('ascii') if isinstance(igs_path, str) else igs_path,
+        igs_path.encode('ascii'),
         10.0,
         num_tiles, grading_params,
         tile_type_int,
@@ -426,24 +463,15 @@ def do_extrusion(sid, igs_path, num_tiles, tile_params, grading_params, tile_typ
     else:
         stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
 
-    DOWNLOAD_CACHE[download_token] = {
-        'sid': sid, 'out_stl': 'MSExtrd.stl', 'out_igs': 'MSExtrd.igs'
-    }
-    return download_token, stl_content
+    return stl_content, "MSExtrd.stl", "MSExtrd.igs"
 
 
-def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
-    download_token = str(uuid.uuid4())
+def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+    out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
+    out_stl = os.path.join(out_folder, "MSRuled.stl").encode('ascii')
 
-    new_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
-    os.makedirs(new_folder, exist_ok=True)
-
-    out_igs = os.path.join(new_folder, "MSRuled.igs").encode('ascii')
-    out_stl = os.path.join(new_folder, "MSRuled.stl").encode('ascii')
-
-    srf_path = igs_path.encode('ascii')
     _dll_from_ruling(
-        srf_path, srf_path,
+        igs_path.encode('ascii'), igs_path2.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
@@ -451,38 +479,31 @@ def do_Ruling(sid, igs_path, num_tiles, tile_params, grading_params, tile_type_i
     )
 
     stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-    DOWNLOAD_CACHE[download_token] = {
-        'sid': sid, 'out_stl': 'MSRuled.stl', 'out_igs': 'MSRuled.igs'
-    }
-    return download_token, stl_content
+    return stl_content, "MSRuled.stl", "MSRuled.igs"
 
 
 CALC_MODE_DISPATCH = {
     CALC_MODE_EXTRUSION:  do_extrusion,
     CALC_MODE_REVOLUTION: do_revolution,
-    CALC_MODE_RULING:     do_Ruling,
 }
 
 
 def calculate_tile(tile_params, graded, tile_type_str, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
-
-    tile_filename_map = {
-        MSDLL_TILE_DIAGONAL:       'TileDiagnoal.stl',
-        MSDLL_TILE_CROSS:          'TileCross.stl',
-        MSDLL_TILE_CROSS_DIAGONAL: 'TileCrossDiagnoal.stl',
-    }
-    stl_filename = tile_filename_map.get(tile_type_int)
-    if stl_filename is None:
+    if tile_type_int is None:
         logger.error(f"[TILE] Unknown tile type: {tile_type_str}", extra=_log_extra(sid))
         return
 
-    stl_tile_path = os.path.join(os.getcwd(), LAST_TILES_RESULTS_DIR, stl_filename)
+    stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
     _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
 
     t_processed = time.time()
-    if os.path.exists(stl_tile_path):
+    if not os.path.exists(stl_tile_path):
+        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+        return
+
+    try:
         stl_content = read_ascii_stl_file(stl_tile_path)
         try:
             buf = BytesIO()
@@ -510,13 +531,16 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
             extra=_log_extra(sid),
         )
         emit('result', {
-            'filename': stl_tile_path,
+            'filename': 'tile.stl',
             'kind': 'tile_stl',
             'stl_gz_b64': compressed_b64,
             'timings': timings,
         })
-    else:
-        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+    finally:
+        try:
+            os.remove(stl_tile_path)
+        except OSError:
+            logger.warning(f"[TMP] failed to remove temp file: {stl_tile_path}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -524,6 +548,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
 # ──────────────────────────────────────────────────────────────────────────────
 
 log_thread = None
+calc_log_thread = None
 thread_stop_event = False
 
 
@@ -533,7 +558,7 @@ def get_initial_log_content(file_path, num_lines=50):
             lines = f.readlines()
             return [line.strip() for line in lines[-num_lines:]]
     except FileNotFoundError:
-        return [f"Error: Log file '{LOG_FILE_NAME}' not found."]
+        return [f"Error: Log file '{file_path}' not found."]
     except Exception as exc:
         return [f"An error occurred reading initial log: {exc}"]
 
@@ -574,7 +599,7 @@ def worker_loop(state):
 
 @socketio.on('connect')
 def on_connect():
-    global log_thread
+    global log_thread, calc_log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
     logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
@@ -583,6 +608,7 @@ def on_connect():
         "sid": sid,
         "tile_type": None, "p1": None, "p2": None, "p3": None,
         "event": threading.Event(),
+        "current_token": None,
     }
     t = threading.Thread(target=worker_loop, args=(state,), daemon=True)
     t.start()
@@ -602,6 +628,14 @@ def on_connect():
             target=follow_log, file_name=LOG_FILE_NAME, socketio_instance=socketio
         )
 
+    for line in get_initial_log_content(CALC_LOG_FILE):
+        emit('log_update', {'data': line})
+
+    if calc_log_thread is None:
+        calc_log_thread = socketio.start_background_task(
+            target=follow_log, file_name=CALC_LOG_FILE, socketio_instance=socketio
+        )
+
 
 def _client_ip(sid):
     return (connected_clients.get(sid) or {}).get('ip_address_reported', '?')
@@ -611,9 +645,11 @@ def _log_extra(sid):
     return {'sid': sid, 'ip': _client_ip(sid)}
 
 
-def clean_session(sid):
+def clean_session(sid, token):
     connected_clients.pop(sid, None)
-    folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
+    if not token:
+        return
+    folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
     try:
         if os.path.exists(folder):
             shutil.rmtree(folder)
@@ -625,8 +661,11 @@ def clean_session(sid):
 def on_disconnect():
     sid = request.sid
     logger.info(f'Client disconnected  ip={_client_ip(sid)}', extra=_log_extra(sid))
-    del DOWNLOAD_CACHE[sid]
-    clean_session(sid)
+    token = (client_state.get(sid) or {}).get('current_token')
+    if token:
+        DOWNLOAD_CACHE.pop(token, None)
+    client_state.pop(sid, None)
+    clean_session(sid, token)
 
 
 @socketio.on('calculate')
@@ -634,9 +673,11 @@ def handle_calculate(data):
     sid = request.sid
     t_start = time.time()
 
-    client_ts = data.get('client_ts')
-    filename  = data.get('filename', 'uploaded.igs')
-    args      = data.get('args', {})
+    client_ts    = data.get('client_ts')
+    filename     = data.get('filename', 'uploaded.igs')
+    args         = data.get('args', {})
+    surface_b64  = data.get('surface_b64')
+    surface2_b64 = data.get('surface2_b64')
 
     tile_type = args.get('tileType')
     calc_mode = args.get('calcMode')
@@ -665,46 +706,67 @@ def handle_calculate(data):
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
-    dispatch_fn = CALC_MODE_DISPATCH.get(calc_mode)
-    if dispatch_fn is None:
+    if calc_mode != CALC_MODE_RULING and calc_mode not in CALC_MODE_DISPATCH:
         logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
 
-    safe_base      = os.path.splitext(os.path.basename(filename))[0] or "upload"
-    igs_disk_path  = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.igs"))
-    json_disk_path = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.json"))
-
-    if not os.path.exists(igs_disk_path):
-        logger.error(f"[CALC] IGS file not found on disk: {igs_disk_path}", extra=_log_extra(sid))
-        emit('error', {'msg': 'IGS file not found — upload it first via convert_igs_to_stl'})
+    if not surface_b64:
+        logger.error("[CALC] No surface_b64 in payload", extra=_log_extra(sid))
+        emit('error', {'msg': 'No surface file provided'})
+        return
+    try:
+        igs_bytes = base64.b64decode(surface_b64)
+    except (ValueError, TypeError) as exc:
+        logger.exception(f"[CALC] Bad surface_b64: {exc}", extra=_log_extra(sid))
+        emit('error', {'msg': f'Invalid surface data: {exc}'})
         return
 
-    try:
-        with open(json_disk_path, 'w', encoding='utf-8') as jf:
-            json.dump({'filename': filename, 'args': args, 'sid': sid}, jf, indent=2)
-    except OSError:
-        logger.warning("[CALC] Could not save JSON metadata (non-fatal)", exc_info=True, extra=_log_extra(sid))
+    igs_bytes2 = None
+    if calc_mode == CALC_MODE_RULING:
+        if not surface2_b64:
+            logger.error("[CALC] Ruling mode requires surface2_b64", extra=_log_extra(sid))
+            emit('error', {'msg': 'Ruling mode requires a second surface file'})
+            return
+        try:
+            igs_bytes2 = base64.b64decode(surface2_b64)
+        except (ValueError, TypeError) as exc:
+            logger.exception(f"[CALC] Bad surface2_b64: {exc}", extra=_log_extra(sid))
+            emit('error', {'msg': f'Invalid second surface data: {exc}'})
+            return
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
 
-    t_dll_start = time.time()
-    stl_content = download_token = None
+    new_token  = str(uuid.uuid4())
+    out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
+    os.makedirs(out_folder, exist_ok=True)
 
+    t_dll_start = time.time()
     try:
-        logger.info(f"[CALC] -> {calc_mode}  igs={os.path.basename(igs_disk_path)}", extra=_log_extra(sid))
-        download_token, stl_content = dispatch_fn(
-            sid, igs_disk_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
-        )
+        logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
+        with temp_igs_file(igs_bytes) as igs_path:
+            if calc_mode == CALC_MODE_RULING:
+                with temp_igs_file(igs_bytes2) as igs_path2:
+                    stl_content, out_stl_name, out_igs_name = do_Ruling(
+                        out_folder, igs_path, igs_path2,
+                        curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
+                    )
+            else:
+                dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
+                stl_content, out_stl_name, out_igs_name = dispatch_fn(
+                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
+                )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'DLL did not produce output file: {exc}'})
+        shutil.rmtree(out_folder, ignore_errors=True)
         return
     except Exception as exc:
         logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Processing error: {exc}'})
+        shutil.rmtree(out_folder, ignore_errors=True)
         return
 
     t_dll_end = time.time()
@@ -712,6 +774,7 @@ def handle_calculate(data):
     if not stl_content:
         logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
         emit('error', {'msg': 'No output produced by DLL'})
+        shutil.rmtree(out_folder, ignore_errors=True)
         return
 
     try:
@@ -722,7 +785,17 @@ def handle_calculate(data):
     except Exception as exc:
         logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': 'Compression failed'})
+        shutil.rmtree(out_folder, ignore_errors=True)
         return
+
+    # Success — register the new result and retire the previous one for this session.
+    DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
+    old_token = client_state.get(sid, {}).get('current_token')
+    if old_token and old_token != new_token:
+        DOWNLOAD_CACHE.pop(old_token, None)
+        shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
+    if sid in client_state:
+        client_state[sid]['current_token'] = new_token
 
     t_total = time.time() - t_start
     timings = {
@@ -733,27 +806,21 @@ def handle_calculate(data):
     }
 
     emit('result', {
-        'filename_reduced': safe_base + '_reduced.stl',
+        'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
         'kind':             'model_stl',
         'stl_gz_b64':       compressed_b64,
         'timings':          timings,
         'args_echo':        args,
         'filename':         filename,
-        'download_token':   download_token,
+        'download_token':   new_token,
     })
-
-    cache_entry  = DOWNLOAD_CACHE.get(download_token, {})
-    out_folder   = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
-    out_stl_path = os.path.join(out_folder, cache_entry.get('out_stl', ''))
-    out_igs_path = os.path.join(out_folder, cache_entry.get('out_igs', ''))
 
     logger.info(
         f"[CALC] done  {comp_kb:.0f}KB"
         f"  overall={timings['overall_ms']}ms"
         f"  dll={timings['time_dll_ms']}ms"
         f"  compress={timings['time_compress_ms']}ms"
-        f"  stl={out_stl_path}"
-        f"  igs={out_igs_path}",
+        f"  token={new_token}",
         extra=_log_extra(sid),
     )
 
@@ -762,9 +829,10 @@ def handle_calculate_tile(data):
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
-
         tile_params = (c_double * 3)(p1, p2, p3)
-        graded      = (c_double * 2)(0.2, 1.5)
+        graded1, graded2   = data.get('graded', [1, 1])
+        graded  = (c_double * 2)(graded1, graded2)
+        print("calculate with " +  str(graded[0])+" "+ str(graded[1]))
 
         calculate_tile(tile_params, graded, tile_type, request.sid)
     except Exception as exc:
@@ -777,36 +845,79 @@ def handle_convert_igs_to_stl():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
-    igs_file  = request.files['file']
-    safe_base = os.path.splitext(os.path.basename(igs_file.filename))[0] or uuid.uuid4().hex
+    igs_bytes = request.files['file'].read()
 
     try:
-        igs_bytes = igs_file.read()
-        igs_disk  = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}.igs"))
-        stl_disk  = os.path.abspath(os.path.join(DATA_DIR, f"{safe_base}_preview.stl"))
+        with temp_igs_file(igs_bytes) as igs_path:
+            stl_path = igs_path[:-4] + '_preview.stl'
+            t_igs_start = time.time()
+            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), 0.0)
+            t_igs_ms = round((time.time() - t_igs_start) * 1000)
+            if err:
+                logger.warning(f"[IGS2STL] DLL warning: {err}")
 
-        with open(igs_disk, 'wb') as f:
-            f.write(igs_bytes)
+            if not os.path.exists(stl_path):
+                return jsonify({'error': 'IGS conversion produced no output'}), 500
 
-        t_igs_start = time.time()
-        err = _dll_iges2stl(igs_disk.encode('ascii'), stl_disk.encode('ascii'), 0.0)
-        t_igs_ms = round((time.time() - t_igs_start) * 1000)
-        if err:
-            logger.warning(f"[IGS2STL] DLL warning: {err}")
-
-        if not os.path.exists(stl_disk):
-            return jsonify({'error': 'IGS conversion produced no output'}), 500
-
-        with open(stl_disk, 'rb') as f:
-            stl_content = f.read()
+            try:
+                with open(stl_path, 'rb') as f:
+                    stl_content = f.read()
+            finally:
+                try:
+                    os.remove(stl_path)
+                except OSError:
+                    logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
 
         b64_str = base64.b64encode(stl_content).decode('utf-8')
-        logger.info(f"[IGS2STL] {safe_base}  {len(stl_content) // 1024}KB  {t_igs_ms}ms")
+        logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
         return jsonify({'stl_b64': b64_str})
 
     except Exception as exc:
         logger.exception(f"[IGS2STL] {exc}")
         return jsonify({'error': f'Internal server error: {exc}'}), 500
+
+
+@app.route('/log-calculation', methods=['POST'])
+def handle_log_calculation():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+
+    try:
+        metadata = json.loads(request.form.get('metadata', '{}'))
+    except (TypeError, ValueError):
+        metadata = {}
+    filename = metadata.get('filename', '')
+    args     = metadata.get('args', {})
+
+    entry_id   = uuid.uuid4().hex
+    image_name = f'{entry_id}.png'
+    image_disk = os.path.join(CALC_LOG_IMAGES_DIR, image_name)
+    try:
+        request.files['image'].save(image_disk)
+    except OSError as exc:
+        logger.warning(f"[CALC_LOG] failed to save snapshot: {exc}")
+        return jsonify({'error': 'Failed to save snapshot'}), 500
+
+    calc_logger.info(
+        f"[CALC_LOG] {filename}"
+        f"  tile={args.get('tileType')}  mode={args.get('calcMode')}"
+        f"  tiles=({args.get('nt1')},{args.get('nt2')},{args.get('nt3')})"
+        f"  g=({args.get('g1')},{args.get('g2')})"
+        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})",
+        extra={'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}'},
+    )
+    return jsonify({'ok': True})
+
+
+@app.route('/calc-log-image/<name>')
+def calc_log_image(name):
+    safe_name = os.path.basename(name)
+    if safe_name != name or not safe_name.lower().endswith('.png'):
+        return jsonify({'error': 'Invalid image name'}), 400
+    path = os.path.join(CALC_LOG_IMAGES_DIR, safe_name)
+    if not os.path.exists(path):
+        return jsonify({'error': 'Image not found'}), 404
+    return send_file(path, mimetype='image/png')
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP routes
@@ -847,7 +958,7 @@ def download_results():
         return jsonify({'error': 'Invalid or expired download token'}), 404
 
     sid        = output_map['sid']
-    out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, sid)
+    out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
 
     if file_type == 'stl':
         filename = output_map['out_stl']

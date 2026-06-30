@@ -6,6 +6,7 @@ import { TileCard } from './TileCard'
 import { Slider } from './Slider'
 import { CROSS } from '../../lib/parameters'
 import { TILE_DEFS, type TileType } from '../../calculation_params'
+import { Tooltip } from './Tooltip'
 
 /* ─── Per-tile-type definitions ─── */
 
@@ -27,7 +28,6 @@ export interface TileMenuProps {
   onSliderChange: (values: number[]) => void
   /** Called on slider release or badge commit — triggers model recalculation. */
   onSliderCommit?: (values: number[]) => void
-  onClose: () => void
   /**
    * Called whenever the tile's validation state changes.
    * source is always 'tile'. Pass [] to clear errors.
@@ -48,7 +48,6 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onTileTypeChange,
       onSliderChange,
       onSliderCommit,
-      onClose,
       onValidationChange,
       className,
       meshColor,
@@ -95,15 +94,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       >
         {/* ── Header ── */}
         <div style={headerStyle}>
-          <span style={headerTitleStyle}>Lattice Tile</span>
-          <button
-            type="button"
-            aria-label="Close tile menu"
-            onClick={onClose}
-            style={closeButtonStyle}
-          >
-            <CloseIcon />
-          </button>
+          <Tooltip content="Tile selection. Three types of tiles are supported here – a 6-arms 3D cross tile, an 8-arms diagonal tile, and a tile with 14 arms, cross and diagonal. The parameters of the arms and core sizes could be set below.">
+            <span style={headerTitleStyle}>Lattice Tile</span>
+          </Tooltip>
         </div>
 
         <Divider />
@@ -125,7 +118,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
         {/* ── Tile type selection ── */}
         <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Tile Type</span>
+          <Tooltip content="The three tile types to select from.">
+            <span style={sectionLabelStyle}>Tile Type</span>
+          </Tooltip>
           <div style={tileGridWrapperStyle}>
             <div style={tileGridStyle}>
               {Object.entries(TILE_DEFS).map(([type, def]) => (
@@ -149,6 +144,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 
         {/* ── Dynamic sliders ── */}
         <div style={sectionStyle}>
+          <Tooltip content="Tile-specific parameters, controlling arm thicknesses, etc.">
+            <span style={sectionLabelStyle}>Parameters</span>
+          </Tooltip>
           {defs.map((def, i: number) => {
             const isInnerRadius = tileType === CROSS && i === 1
             return (
@@ -176,16 +174,6 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
 )
 
 TileMenuInner.displayName = 'TileMenu'
-
-/* ─── Close icon ─── */
-
-function CloseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
 
 /* ─── Divider ─── */
 
@@ -222,16 +210,6 @@ const headerTitleStyle: React.CSSProperties = {
   color: 'var(--text-base)',
 }
 
-const closeButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: 2,
-  color: 'var(--text-secondary)',
-  display: 'flex',
-  alignItems: 'center',
-}
-
 const dividerStyle: React.CSSProperties = {
   height: 3,
   backgroundColor: 'var(--bg-tertiary)',
@@ -266,10 +244,11 @@ const tileGridStyle: React.CSSProperties = {
   width: '170px',
 }
 
-const sliderRowStyle: React.CSSProperties = {
+export const sliderRowStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 5,
+  gap: 'var(--space-sm)',
+  padding: '0 var(--space-md)'
 }
 
 export const TileMenu = React.memo(TileMenuInner)

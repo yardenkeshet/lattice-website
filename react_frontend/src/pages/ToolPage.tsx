@@ -8,38 +8,49 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import { DualViewerLayout } from '../components/DualViewerLayout'
 import { getLatticeSocket } from '../api/socketClient'
-import { downloadResults, convertIgsToStl } from '../api/httpClient'
-import { useStlBlobUrl, stlTextToGzB64 } from '../lib/stl'
+import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
+import { stlTextToGzB64 } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
   DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
   DEFAULT_G1, DEFAULT_G2,
-  DEFAULT_LATTICE_MENU_OPEN, DEFAULT_TILE_MENU_OPEN,
   INITIAL_VIEWER_RESET_KEY,
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
-import type { ValidationError } from '../api/types'
+import type { CalculateArgs, ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
 
 /**
- * Sends a .igs file to the server's convert_igs_to_stl endpoint.
- * Returns the base64-encoded STL string and a synthetic STL File so
- * ViewerScene can render the converted mesh before calculation.
+ * Sends a .igs file to the server's convert_igs_to_stl endpoint for preview
+ * purposes, and also returns the original IGS bytes (base64) so the caller
+ * can resend them at Calculate time — the backend no longer persists
+ * uploaded files between requests.
  */
-async function convertIgsFile(file: File): Promise<{ stlB64: string; stlFile: File }> {
-  const stlB64 = await convertIgsToStl(file)
+async function convertIgsFile(file: File): Promise<{ stlFile: File; igsB64: string }> {
+  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file), fileToBase64(file)])
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   const stlName = file.name.replace(/\.igs$/i, '.stl')
   const stlFile = new File([bytes], stlName, { type: 'application/octet-stream' })
-  console.log("converted to: ", {stlB64, stlFile})
-  return { stlB64, stlFile }
+  return { stlFile, igsB64 }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
 }
 
 /* ─── ToolPage ─── */
@@ -49,8 +60,6 @@ export function ToolPage() {
   const socket = getLatticeSocket()
 
   /* ── UI state ── */
-  const [isLatticeMenuOpen, setIsLatticeMenuOpen] = React.useState(DEFAULT_LATTICE_MENU_OPEN)
-  const [isTileMenuOpen, setIsTileMenuOpen]       = React.useState(DEFAULT_TILE_MENU_OPEN)
   const [cameraMode, setCameraMode]               = React.useState<'perspective' | 'orthographic'>(DEFAULT_CAMERA_MODE)
   const [viewerResetKey, setViewerResetKey]       = React.useState(INITIAL_VIEWER_RESET_KEY)
   /* Tracks what kind of action triggered the last backend call so the result
@@ -75,6 +84,7 @@ export function ToolPage() {
 
   /* ── File / result state ── */
   const [uploadedFile, setUploadedFile]   = React.useState<File | null>(null)
+  const [uploadedIgsB64, setUploadedIgsB64] = React.useState<string | null>(null)
   const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
@@ -83,6 +93,7 @@ export function ToolPage() {
 
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
+  const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -102,9 +113,13 @@ export function ToolPage() {
   const downloadTokenRef = React.useRef<string | null>(downloadToken)
   React.useEffect(() => { downloadTokenRef.current = downloadToken }, [downloadToken])
 
+  /* Stashes the filename + args of the most recent completed calculation so
+     the auto-fit-complete handler can upload a snapshot once the camera
+     finishes fitting to the newly rendered result. Cleared (read-once) by
+     handleAutoFitComplete regardless of whether it was set, so unrelated
+     auto-fits (plain uploads, tile previews) never reuse stale data. */
+  const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs } | null>(null)
 
-  /* Blob URL for the tile mini preview in LatticeMenu */
-  const tilePreviewUrl = useStlBlobUrl(tilePreviewGzB64)
 
   /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
   React.useEffect(() => {
@@ -140,6 +155,9 @@ export function ToolPage() {
         setCalcLabel('Calculating…')
         setResultGzB64(payload.stl_gz_b64)
         setDownloadToken(payload.download_token)
+        if (payload.args_echo) {
+          pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
+        }
         if (pendingResetKey.current !== null) {
           setViewerResetKey(pendingResetKey.current)
           pendingResetKey.current = null
@@ -197,26 +215,31 @@ export function ToolPage() {
         try {
           const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
           setUploadedFile(r1.stlFile)
+          setUploadedIgsB64(r1.igsB64)
           setUploadedFile2(r2.stlFile)
+          setUploadedIgsB64_2(r2.igsB64)
         } catch { setErrorMsg('Failed to convert IGS file') }
       } else {
         const file = files[0]
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile(stlFile)
+            setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile2(stlFile)
+            setUploadedIgsB64_2(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
           setViewerResetKey('file-' + Date.now())
           try {
-            const stlFile  = (await convertIgsFile(file)).stlFile
+            const { stlFile, igsB64 } = await convertIgsFile(file)
             setUploadedFile(stlFile)
+            setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         }
       }
@@ -224,8 +247,9 @@ export function ToolPage() {
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
-        const stlFile  = (await convertIgsFile(file)).stlFile
+        const { stlFile, igsB64 } = await convertIgsFile(file)
         setUploadedFile(stlFile)
+        setUploadedIgsB64(igsB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
   }, [calcMode, uploadedFile, uploadedFile2])
@@ -233,32 +257,30 @@ export function ToolPage() {
   const handleFile1Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const  stlFile  = (await convertIgsFile(file)).stlFile
+      const { stlFile, igsB64 } = await convertIgsFile(file)
       setUploadedFile(stlFile)
+      setUploadedIgsB64(igsB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
 
   const handleFile2Drop = React.useCallback(async (file: File) => {
     setResultGzB64(null)
     try {
-      const stlFile  = (await convertIgsFile(file)).stlFile
+      const { stlFile, igsB64 } = await convertIgsFile(file)
       setUploadedFile2(stlFile)
+      setUploadedIgsB64_2(igsB64)
     } catch { setErrorMsg('Failed to convert IGS file') }
   }, [])
 
   /* ── Clear handlers ── */
-  const handleClearSingle = React.useCallback(() => {
-    setUploadedFile(null)
-    setResultGzB64(null)
-    setDownloadToken(null)
-  }, [])
-
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
+    setUploadedIgsB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
     setUploadedFile2(null)
+    setUploadedIgsB64_2(null)
   }, [])
 
   /* ── Calculate ── */
@@ -274,16 +296,16 @@ export function ToolPage() {
         setErrorMsg('Please upload both surface files')
         return
       }
-      if (!uploadedFile) {
+      if (!uploadedFile || !uploadedIgsB64) {
         setErrorMsg('Please upload Surface 1')
         return
       }
-      if (!uploadedFile2) {
+      if (!uploadedFile2 || !uploadedIgsB64_2) {
         setErrorMsg('Please upload Surface 2')
         return
       }
     } else {
-      if (!uploadedFile) {
+      if (!uploadedFile || !uploadedIgsB64) {
         setErrorMsg('Please upload a 3D file first')
         return
       }
@@ -292,14 +314,15 @@ export function ToolPage() {
     setIsCalculating(true)
     setCalcLabel('Calculating…')
     setErrorMsg(null)
-    let calculateArgs = {
+    const calculateArgs = {
       filename: uploadedFile!.name,
+      surface_b64: uploadedIgsB64!,
+      ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
       args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
     }
-    console.log("socket please calculate with: ",calculateArgs);
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -314,7 +337,26 @@ export function ToolPage() {
 
   /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
   const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
-  const handleTileMenuClose  = React.useCallback(() => setIsTileMenuOpen(false), [])
+
+  /* ── Auto-fit-complete → upload a calc-log snapshot, but only when the
+     fit was triggered by a completed calculation (pendingSnapshotRef set) ── */
+  const handleAutoFitComplete = React.useCallback((canvas: HTMLCanvasElement | null) => {
+    const pending = pendingSnapshotRef.current
+    pendingSnapshotRef.current = null
+    if (!pending || !canvas) return
+    // Two rAFs: the first fires before R3F's invalidate()-scheduled render (rAF-B),
+    // the second fires after it, so toBlob captures the newly rendered frame.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        canvas.toBlob(blob => {
+          if (!blob) return
+          logCalculation(blob, pending.filename, pending.args).catch(err => {
+            console.warn('calc log snapshot failed to upload', err)
+          })
+        }, 'image/png')
+      })
+    })
+  }, [])
 
   const fileNames = React.useMemo(
     () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
@@ -333,23 +375,15 @@ export function ToolPage() {
       {/* ── Workspace ── */}
       <div style={workspaceStyle}>
 
-        {/* Left: LatticeMenu (collapsible) */}
+        {/* Left: LatticeMenu */}
         <div style={leftPanelStyle}>
           <LatticeMenu
-            tileType={tileType}
-            tilePreviewUrl={tilePreviewUrl}
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
             calculationMode={calcMode}
-            canExport={!!downloadToken}
-            isOpen={isLatticeMenuOpen}
             onNt1Change={setNt1} onNt2Change={setNt2} onNt3Change={setNt3}
             onG1Change={setG1} onG2Change={setG2}
             onCalculationModeChange={handleCalcModeChange}
-            onOpenTileMenu={() => setIsTileMenuOpen(true)}
-            onExportStl={handleExportStl}
-            onExportIgs={handleExportIgs}
-            onToggle={() => setIsLatticeMenuOpen(o => !o)}
             onFilesAdd={handleFilesAdd}
             onFileRemove={handleFileRemove}
             fileNames={fileNames}
@@ -366,13 +400,13 @@ export function ToolPage() {
           <div style={toolbarRowStyle}>
             <Toolbar
               onCalculate={handleCalculate}
-              calcMode={calcMode}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
               calcLabel={calcLabel}
+              canExport={!!downloadToken}
               onCameraModeChange={setCameraMode}
-              onFilesAdd={handleFilesAdd}
-              fileNames={fileNames}
+              onExportStl={handleExportStl}
+              onExportIgs={handleExportIgs}
             />
           </div>
 
@@ -398,8 +432,6 @@ export function ToolPage() {
                   onFile1Drop={handleFile1Drop}
                   onFile2Drop={handleFile2Drop}
                   cameraMode={cameraMode}
-                  onClear1={handleClear1}
-                  onClear2={handleClear2}
                   style={{ height: '100%' }}
                 />
               )
@@ -410,7 +442,7 @@ export function ToolPage() {
                   cameraMode={cameraMode}
                   cameraResetKey={viewerResetKey}
                   onFileDrop={handleViewerFileDrop}
-                  onClear={handleClearSingle}
+                  onAutoFitComplete={handleAutoFitComplete}
                   meshColor={meshColor}
                   backgroundColor={backgroundColor}
                 />
@@ -419,23 +451,20 @@ export function ToolPage() {
           </div>
         </div>
 
-        {/* Right: TileMenu (conditionally shown) */}
-        {isTileMenuOpen && (
-          <div style={rightPanelStyle}>
-            <TileMenu
-              tileType={tileType}
-              sliderValues={tileSliderValues}
-              previewStlGzB64={tilePreviewGzB64 ?? undefined}
-              onTileTypeChange={handleTileTypeChange}
-              onSliderChange={handleTileSliderChange}
-              onSliderCommit={handleTileSliderCommit}
-              onClose={handleTileMenuClose}
-              onValidationChange={handleValidationChange}
-              meshColor={meshColor}
-              backgroundColor={backgroundColor}
-            />
-          </div>
-        )}
+        {/* Right: TileMenu (always visible) */}
+        <div style={rightPanelStyle}>
+          <TileMenu
+            tileType={tileType}
+            sliderValues={tileSliderValues}
+            previewStlGzB64={tilePreviewGzB64 ?? undefined}
+            onTileTypeChange={handleTileTypeChange}
+            onSliderChange={handleTileSliderChange}
+            onSliderCommit={handleTileSliderCommit}
+            onValidationChange={handleValidationChange}
+            meshColor={meshColor}
+            backgroundColor={backgroundColor}
+          />
+        </div>
       </div>
 
       <Footer />

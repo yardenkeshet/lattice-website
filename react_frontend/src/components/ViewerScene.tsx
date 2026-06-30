@@ -27,8 +27,12 @@ export interface ViewerSceneProps {
   onFileDrop?: (file: File) => void
   /** Called when the user scrolls over the viewer to zoom. */
   onZoomChange?: (zoom: number) => void
-  /** Called when the user clicks the clear button. Clears the loaded content. */
-  onClear?: () => void
+  /**
+   * Called once after the camera finishes auto-fitting to a newly loaded
+   * mesh (fires for both perspective and orthographic modes). Receives the
+   * underlying canvas DOM element so the caller can capture a snapshot.
+   */
+  onAutoFitComplete?: (canvas: HTMLCanvasElement | null) => void
   /**
    * Opaque string controlled by the parent. When this key changes the camera
    * resets to its default position. Unchanged on tile-param recalculations so
@@ -47,6 +51,17 @@ const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
 const SCROLL_ZOOM_MAX  = 500
 
+class STLErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    return this.state.hasError ? null : this.props.children
+  }
+}
+
 function ViewerSceneFn({
   uploadedFile = null,
   resultStlGzB64 = null,
@@ -55,7 +70,7 @@ function ViewerSceneFn({
   cameraResetKey,
   onFileDrop,
   onZoomChange,
-  onClear,
+  onAutoFitComplete,
   className,
   style,
   meshColor,
@@ -70,6 +85,9 @@ function ViewerSceneFn({
   // Ref so the wheel handler always reads the latest zoom without a stale closure.
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
+
+  // Holds the actual <canvas> DOM element once R3F creates the renderer.
+  const canvasElRef = React.useRef<HTMLCanvasElement | null>(null)
 
   // Container ref for attaching the wheel listener with passive:false.
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -89,13 +107,15 @@ function ViewerSceneFn({
   const handleFitDistance = React.useCallback((d: number) => {
     setBaseZ(d)
     onZoomChange?.(100)
-  }, [onZoomChange])
+    onAutoFitComplete?.(canvasElRef.current)
+  }, [onZoomChange, onAutoFitComplete])
 
   // Called by STLMesh after an orthographic auto-fit.
   const handleFitOrthoZoom = React.useCallback((z: number) => {
     setBaseOrthoZoom(z)
     onZoomChange?.(100)
-  }, [onZoomChange])
+    onAutoFitComplete?.(canvasElRef.current)
+  }, [onZoomChange, onAutoFitComplete])
 
   /* Convert gz+b64 result to a Blob URL */
   const resultBlobUrl = useStlBlobUrl(resultStlGzB64)
@@ -161,7 +181,7 @@ function ViewerSceneFn({
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>
-            Drop a .igs file here,<br />or use the + button above
+            Drop a .igs file here
           </span>
         </div>
       )}
@@ -171,20 +191,6 @@ function ViewerSceneFn({
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>Drop to load</span>
         </div>
-      )}
-
-      {/* ── Clear button — top-right, only when content is loaded ── */}
-      {!isEmpty && onClear && (
-        <button
-          type="button"
-          aria-label="Clear viewer"
-          onClick={e => { e.stopPropagation(); onClear() }}
-          style={clearButtonStyle}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
       )}
 
       {/* ── Three.js canvas — remounts when camera mode changes ── */}
@@ -198,7 +204,8 @@ function ViewerSceneFn({
             : undefined
         }
         orthographic={cameraMode === 'orthographic'}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        onCreated={(state) => { canvasElRef.current = state.gl.domElement }}
       >
         <color attach="background" args={[backgroundColor]}/>
         <ambientLight intensity={0.4} />
@@ -211,18 +218,20 @@ function ViewerSceneFn({
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
         {/* Mesh — auto-fit fires inside STLMesh when both fitKey and geometry are new */}
-        <React.Suspense fallback={null}>
-          {activeUrl && (
-            <STLMesh
-              url={activeUrl}
-              fitKey={cameraResetKey}
-              onFitDistance={handleFitDistance}
-              onFitOrthoZoom={handleFitOrthoZoom}
-              meshColor={meshColor}
-              
-            />
-          )}
-        </React.Suspense>
+        <STLErrorBoundary key={activeUrl}>
+          <React.Suspense fallback={null}>
+            {activeUrl && (
+              <STLMesh
+                url={activeUrl}
+                fitKey={cameraResetKey}
+                onFitDistance={handleFitDistance}
+                onFitOrthoZoom={handleFitOrthoZoom}
+                meshColor={meshColor}
+
+              />
+            )}
+          </React.Suspense>
+        </STLErrorBoundary>
 
         <OrbitControls makeDefault enablePan enableZoom={true} />
       </Canvas>
@@ -323,15 +332,30 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLM
 
       if (camera instanceof THREE.PerspectiveCamera) {
         const d = perspectiveFitDistance(r, camera.fov, camera.aspect)
-        camera.position.set(0, 0, d)
+        const az = Math.PI / 4  // 45° azimuth
+        const el = Math.PI / 6  // 30° elevation
+        camera.position.set(
+          d * Math.cos(el) * Math.sin(az),
+          d * Math.sin(el),
+          d * Math.cos(el) * Math.cos(az),
+        )
         camera.lookAt(0, 0, 0)
         controls?.target?.set(0, 0, 0)
         controls?.update?.()
         if (d > 0) onFitDistance?.(d)
       } else if (camera instanceof THREE.OrthographicCamera) {
         const z = orthographicFitZoom(r, Math.abs(camera.right), Math.abs(camera.top))
+        const az = Math.PI / 4
+        const el = Math.PI / 6
+        camera.position.set(
+          10 * Math.cos(el) * Math.sin(az),
+          10 * Math.sin(el),
+          10 * Math.cos(el) * Math.cos(az),
+        )
+        camera.lookAt(0, 0, 0)
         camera.zoom = z
         camera.updateProjectionMatrix()
+        controls?.target?.set(0, 0, 0)
         controls?.update?.()
         if (z > 0) onFitOrthoZoom?.(z)
       }
@@ -391,25 +415,6 @@ const placeholderTextStyle: React.CSSProperties = {
   color: 'var(--text-tertiary)',
   textAlign: 'center',
   lineHeight: 1.5,
-}
-
-const clearButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 8,
-  right: 8,
-  zIndex: 20,
-  width: 22,
-  height: 22,
-  borderRadius: '50%',
-  backgroundColor: 'var(--bg-primary)',
-  border: '1.5px solid var(--border-base)',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'var(--text-secondary)',
-  padding: 0,
 }
 
 export const ViewerScene = React.memo(ViewerSceneFn)

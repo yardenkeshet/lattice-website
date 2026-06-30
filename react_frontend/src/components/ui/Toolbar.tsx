@@ -1,29 +1,20 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
-import { IconButton } from './IconButton'
 import { Button } from './Button'
-import type { CalcMode } from '../../calculation_params'
-
-/* ─── Public API ─── */
+import Popup from './Popup'
+import { Tooltip } from './Tooltip'
 
 export interface ToolbarProps {
-  zoom?: number          // 10–500, default 100
   cameraMode?: 'perspective' | 'orthographic'
   isCalculating?: boolean
   calcLabel?: string
+  canExport?: boolean
   onCameraModeChange: (mode: 'perspective' | 'orthographic') => void
-  /** Present only when in ruling mode — controls multi-file picker and routing. */
-  calcMode: CalcMode
-  /** Called when user picks file(s) via the Add button. 1 item normally, up to 2 in ruling mode. */
-  onFilesAdd?: (files: File[]) => void
+  onExportStl: () => void
+  onExportIgs: () => void
   onCalculate?: () => void
-
   className?: string
-
-  fileNames: string[]
 }
-
-const ACCEPTED_3D = '.igs'
 
 const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
   (
@@ -31,77 +22,78 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
       cameraMode = 'perspective',
       isCalculating = false,
       calcLabel = 'Calculating…',
+      canExport = false,
       onCameraModeChange,
-      calcMode,
-      onFilesAdd,
+      onExportStl,
+      onExportIgs,
       onCalculate,
       className,
     },
     ref
   ) => {
-    const fileInputRef = React.useRef<HTMLInputElement>(null)
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const all = Array.from(e.target.files ?? [])
-      if (all.length === 0) return
-      const limited = calcMode === 'ruling' ? all.slice(0, 2) : [all[0]]
-      onFilesAdd?.(limited)
-      e.target.value = ''  // reset so the same file can be re-selected
-    }
+    const [isExportPopupOpen, setIsExportPopupOpen] = React.useState(false)
 
     return (
       <div ref={ref} className={cn('toolbar', className)} style={containerStyle}>
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_3D}
-          multiple={calcMode === 'ruling'}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-
-        {/* ── Add (file upload) icon button ── */}
-        <IconButton
-          aria-label="Add IGS file"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <PlusIcon />
-        </IconButton>
-        {/* ── Pill: zoom + camera mode ── */}
+        {/* ── Pill: camera mode + export + calculate ── */}
         <div style={pillStyle}>
-
-          {/* Zoom control */}
-
-          <PillDivider />
-
-          {/* Camera mode dropdown */}
-          <div style={{ position: 'relative' }}>
+          {/* Camera mode toggle */}
+          <Tooltip content="Toggles between perspective and orthographic views.">
             <button
               type="button"
               aria-haspopup="listbox"
-              onClick={() => {onCameraModeChange(cameraMode == 'orthographic'? 'perspective' : 'orthographic')}}
+              onClick={() => onCameraModeChange(cameraMode === 'orthographic' ? 'perspective' : 'orthographic')}
               style={cameraPillButtonStyle}
             >
               <CameraIcon />
               <span style={pillTextStyle}>{cameraMode}</span>
             </button>
-
-          </div>
+          </Tooltip>
 
           <PillDivider />
 
-          {/* Calculate button */}
+          {/* Export Lattice button */}
+          {canExport ? (
+            <Button
+              variant="primary"
+              onClick={() => setIsExportPopupOpen(true)}
+            >
+              Export Lattice
+            </Button>
+          ) : (
+            <Button variant="secondary" disabled>
+              Export Lattice
+            </Button>
+          )}
+
+          <PillDivider />
+
+          {/* Make Lattice button */}
           <Button
             variant="secondary"
             disabled={isCalculating}
             onClick={onCalculate}
           >
-            {isCalculating ? calcLabel : 'Calculate'}
+            {isCalculating ? calcLabel : 'Make Lattice'}
           </Button>
         </div>
+
+        <Popup isOpen={isExportPopupOpen} onClose={() => setIsExportPopupOpen(false)}>
+          <div style={exportPopupStyle}>
+            <Button
+              variant="primary"
+              onClick={() => { setIsExportPopupOpen(false); onExportStl() }}
+            >
+              Export STL
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => { setIsExportPopupOpen(false); onExportIgs() }}
+            >
+              Export IGS
+            </Button>
+          </div>
+        </Popup>
       </div>
     )
   }
@@ -110,14 +102,6 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
 ToolbarInner.displayName = 'Toolbar'
 
 /* ─── Icons ─── */
-
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
 
 function CameraIcon() {
   return (
@@ -129,30 +113,24 @@ function CameraIcon() {
   )
 }
 
-
-export const CubeIcon3D = ({ size = 24, className = "" }) => {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25em' }}
-    >
-      {/* Top Face */}
-      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-      {/* Left Face */}
-      <path d="M2 17l10 5V12L2 7v10z" />
-      {/* Right Face */}
-      <path d="M22 7l-10 5v10l10-5V7z" />
-    </svg>
-  );
-};
+export const CubeIcon3D = ({ size = 24, className = "" }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25em' }}
+  >
+    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+    <path d="M2 17l10 5V12L2 7v10z" />
+    <path d="M22 7l-10 5v10l10-5V7z" />
+  </svg>
+)
 
 /* ─── Pill divider ─── */
 
@@ -178,7 +156,6 @@ const pillStyle: React.CSSProperties = {
   padding: '0 5px',
   boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
 }
-
 
 const pillDividerStyle: React.CSSProperties = {
   width: 3,
@@ -208,5 +185,12 @@ const pillTextStyle: React.CSSProperties = {
   width: 70,
 }
 
+const exportPopupStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'row',
+  gap: 5,
+  justifyContent: 'center',
+  padding: '0 var(--space-md)',
+}
 
 export const Toolbar = React.memo(ToolbarInner)
