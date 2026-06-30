@@ -13,6 +13,9 @@ export interface ToolbarProps {
   onExportStl: () => void
   onExportIgs: () => void
   onCalculate?: () => void
+  onCalculateRotatingBody?: () => void
+  /** Shows the "Get Rotating Body" button — only meaningful in Revolution mode. */
+  showRotatingBody?: boolean
   className?: string
 }
 
@@ -27,6 +30,8 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
       onExportStl,
       onExportIgs,
       onCalculate,
+      onCalculateRotatingBody,
+      showRotatingBody = false,
       className,
     },
     ref
@@ -67,6 +72,20 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
           )}
 
           <PillDivider />
+
+          {/* Get Rotating Body button — Revolution mode only */}
+          {showRotatingBody && (
+            <>
+              <Button
+                variant="secondary"
+                disabled={isCalculating}
+                onClick={onCalculateRotatingBody}
+              >
+                Get Rotating Body
+              </Button>
+              <PillDivider />
+            </>
+          )}
 
           {/* Make Lattice button */}
           <Button

@@ -19,6 +19,7 @@ import {
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
+  REVOLUTION,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
 import type { CalculateArgs, ValidationError } from '../api/types'
@@ -283,7 +284,38 @@ export function ToolPage() {
     setUploadedIgsB64_2(null)
   }, [])
 
-  /* ── Calculate ── */
+  /* ── Calculate rotating body — same as Calculate, but forces nt1/nt2/nt3 to 0
+     so the DLL returns just the revolved macro-shape with no lattice infill ── */
+  const handleCalculateRotatingBody = React.useCallback(() => {
+    const allErrors = Object.values(validationErrors).flat()
+    if (allErrors.length > 0) {
+      setErrorMsg(allErrors[0].message)
+      return
+    }
+
+    if (calcMode !== REVOLUTION) {
+      setErrorMsg('Can calculate rotating body only for REVOLUTION calculation.')
+      return
+    }
+    if (!uploadedFile || !uploadedIgsB64) {
+      setErrorMsg('Please upload Surface 1')
+      return
+    }
+
+    pendingResetKey.current = 'calc-' + Date.now()
+    setIsCalculating(true)
+    setCalcLabel('Calculating…')
+    setErrorMsg(null)
+    const calculateArgs = {
+      filename: uploadedFile.name,
+      surface_b64: uploadedIgsB64,
+      client_ts: performance.now(),
+      args: { tileType, calcMode, nt1: 0, nt2: 0, nt3: 0, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+    }
+    socket.calculate(calculateArgs)
+  }, [validationErrors, calcMode, uploadedFile, uploadedIgsB64, g1, g2, tileSliderValues, tileType, socket])
+
+  /* ── Calculate body ── */
   const handleCalculate = React.useCallback(() => {
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
@@ -400,6 +432,8 @@ export function ToolPage() {
           <div style={toolbarRowStyle}>
             <Toolbar
               onCalculate={handleCalculate}
+              onCalculateRotatingBody={handleCalculateRotatingBody}
+              showRotatingBody={calcMode === REVOLUTION}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
               calcLabel={calcLabel}
