@@ -42,6 +42,8 @@ export interface LatticeMenuProps {
   onNt3Change: (v: number) => void
   onG1Change: (v: number) => void
   onG2Change: (v: number) => void
+  onG1Commit?: (v: number) => void
+  onG2Commit?: (v: number) => void
   onCalculationModeChange: (mode: CalcMode) => void
   onOpenTileMenu: () => void
   onExportStl: () => void
@@ -70,6 +72,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       isOpen = true,
       onNt1Change, onNt2Change, onNt3Change,
       onG1Change, onG2Change,
+      onG1Commit, onG2Commit,
       onCalculationModeChange,
       onOpenTileMenu,
       onExportStl,
@@ -320,6 +323,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 valuePrecision={2}
                 fontSize={12}
                 onValueChange={([v]) => onG1Change(v)}
+                onValueCommit={([v]) => onG1Commit?.(v)}
               />
               <Slider
                 label="Grading End"
@@ -331,6 +335,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 valuePrecision={2}
                 fontSize={12}
                 onValueChange={([v]) => onG2Change(v)}
+                onValueCommit={([v]) => onG2Commit?.(v)}
               />
               <Divider />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -343,7 +348,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               </div>
               <Divider />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>Background Color:</span>
+                Background Color:
                 <ColorPicker
                   disableAlpha
                   value={backgroundColor}
@@ -449,7 +454,7 @@ const dividerStyle: React.CSSProperties = {
   boxShadow: '1px 2px 6px -2px rgba(0,0,0,0.14)',
 }
 
-const sectionStyle: React.CSSProperties = {
+export const sectionStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-sm)',

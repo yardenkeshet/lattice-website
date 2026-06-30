@@ -168,8 +168,21 @@ export function ToolPage() {
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
-    socket.calculateTile({ type: tileType, values: padded })
-  }, [socket, tileType])
+    socket.calculateTile({ type: tileType, values: padded, graded: [g1, g2] })
+  }, [socket, tileType, g1, g2])
+
+  /* ── Grading param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
+  const handleG1Commit = React.useCallback((v: number) => {
+    pendingResetKey.current = null
+    const padded: [number, number, number] = [tileSliderValues[0] ?? 0, tileSliderValues[1] ?? 0, tileSliderValues[2] ?? 0]
+    socket.calculateTile({ type: tileType, values: padded, graded: [v, g2] })
+  }, [socket, tileType, tileSliderValues, g2])
+
+  const handleG2Commit = React.useCallback((v: number) => {
+    pendingResetKey.current = null
+    const padded: [number, number, number] = [tileSliderValues[0] ?? 0, tileSliderValues[1] ?? 0, tileSliderValues[2] ?? 0]
+    socket.calculateTile({ type: tileType, values: padded, graded: [g1, v] })
+  }, [socket, tileType, tileSliderValues, g1])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
     pendingResetKey.current = type
@@ -177,8 +190,8 @@ export function ToolPage() {
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type, values: padded })
-  }, [socket])
+    socket.calculateTile({ type, values: padded, graded: [g1, g2] })
+  }, [socket, g1, g2])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     setErrorMsg(null)
@@ -345,6 +358,7 @@ export function ToolPage() {
             isOpen={isLatticeMenuOpen}
             onNt1Change={setNt1} onNt2Change={setNt2} onNt3Change={setNt3}
             onG1Change={setG1} onG2Change={setG2}
+            onG1Commit={handleG1Commit} onG2Commit={handleG2Commit}
             onCalculationModeChange={handleCalcModeChange}
             onOpenTileMenu={() => setIsTileMenuOpen(true)}
             onExportStl={handleExportStl}

@@ -30,6 +30,7 @@ export interface CalculateTilePayload {
   type: TileType;
   /** [p1, p2, p3] — tile shape parameters */
   values: [number, number, number];
+  graded: [number, number];
 }
 
 // ─── result event (server → client) ──────────────────────────────────────────
