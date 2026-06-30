@@ -9,6 +9,7 @@ import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
 import { Tooltip } from './Tooltip'
+import { sliderRowStyle } from './TileMenu'
 
 const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
   ([mode, def]) => ({ value: mode, label: def.label })
@@ -58,7 +59,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     },
     ref
   ) => {
-    const [useAdvancedFeatures, setUseAdvancedFeatures] = React.useState(false)
+    const [useViewerSettingsMenu, setUseViewerSettingsMenu] = React.useState(false)
     const [isAddFilesHovered, setIsAddFilesHovered] = React.useState(false)
     const [isAddFilesFocused, setIsAddFilesFocused] = React.useState(false)
 
@@ -179,14 +180,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-        {/* ── Advanced Features ── */}
-        <Button onClick={() => setUseAdvancedFeatures(v => !v)} variant="secondary">
-          {useAdvancedFeatures ? '- ' : '+ '}Use Advanced Features
-        </Button>
-        {useAdvancedFeatures && (
-          <div style={sectionStyle}>
             <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between zero and one.">
-              <div>
+          <div style={sliderRowStyle}>
                 <Slider
                   label="Grading Start"
                   min={0}
@@ -211,6 +206,13 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 />
               </div>
             </Tooltip>
+        {/* ── Viewer Settings ── */}
+        <Button onClick={() => setUseViewerSettingsMenu(v => !v)} variant="secondary">
+          {useViewerSettingsMenu ? '- ' : '+ '}Viewer Settings
+        </Button>
+
+        {useViewerSettingsMenu && (
+          <div style={sectionStyle}>
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">

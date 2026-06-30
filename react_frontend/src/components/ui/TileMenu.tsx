@@ -244,10 +244,11 @@ const tileGridStyle: React.CSSProperties = {
   width: '170px',
 }
 
-const sliderRowStyle: React.CSSProperties = {
+export const sliderRowStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 5,
+  gap: 'var(--space-sm)',
+  padding: '0 var(--space-md)'
 }
 
 export const TileMenu = React.memo(TileMenuInner)

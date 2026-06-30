@@ -829,9 +829,10 @@ def handle_calculate_tile(data):
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
-
         tile_params = (c_double * 3)(p1, p2, p3)
-        graded      = (c_double * 2)(0.2, 1.5)
+        graded1, graded2   = data.get('graded', [1, 1])
+        graded  = (c_double * 2)(graded1, graded2)
+        print("calculate with " +  str(graded[0])+" "+ str(graded[1]))
 
         calculate_tile(tile_params, graded, tile_type, request.sid)
     except Exception as exc:
