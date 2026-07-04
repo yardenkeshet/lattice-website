@@ -80,17 +80,16 @@ function ViewerSceneFn({
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
 
-  // Shared normalization for preview mode (multi-layer: macro shape → surface layers).
-  const [previewNorm, setPreviewNorm] = React.useState<{ scale: number; center: THREE.Vector3 } | null>(null)
-
   const macroLayerUrl = layers.length > 1 ? layers[layers.length - 1].blobUrl : undefined
-  React.useEffect(() => {
-    setPreviewNorm(null)
-  }, [macroLayerUrl])
+
+  // Shared normalization for preview mode. Keyed by macroLayerUrl so it resets automatically
+  // when a new file loads — no separate useEffect needed.
+  const [previewNormEntry, setPreviewNormEntry] = React.useState<{ url: string | undefined; scale: number; center: THREE.Vector3 } | null>(null)
+  const previewNorm = previewNormEntry?.url === macroLayerUrl ? previewNormEntry : null
 
   const handlePreviewNorm = React.useCallback((scale: number, center: THREE.Vector3) => {
-    setPreviewNorm({ scale, center })
-  }, [])
+    setPreviewNormEntry({ url: macroLayerUrl, scale, center })
+  }, [macroLayerUrl])
 
   // Holds the actual <canvas> DOM element once R3F creates the renderer.
   const canvasElRef = React.useRef<HTMLCanvasElement | null>(null)
