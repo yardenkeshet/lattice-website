@@ -31,8 +31,8 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  * can resend them at Calculate time — the backend no longer persists
  * uploaded files between requests.
  */
-async function convertIgsFile(file: File): Promise<{ stlFile: File; igsB64: string }> {
-  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file), fileToBase64(file)])
+async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
+  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -95,6 +95,12 @@ export function ToolPage() {
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
   const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
+
+  /* ── Tessellation tolerance + original IGS file references for re-conversion ── */
+  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(0.0)
+  // Keep a reference to the original File objects so tolerance changes can re-convert
+  const [originalIgsFile,  setOriginalIgsFile]  = React.useState<File | null>(null)
+  const [originalIgsFile2, setOriginalIgsFile2] = React.useState<File | null>(null)
 
   /* ── Blob URLs for uploaded surface files (created here, consumed by layer assembly) ── */
   const [uploadedBlobUrl, setUploadedBlobUrl] = React.useState<string | undefined>()
@@ -246,6 +252,26 @@ export function ToolPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadedIgsB64, uploadedIgsB64_2, calcMode, extrudeLength])
 
+  /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
+  React.useEffect(() => {
+    if (!originalIgsFile) return
+    convertIgsFile(originalIgsFile, igsConversionTolerance)
+      .then(({ stlFile, igsB64 }) => {
+        setUploadedFile(stlFile)
+        setUploadedIgsB64(igsB64)
+      })
+      .catch(() => {/* ignore re-conversion failures silently */})
+    if (originalIgsFile2) {
+      convertIgsFile(originalIgsFile2, igsConversionTolerance)
+        .then(({ stlFile, igsB64 }) => {
+          setUploadedFile2(stlFile)
+          setUploadedIgsB64_2(igsB64)
+        })
+        .catch(() => {})
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [igsConversionTolerance])
+
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
     setTileSliderValues(values)
@@ -284,7 +310,12 @@ export function ToolPage() {
       if (files.length >= 2) {
         setViewerResetKey('file-' + Date.now())
         try {
-          const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
+          const [r1, r2] = await Promise.all([
+            convertIgsFile(files[0], igsConversionTolerance),
+            convertIgsFile(files[1], igsConversionTolerance),
+          ])
+          setOriginalIgsFile(files[0])
+          setOriginalIgsFile2(files[1])
           setUploadedFile(r1.stlFile)
           setUploadedIgsB64(r1.igsB64)
           setUploadedFile2(r2.stlFile)
@@ -295,20 +326,24 @@ export function ToolPage() {
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile2(file)
             setUploadedFile2(stlFile)
             setUploadedIgsB64_2(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
+          // Both already loaded — replace the first file
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
@@ -318,23 +353,26 @@ export function ToolPage() {
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
-        const { stlFile, igsB64 } = await convertIgsFile(file)
+        const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+        setOriginalIgsFile(file)
         setUploadedFile(stlFile)
         setUploadedIgsB64(igsB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
-  }, [calcMode, uploadedFile, uploadedFile2])
+  }, [calcMode, uploadedFile, uploadedFile2, igsConversionTolerance])
 
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
     setUploadedIgsB64(null)
+    setOriginalIgsFile(null)
     setMacroShapeGzB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
+    setOriginalIgsFile2(null)
     setMacroShapeGzB64(null)
   }, [])
 
@@ -450,6 +488,8 @@ export function ToolPage() {
             setBackgroundColor={setBackgroundColor}
             extrudeLength={extrudeLength}
             onExtrudeLengthChange={setExtrudeLength}
+            tolerance={igsConversionTolerance}
+            onToleranceChange={setIgsConversionTolerance}
             />
         </div>
 

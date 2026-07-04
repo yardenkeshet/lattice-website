@@ -39,6 +39,8 @@ export interface LatticeMenuProps {
   setBackgroundColor: (color: string) => void
   extrudeLength: number
   onExtrudeLengthChange: (v: number) => void
+  tolerance: number
+  onToleranceChange: (v: number) => void
 }
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -60,10 +62,14 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       setBackgroundColor,
       extrudeLength,
       onExtrudeLengthChange,
+      tolerance,
+      onToleranceChange,
     },
     ref
   ) => {
     const [useViewerSettingsMenu, setUseViewerSettingsMenu] = React.useState(false)
+    const [localTolerance, setLocalTolerance] = React.useState(tolerance)
+    React.useEffect(() => { setLocalTolerance(tolerance) }, [tolerance])
     const [isAddFilesHovered, setIsAddFilesHovered] = React.useState(false)
     const [isAddFilesFocused, setIsAddFilesFocused] = React.useState(false)
 
@@ -247,6 +253,21 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             >
               Reset Colors
             </Button>
+            <Divider />
+            <div style={sliderRowStyle}>
+              <Slider
+                label="Tessellation Tolerance"
+                min={0}
+                max={1}
+                step={0.05}
+                value={[localTolerance]}
+                showValue
+                valuePrecision={2}
+                fontSize={12}
+                onValueChange={([v]) => setLocalTolerance(v)}
+                onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}
+              />
+            </div>
           </div>
         )}
       </div>

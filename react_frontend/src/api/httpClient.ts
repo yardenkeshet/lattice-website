@@ -8,9 +8,10 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
  *
  * Expected server response: JSON { stl_b64: string }
  */
-export async function convertIgsToStl(file: File): Promise<string> {
+export async function convertIgsToStl(file: File, tolerance: number = 0.0): Promise<string> {
   const form = new FormData();
   form.append('file', file);
+  form.append('tolerance', String(tolerance));
   const response = await fetch(`${BASE_URL}/convert_igs_to_stl`, {
     method: 'POST',
     body: form,

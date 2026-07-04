@@ -852,12 +852,13 @@ def handle_convert_igs_to_stl():
         return jsonify({'error': 'No file provided'}), 400
 
     igs_bytes = request.files['file'].read()
+    tolerance = float(request.form.get('tolerance', 0.0))
 
     try:
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), 0.0)
+            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), tolerance)
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")
