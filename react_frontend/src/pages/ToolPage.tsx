@@ -78,6 +78,7 @@ export function ToolPage() {
   const [g1, setG1]                 = React.useState(DEFAULT_G1)
   const [g2, setG2]                 = React.useState(DEFAULT_G2)
   const [calcMode, setCalcMode]     = React.useState<CalcMode>(DEFAULT_CALC_MODE)
+  const [extrudeLength, setExtrudeLength] = React.useState(10.0)
   const [meshColor, setMeshColor]     = React.useState<string>(DEFAULT_MESH_COLOR)
   const [backgroundColor, setBackgroundColor]     = React.useState<string>(DEFAULT_BACKGROUND_COLOR)
 
@@ -239,10 +240,11 @@ export function ToolPage() {
         nt1: 0, nt2: 0, nt3: 0,
         g1, g2,
         p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+        extrudeLength,
       },
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
+  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode, extrudeLength])
 
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
@@ -373,10 +375,10 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2], extrudeLength },
     }
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -446,6 +448,8 @@ export function ToolPage() {
             setModelColor={setMeshColor}
             backgroundColor={backgroundColor}
             setBackgroundColor={setBackgroundColor}
+            extrudeLength={extrudeLength}
+            onExtrudeLengthChange={setExtrudeLength}
             />
         </div>
 

@@ -37,6 +37,8 @@ export interface LatticeMenuProps {
   setModelColor: (color: string) => void
   backgroundColor: string
   setBackgroundColor: (color: string) => void
+  extrudeLength: number
+  onExtrudeLengthChange: (v: number) => void
 }
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -56,6 +58,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       setModelColor,
       backgroundColor,
       setBackgroundColor,
+      extrudeLength,
+      onExtrudeLengthChange,
     },
     ref
   ) => {
@@ -112,6 +116,15 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={calculationMode}
             onChange={v => onCalculationModeChange(v as CalcMode)}
           />
+          {calculationMode === 'extrusion' && (
+            <NumberInput
+              label="Extrusion Length"
+              value={extrudeLength}
+              min={0.1}
+              onChange={onExtrudeLengthChange}
+              aria-label="Extrusion length"
+            />
+          )}
         </div>
 
         <Divider />

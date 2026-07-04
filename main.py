@@ -444,12 +444,12 @@ def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, 
     return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
 
-def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
     result = _dll_from_extrusion(
         igs_path.encode('ascii'),
-        10.0,
+        extrude_length,
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
@@ -690,6 +690,7 @@ def handle_calculate(data):
         p1  = float(args.get('p1', 0.2))
         p2  = float(args.get('p2', 0.0))
         p3  = float(args.get('p3', 0.4))
+        extrude_length = float(args.get('extrudeLength', 10.0))
     except (TypeError, ValueError) as exc:
         logger.exception(f"[CALC] Bad numeric argument: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
@@ -753,6 +754,11 @@ def handle_calculate(data):
                         out_folder, igs_path, igs_path2,
                         curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     )
+            elif calc_mode == CALC_MODE_EXTRUSION:
+                stl_content, out_stl_name, out_igs_name = do_extrusion(
+                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
+                    extrude_length,
+                )
             else:
                 dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
                 stl_content, out_stl_name, out_igs_name = dispatch_fn(
