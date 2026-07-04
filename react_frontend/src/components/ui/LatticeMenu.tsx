@@ -123,13 +123,15 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             onChange={v => onCalculationModeChange(v as CalcMode)}
           />
           {calculationMode === 'extrusion' && (
-            <NumberInput
-              label="Extrusion Length"
-              value={extrudeLength}
-              min={0.1}
-              onChange={onExtrudeLengthChange}
-              aria-label="Extrusion length"
-            />
+            <div style={extrudeLengthWrapperStyle}>
+              <span style={sectionLabelStyle}>Extrusion Length</span>
+              <NumberInput
+                value={extrudeLength}
+                min={0.1}
+                onChange={onExtrudeLengthChange}
+                aria-label="Extrusion length"
+              />
+            </div>
           )}
         </div>
 
@@ -404,6 +406,12 @@ const removeFileButtonStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   flexShrink: 0,
   padding: 2,
+}
+
+const extrudeLengthWrapperStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
 }
 
 export { LatticeMenu }
