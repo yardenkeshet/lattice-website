@@ -3,40 +3,35 @@ import { Canvas, useThree, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
-import { useStlBlobUrl } from '../lib/stl'
 import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
 
 /* ─── Public API ─── */
 
+export interface MeshLayer {
+  blobUrl: string
+  /** Defaults to 1.0 (fully opaque). Values < 1 enable transparency automatically. */
+  opacity?: number
+}
+
 export interface ViewerSceneProps {
-  /**
-   * Raw 3D file selected via the Add button or drag-dropped onto the viewer.
-   * Displayed as-is (the source mesh before lattice generation).
-   */
-  uploadedFile?: File | null
-  /**
-   * base64( gzip( ASCII-STL ) ) — calculated lattice result from the server.
-   * When present, takes priority over uploadedFile.
-   */
-  resultStlGzB64?: string | null
+  /** Mesh layers to render. First layer drives auto-fit. */
+  layers?: MeshLayer[]
   /** 'perspective' (default) or 'orthographic'. */
   cameraMode?: 'perspective' | 'orthographic'
   /** Zoom level. 100 = default, range 10–500. */
   zoom?: number
-  /** Called when user drops a 3D file onto the canvas. */
+  /** Called when user drops a .igs file onto the canvas. */
   onFileDrop?: (file: File) => void
   /** Called when the user scrolls over the viewer to zoom. */
   onZoomChange?: (zoom: number) => void
   /**
    * Called once after the camera finishes auto-fitting to a newly loaded
-   * mesh (fires for both perspective and orthographic modes). Receives the
-   * underlying canvas DOM element so the caller can capture a snapshot.
+   * mesh. Receives the underlying canvas DOM element for snapshot capture.
    */
   onAutoFitComplete?: (canvas: HTMLCanvasElement | null) => void
   /**
    * Opaque string controlled by the parent. When this key changes the camera
-   * resets to its default position. Unchanged on tile-param recalculations so
-   * the user's orbit/zoom is preserved across param tweaks.
+   * resets to its default position.
    */
   cameraResetKey?: string
   className?: string
@@ -63,8 +58,7 @@ class STLErrorBoundary extends React.Component<
 }
 
 function ViewerSceneFn({
-  uploadedFile = null,
-  resultStlGzB64 = null,
+  layers = [],
   cameraMode = 'perspective',
   zoom = 100,
   cameraResetKey,
@@ -117,21 +111,7 @@ function ViewerSceneFn({
     onAutoFitComplete?.(canvasElRef.current)
   }, [onZoomChange, onAutoFitComplete])
 
-  /* Convert gz+b64 result to a Blob URL */
-  const resultBlobUrl = useStlBlobUrl(resultStlGzB64)
-
-  /* Convert raw File to a Blob URL */
-  const [uploadedBlobUrl, setUploadedBlobUrl] = React.useState<string | undefined>()
-  React.useEffect(() => {
-    if (!uploadedFile) { setUploadedBlobUrl(undefined); return }
-    const url = URL.createObjectURL(uploadedFile)
-    setUploadedBlobUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [uploadedFile])
-
-  /* Result takes priority over upload */
-  const activeUrl = resultBlobUrl ?? uploadedBlobUrl
-  const isEmpty = !activeUrl
+  const isEmpty = layers.length === 0
 
   /* ── Drag-and-drop handlers ── */
   const handleDragOver = (e: React.DragEvent) => {
@@ -217,21 +197,21 @@ function ViewerSceneFn({
         {/* Camera zoom controller — scales around the auto-fit base */}
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
-        {/* Mesh — auto-fit fires inside STLMesh when both fitKey and geometry are new */}
-        <STLErrorBoundary key={activeUrl}>
-          <React.Suspense fallback={null}>
-            {activeUrl && (
+        {/* Mesh layers — first layer drives auto-fit */}
+        {layers.map((layer, i) => (
+          <STLErrorBoundary key={layer.blobUrl}>
+            <React.Suspense fallback={null}>
               <STLMesh
-                url={activeUrl}
-                fitKey={cameraResetKey}
-                onFitDistance={handleFitDistance}
-                onFitOrthoZoom={handleFitOrthoZoom}
+                url={layer.blobUrl}
+                fitKey={i === 0 ? cameraResetKey : undefined}
+                onFitDistance={i === 0 ? handleFitDistance : undefined}
+                onFitOrthoZoom={i === 0 ? handleFitOrthoZoom : undefined}
                 meshColor={meshColor}
-
+                opacity={layer.opacity ?? 1}
               />
-            )}
-          </React.Suspense>
-        </STLErrorBoundary>
+            </React.Suspense>
+          </STLErrorBoundary>
+        ))}
 
         <OrbitControls makeDefault enablePan enableZoom={true} />
       </Canvas>
@@ -284,9 +264,10 @@ interface STLMeshProps {
   onFitDistance?:  (d: number) => void
   onFitOrthoZoom?: (z: number) => void
   meshColor: string
+  opacity?: number
 }
 
-function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLMeshProps) {
+function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1 }: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -365,7 +346,14 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLM
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshPhongMaterial color={meshColor} specular={0x111111} shininess={50} side={THREE.DoubleSide} />
+      <meshPhongMaterial
+        color={meshColor}
+        specular={0x111111}
+        shininess={50}
+        side={THREE.DoubleSide}
+        opacity={opacity}
+        transparent={opacity < 1}
+      />
     </mesh>
   )
 }

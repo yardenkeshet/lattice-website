@@ -6,10 +6,10 @@ import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
-import { DualViewerLayout } from '../components/DualViewerLayout'
+import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
-import { stlTextToGzB64 } from '../lib/stl'
+import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -94,6 +94,35 @@ export function ToolPage() {
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
   const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
+
+  /* ── Blob URLs for uploaded surface files (created here, consumed by layer assembly) ── */
+  const [uploadedBlobUrl, setUploadedBlobUrl] = React.useState<string | undefined>()
+  React.useEffect(() => {
+    if (!uploadedFile) { setUploadedBlobUrl(undefined); return }
+    const url = URL.createObjectURL(uploadedFile)
+    setUploadedBlobUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [uploadedFile])
+
+  const [uploadedBlobUrl2, setUploadedBlobUrl2] = React.useState<string | undefined>()
+  React.useEffect(() => {
+    if (!uploadedFile2) { setUploadedBlobUrl2(undefined); return }
+    const url = URL.createObjectURL(uploadedFile2)
+    setUploadedBlobUrl2(url)
+    return () => URL.revokeObjectURL(url)
+  }, [uploadedFile2])
+
+  /* ── Blob URL for calculation result (gz+b64 → Blob URL) ── */
+  const resultBlobUrl = useStlBlobUrl(resultGzB64)
+
+  /* ── Layer assembly ── */
+  const layers: MeshLayer[] = React.useMemo(() => {
+    if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
+    return [
+      uploadedBlobUrl  ? { blobUrl: uploadedBlobUrl  } : null,
+      uploadedBlobUrl2 ? { blobUrl: uploadedBlobUrl2 } : null,
+    ].filter((l): l is MeshLayer => l !== null)
+  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -254,24 +283,6 @@ export function ToolPage() {
     }
   }, [calcMode, uploadedFile, uploadedFile2])
 
-  const handleFile1Drop = React.useCallback(async (file: File) => {
-    setResultGzB64(null)
-    try {
-      const { stlFile, igsB64 } = await convertIgsFile(file)
-      setUploadedFile(stlFile)
-      setUploadedIgsB64(igsB64)
-    } catch { setErrorMsg('Failed to convert IGS file') }
-  }, [])
-
-  const handleFile2Drop = React.useCallback(async (file: File) => {
-    setResultGzB64(null)
-    try {
-      const { stlFile, igsB64 } = await convertIgsFile(file)
-      setUploadedFile2(stlFile)
-      setUploadedIgsB64_2(igsB64)
-    } catch { setErrorMsg('Failed to convert IGS file') }
-  }, [])
-
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
@@ -424,30 +435,15 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            {calcMode === RULING && !resultGzB64
-              ? (
-                <DualViewerLayout
-                  file1={uploadedFile}
-                  file2={uploadedFile2}
-                  onFile1Drop={handleFile1Drop}
-                  onFile2Drop={handleFile2Drop}
-                  cameraMode={cameraMode}
-                  style={{ height: '100%' }}
-                />
-              )
-              : (
-                <ViewerScene
-                  uploadedFile={uploadedFile}
-                  resultStlGzB64={resultGzB64}
-                  cameraMode={cameraMode}
-                  cameraResetKey={viewerResetKey}
-                  onFileDrop={handleViewerFileDrop}
-                  onAutoFitComplete={handleAutoFitComplete}
-                  meshColor={meshColor}
-                  backgroundColor={backgroundColor}
-                />
-              )
-            }
+            <ViewerScene
+              layers={layers}
+              cameraMode={cameraMode}
+              cameraResetKey={viewerResetKey}
+              onFileDrop={handleViewerFileDrop}
+              onAutoFitComplete={handleAutoFitComplete}
+              meshColor={meshColor}
+              backgroundColor={backgroundColor}
+            />
           </div>
         </div>
 
