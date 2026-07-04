@@ -365,7 +365,7 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor }: STLM
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshPhongMaterial color={meshColor} specular={0x111111} shininess={50} />
+      <meshPhongMaterial color={meshColor} specular={0x111111} shininess={50} side={THREE.DoubleSide} />
     </mesh>
   )
 }
