@@ -198,7 +198,7 @@ function ViewerSceneFn({
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
         {/* Mesh layers — first layer drives auto-fit */}
-        {layers.map((layer, i) => (
+        {layers.filter(l => l.blobUrl).map((layer, i) => (
           <STLErrorBoundary key={layer.blobUrl}>
             <React.Suspense fallback={null}>
               <STLMesh
