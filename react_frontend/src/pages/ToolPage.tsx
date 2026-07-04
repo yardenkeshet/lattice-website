@@ -125,7 +125,13 @@ export function ToolPage() {
   /* ── Macro shape preview state ── */
   const [macroShapeGzB64, setMacroShapeGzB64] = React.useState<string | null>(null)
   const macroShapeBlobUrl = useStlBlobUrl(macroShapeGzB64)
-  const pendingMacroRef = React.useRef(false)
+  const pendingMacroRef        = React.useRef(false)
+  const macroVersionRef        = React.useRef(0)
+  const pendingMacroVersionRef = React.useRef(0)
+  const uploadedIgsB64Ref      = React.useRef<string | null>(null)
+  React.useEffect(() => { uploadedIgsB64Ref.current = uploadedIgsB64 }, [uploadedIgsB64])
+  const isCalculatingRef = React.useRef(false)
+  React.useEffect(() => { isCalculatingRef.current = isCalculating }, [isCalculating])
 
   /* ── Layer assembly ── */
   const layers: MeshLayer[] = React.useMemo(() => {
@@ -194,8 +200,11 @@ export function ToolPage() {
       } else {
         // model_stl — either a macro shape preview or a real calculation result
         if (pendingMacroRef.current) {
-          pendingMacroRef.current = false
-          setMacroShapeGzB64(payload.stl_gz_b64)
+          if (pendingMacroVersionRef.current === macroVersionRef.current) {
+            pendingMacroRef.current = false
+            setMacroShapeGzB64(payload.stl_gz_b64)
+          }
+          // else: stale response from superseded macro request — discard silently
         } else {
           setIsCalculating(false)
           setCalcLabel('Calculating…')
@@ -233,6 +242,8 @@ export function ToolPage() {
     } else {
       if (!uploadedIgsB64) return
     }
+    macroVersionRef.current += 1
+    pendingMacroVersionRef.current = macroVersionRef.current
     setMacroShapeGzB64(null)
     pendingMacroRef.current = true
     socket.calculate({
@@ -253,6 +264,34 @@ export function ToolPage() {
   // extrudeLength intentionally omitted: pendingMacroRef is a boolean and cannot
   // track multiple in-flight calls; the real Calculate will use the correct length.
   }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
+
+  /* ── Re-trigger macro shape when extrudeLength changes (extrusion mode only) ── */
+  React.useEffect(() => {
+    if (calcModeRef.current !== 'extrusion' || !uploadedIgsB64Ref.current) return
+    const igsB64 = uploadedIgsB64Ref.current
+    const timer = setTimeout(() => {
+      if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
+      macroVersionRef.current += 1
+      pendingMacroVersionRef.current = macroVersionRef.current
+      setMacroShapeGzB64(null)
+      pendingMacroRef.current = true
+      socket.calculate({
+        filename: uploadedFile?.name ?? 'surface.igs',
+        surface_b64: igsB64,
+        client_ts: performance.now(),
+        args: {
+          tileType,
+          calcMode: calcModeRef.current,
+          nt1: 0, nt2: 0, nt3: 0,
+          g1, g2,
+          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+          extrudeLength,
+        },
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrudeLength])
 
   /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
   React.useEffect(() => {
