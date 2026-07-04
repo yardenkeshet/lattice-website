@@ -124,7 +124,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           />
           {calculationMode === 'extrusion' && (
             <div style={extrudeLengthWrapperStyle}>
-              <span style={sectionLabelStyle}>Extrusion Length</span>
+              <Tooltip content="Controls how far the input surface is extruded along its normal to form the 3D macro volume. A larger value produces a deeper extrusion.">
+                <span style={sectionLabelStyle}>Extrusion Length</span>
+              </Tooltip>
               <NumberInput
                 value={extrudeLength}
                 min={0.1}
@@ -256,20 +258,22 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               Reset Colors
             </Button>
             <Divider />
-            <div style={sliderRowStyle}>
-              <Slider
-                label="Tessellation Tolerance"
-                min={0}
-                max={1}
-                step={0.05}
-                value={[localTolerance]}
-                showValue
-                valuePrecision={2}
-                fontSize={12}
-                onValueChange={([v]) => setLocalTolerance(v)}
-                onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}
-              />
-            </div>
+            <Tooltip content="Controls the visual quality of the surface preview. Lower values produce a finer, more accurate tessellation. This affects only the display — the macro shape and lattice are always computed directly from the raw IGES data.">
+              <div style={sliderRowStyle}>
+                <Slider
+                  label="Tessellation Tolerance"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={[localTolerance]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => setLocalTolerance(v)}
+                  onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}
+                />
+              </div>
+            </Tooltip>
           </div>
         )}
       </div>
