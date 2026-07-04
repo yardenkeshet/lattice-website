@@ -250,7 +250,9 @@ export function ToolPage() {
       },
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode, extrudeLength])
+  // extrudeLength intentionally omitted: pendingMacroRef is a boolean and cannot
+  // track multiple in-flight calls; the real Calculate will use the correct length.
+  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
 
   /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
   React.useEffect(() => {
@@ -298,9 +300,11 @@ export function ToolPage() {
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
+    pendingMacroRef.current = false
     setErrorMsg(null)
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
+    setOriginalIgsFile2(null)
     setMacroShapeGzB64(null)
     setCalcMode(mode)
   }, [])
@@ -367,6 +371,7 @@ export function ToolPage() {
 
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
+    pendingMacroRef.current = false
     setUploadedFile(null)
     setUploadedIgsB64(null)
     setOriginalIgsFile(null)
@@ -374,6 +379,7 @@ export function ToolPage() {
   }, [])
 
   const handleClear2 = React.useCallback(() => {
+    pendingMacroRef.current = false
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
     setOriginalIgsFile2(null)

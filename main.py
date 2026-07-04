@@ -483,9 +483,10 @@ def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_p
 
 
 CALC_MODE_DISPATCH = {
-    CALC_MODE_EXTRUSION:  do_extrusion,
     CALC_MODE_REVOLUTION: do_revolution,
 }
+
+VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
 def calculate_tile(tile_params, graded, tile_type_str, sid):
@@ -707,7 +708,7 @@ def handle_calculate(data):
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
-    if calc_mode != CALC_MODE_RULING and calc_mode not in CALC_MODE_DISPATCH:
+    if calc_mode not in VALID_CALC_MODES:
         logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
