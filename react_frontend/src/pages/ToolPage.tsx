@@ -115,14 +115,20 @@ export function ToolPage() {
   /* ── Blob URL for calculation result (gz+b64 → Blob URL) ── */
   const resultBlobUrl = useStlBlobUrl(resultGzB64)
 
+  /* ── Macro shape preview state ── */
+  const [macroShapeGzB64, setMacroShapeGzB64] = React.useState<string | null>(null)
+  const macroShapeBlobUrl = useStlBlobUrl(macroShapeGzB64)
+  const pendingMacroRef = React.useRef(false)
+
   /* ── Layer assembly ── */
   const layers: MeshLayer[] = React.useMemo(() => {
     if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
     return [
-      uploadedBlobUrl  ? { blobUrl: uploadedBlobUrl  } : null,
-      uploadedBlobUrl2 ? { blobUrl: uploadedBlobUrl2 } : null,
+      uploadedBlobUrl      ? { blobUrl: uploadedBlobUrl }                    : null,
+      uploadedBlobUrl2     ? { blobUrl: uploadedBlobUrl2 }                   : null,
+      macroShapeBlobUrl    ? { blobUrl: macroShapeBlobUrl, opacity: 0.25 }   : null,
     ].filter((l): l is MeshLayer => l !== null)
-  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2])
+  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -179,17 +185,22 @@ export function ToolPage() {
           }
         }
       } else {
-        // model_stl from calculate — full lattice result
-        setIsCalculating(false)
-        setCalcLabel('Calculating…')
-        setResultGzB64(payload.stl_gz_b64)
-        setDownloadToken(payload.download_token)
-        if (payload.args_echo) {
-          pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
-        }
-        if (pendingResetKey.current !== null) {
-          setViewerResetKey(pendingResetKey.current)
-          pendingResetKey.current = null
+        // model_stl — either a macro shape preview or a real calculation result
+        if (pendingMacroRef.current) {
+          pendingMacroRef.current = false
+          setMacroShapeGzB64(payload.stl_gz_b64)
+        } else {
+          setIsCalculating(false)
+          setCalcLabel('Calculating…')
+          setResultGzB64(payload.stl_gz_b64)
+          setDownloadToken(payload.download_token)
+          if (payload.args_echo) {
+            pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
+          }
+          if (pendingResetKey.current !== null) {
+            setViewerResetKey(pendingResetKey.current)
+            pendingResetKey.current = null
+          }
         }
       }
     })
@@ -205,6 +216,32 @@ export function ToolPage() {
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
+
+  /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
+  // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
+  React.useEffect(() => {
+    if (calcMode === RULING) {
+      if (!uploadedIgsB64 || !uploadedIgsB64_2) return
+    } else {
+      if (!uploadedIgsB64) return
+    }
+    setMacroShapeGzB64(null)
+    pendingMacroRef.current = true
+    socket.calculate({
+      filename: uploadedFile?.name ?? 'surface.igs',
+      surface_b64: uploadedIgsB64,
+      ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
+      client_ts: performance.now(),
+      args: {
+        tileType,
+        calcMode,
+        nt1: 0, nt2: 0, nt3: 0,
+        g1, g2,
+        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+      },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
 
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
@@ -230,6 +267,8 @@ export function ToolPage() {
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     setErrorMsg(null)
     setUploadedFile2(null)
+    setUploadedIgsB64_2(null)
+    setMacroShapeGzB64(null)
     setCalcMode(mode)
   }, [])
 
@@ -287,15 +326,18 @@ export function ToolPage() {
   const handleClear1 = React.useCallback(() => {
     setUploadedFile(null)
     setUploadedIgsB64(null)
+    setMacroShapeGzB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
+    setMacroShapeGzB64(null)
   }, [])
 
   /* ── Calculate ── */
   const handleCalculate = React.useCallback(() => {
+    pendingMacroRef.current = false  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
       setErrorMsg(allErrors[0].message)
