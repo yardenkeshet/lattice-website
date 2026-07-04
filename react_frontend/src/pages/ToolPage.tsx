@@ -255,8 +255,10 @@ export function ToolPage() {
   /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
   React.useEffect(() => {
     if (!originalIgsFile) return
+    let cancelled = false
     convertIgsFile(originalIgsFile, igsConversionTolerance)
       .then(({ stlFile, igsB64 }) => {
+        if (cancelled) return
         setUploadedFile(stlFile)
         setUploadedIgsB64(igsB64)
       })
@@ -264,11 +266,13 @@ export function ToolPage() {
     if (originalIgsFile2) {
       convertIgsFile(originalIgsFile2, igsConversionTolerance)
         .then(({ stlFile, igsB64 }) => {
+          if (cancelled) return
           setUploadedFile2(stlFile)
           setUploadedIgsB64_2(igsB64)
         })
         .catch(() => {})
     }
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [igsConversionTolerance])
 
