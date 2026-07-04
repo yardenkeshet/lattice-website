@@ -80,6 +80,18 @@ function ViewerSceneFn({
   const zoomRef = React.useRef(zoom)
   React.useEffect(() => { zoomRef.current = zoom }, [zoom])
 
+  // Shared normalization for preview mode (multi-layer: macro shape → surface layers).
+  const [previewNorm, setPreviewNorm] = React.useState<{ scale: number; center: THREE.Vector3 } | null>(null)
+
+  const macroLayerUrl = layers.length > 1 ? layers[layers.length - 1].blobUrl : undefined
+  React.useEffect(() => {
+    setPreviewNorm(null)
+  }, [macroLayerUrl])
+
+  const handlePreviewNorm = React.useCallback((scale: number, center: THREE.Vector3) => {
+    setPreviewNorm({ scale, center })
+  }, [])
+
   // Holds the actual <canvas> DOM element once R3F creates the renderer.
   const canvasElRef = React.useRef<HTMLCanvasElement | null>(null)
 
@@ -197,21 +209,34 @@ function ViewerSceneFn({
         {/* Camera zoom controller — scales around the auto-fit base */}
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
-        {/* Mesh layers — first layer drives auto-fit */}
-        {layers.filter(l => l.blobUrl).map((layer, i) => (
-          <STLErrorBoundary key={layer.blobUrl}>
-            <React.Suspense fallback={null}>
-              <STLMesh
-                url={layer.blobUrl}
-                fitKey={i === 0 ? cameraResetKey : undefined}
-                onFitDistance={i === 0 ? handleFitDistance : undefined}
-                onFitOrthoZoom={i === 0 ? handleFitOrthoZoom : undefined}
-                meshColor={meshColor}
-                opacity={layer.opacity ?? 1}
-              />
-            </React.Suspense>
-          </STLErrorBoundary>
-        ))}
+        {/* Mesh layers.
+            Single-layer (result mode): layer 0 drives auto-fit, independent normalization.
+            Multi-layer (preview mode): last layer is the macro shape — it drives auto-fit and
+            publishes its norm; all other layers receive externalNorm and are hidden until it arrives. */}
+        {(() => {
+          const filtered = layers.filter(l => l.blobUrl)
+          const isMultiLayer = filtered.length > 1
+          return filtered.map((layer, i) => {
+            const isMacroLayer = isMultiLayer && i === filtered.length - 1
+            const isFitLayer   = isMacroLayer || (!isMultiLayer && i === 0)
+            return (
+              <STLErrorBoundary key={layer.blobUrl}>
+                <React.Suspense fallback={null}>
+                  <STLMesh
+                    url={layer.blobUrl}
+                    fitKey={isFitLayer ? cameraResetKey : undefined}
+                    onFitDistance={isFitLayer ? handleFitDistance : undefined}
+                    onFitOrthoZoom={isFitLayer ? handleFitOrthoZoom : undefined}
+                    meshColor={meshColor}
+                    opacity={layer.opacity ?? 1}
+                    externalNorm={isMultiLayer && !isMacroLayer ? previewNorm : undefined}
+                    onNormalized={isMacroLayer ? handlePreviewNorm : undefined}
+                  />
+                </React.Suspense>
+              </STLErrorBoundary>
+            )
+          })
+        })()}
 
         <OrbitControls makeDefault enablePan enableZoom={true} />
       </Canvas>
@@ -265,9 +290,11 @@ interface STLMeshProps {
   onFitOrthoZoom?: (z: number) => void
   meshColor: string
   opacity?: number
+  externalNorm?: { scale: number; center: THREE.Vector3 } | null
+  onNormalized?: (scale: number, center: THREE.Vector3) => void
 }
 
-function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1 }: STLMeshProps) {
+function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized }: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -279,24 +306,40 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
   React.useLayoutEffect(() => {
     if (!meshRef.current) return
 
-    // 1. Reset to identity so the AABB is measured in raw local space.
+    // External norm provided: skip own bbox computation.
+    if (externalNorm !== undefined) {
+      if (externalNorm === null) {
+        // Hide until the macro norm is ready.
+        meshRef.current.visible = false
+      } else {
+        const { scale, center } = externalNorm
+        meshRef.current.position.set(0, 0, 0)
+        meshRef.current.scale.setScalar(1)
+        meshRef.current.scale.setScalar(scale)
+        meshRef.current.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
+        meshRef.current.visible = true
+      }
+      invalidate()
+      return
+    }
+
+    // Standard independent normalization (externalNorm is undefined).
     meshRef.current.position.set(0, 0, 0)
     meshRef.current.scale.setScalar(1)
 
-    // 2. Measure raw local AABB.
     const box    = new THREE.Box3().setFromObject(meshRef.current)
     const center = box.getCenter(new THREE.Vector3())
     const size   = box.getSize(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
     if (maxDim === 0) return
 
-    // 3. Normalise: targetSize = 3 for main viewer.
-    //    Correct formula: position = -center * s  →  worldCenter = 0 for any geometry.
     const s = 3 / maxDim
     meshRef.current.scale.setScalar(s)
     meshRef.current.position.set(-center.x * s, -center.y * s, -center.z * s)
 
-    // 4. Auto-fit only when BOTH the geometry AND the fitKey are new.
+    onNormalized?.(s, center)
+
+    // Auto-fit only when BOTH the geometry AND the fitKey are new.
     if (
       fitKey !== undefined &&
       geometry !== prevGeometryRef.current &&
@@ -305,7 +348,6 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
       lastFitKeyRef.current   = fitKey
       prevGeometryRef.current = geometry
 
-      // Bounding sphere of the normalised mesh.
       const normBox = new THREE.Box3().setFromObject(meshRef.current)
       const sphere  = new THREE.Sphere()
       normBox.getBoundingSphere(sphere)
@@ -313,8 +355,8 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
 
       if (camera instanceof THREE.PerspectiveCamera) {
         const d = perspectiveFitDistance(r, camera.fov, camera.aspect)
-        const az = Math.PI / 4  // 45° azimuth
-        const el = Math.PI / 6  // 30° elevation
+        const az = Math.PI / 4
+        const el = Math.PI / 6
         camera.position.set(
           d * Math.cos(el) * Math.sin(az),
           d * Math.sin(el),
@@ -341,8 +383,8 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
         if (z > 0) onFitOrthoZoom?.(z)
       }
     }
-    invalidate()  // demand mode: trigger a frame after geometry/camera changes
-  }, [geometry, fitKey, controls, onFitDistance, onFitOrthoZoom, invalidate]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
+    invalidate()
+  }, [geometry, fitKey, controls, onFitDistance, onFitOrthoZoom, invalidate, externalNorm, onNormalized]) // camera is stable in R3F (never replaced); eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
