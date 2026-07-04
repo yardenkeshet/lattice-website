@@ -205,6 +205,7 @@ export function ToolPage() {
       }
     })
     const unsubError = socket.onError(err => {
+      pendingMacroRef.current = false
       setIsCalculating(false)
       setCalcLabel('Calculating…')
       setErrorMsg(err.message)
