@@ -125,9 +125,7 @@ export function ToolPage() {
   /* ── Macro shape preview state ── */
   const [macroShapeGzB64, setMacroShapeGzB64] = React.useState<string | null>(null)
   const macroShapeBlobUrl = useStlBlobUrl(macroShapeGzB64)
-  const pendingMacroRef        = React.useRef(false)
-  const macroVersionRef        = React.useRef(0)
-  const pendingMacroVersionRef = React.useRef(0)
+  const pendingMacroCountRef   = React.useRef(0)
   const uploadedIgsB64Ref      = React.useRef<string | null>(null)
   React.useEffect(() => { uploadedIgsB64Ref.current = uploadedIgsB64 }, [uploadedIgsB64])
   const isCalculatingRef = React.useRef(false)
@@ -199,12 +197,12 @@ export function ToolPage() {
         }
       } else {
         // model_stl — either a macro shape preview or a real calculation result
-        if (pendingMacroRef.current) {
-          if (pendingMacroVersionRef.current === macroVersionRef.current) {
-            pendingMacroRef.current = false
+        if (pendingMacroCountRef.current > 0) {
+          pendingMacroCountRef.current -= 1
+          if (pendingMacroCountRef.current === 0) {
             setMacroShapeGzB64(payload.stl_gz_b64)
           }
-          // else: stale response from superseded macro request — discard silently
+          // else: more responses still expected — intermediate response discarded silently
         } else {
           setIsCalculating(false)
           setCalcLabel('Calculating…')
@@ -221,7 +219,7 @@ export function ToolPage() {
       }
     })
     const unsubError = socket.onError(err => {
-      pendingMacroRef.current = false
+      pendingMacroCountRef.current = 0
       setIsCalculating(false)
       setCalcLabel('Calculating…')
       setErrorMsg(err.message)
@@ -242,10 +240,8 @@ export function ToolPage() {
     } else {
       if (!uploadedIgsB64) return
     }
-    macroVersionRef.current += 1
-    pendingMacroVersionRef.current = macroVersionRef.current
     setMacroShapeGzB64(null)
-    pendingMacroRef.current = true
+    pendingMacroCountRef.current += 1
     socket.calculate({
       filename: uploadedFile?.name ?? 'surface.igs',
       surface_b64: uploadedIgsB64,
@@ -261,8 +257,7 @@ export function ToolPage() {
       },
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // extrudeLength intentionally omitted: pendingMacroRef is a boolean and cannot
-  // track multiple in-flight calls; the real Calculate will use the correct length.
+  // extrudeLength intentionally omitted: a separate debounced effect handles it.
   }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
 
   /* ── Re-trigger macro shape when extrudeLength changes (extrusion mode only) ── */
@@ -271,10 +266,8 @@ export function ToolPage() {
     const igsB64 = uploadedIgsB64Ref.current
     const timer = setTimeout(() => {
       if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
-      macroVersionRef.current += 1
-      pendingMacroVersionRef.current = macroVersionRef.current
       setMacroShapeGzB64(null)
-      pendingMacroRef.current = true
+      pendingMacroCountRef.current += 1
       socket.calculate({
         filename: uploadedFile?.name ?? 'surface.igs',
         surface_b64: igsB64,
@@ -339,7 +332,7 @@ export function ToolPage() {
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
-    pendingMacroRef.current = false
+    pendingMacroCountRef.current = 0
     setErrorMsg(null)
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
@@ -410,7 +403,7 @@ export function ToolPage() {
 
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
-    pendingMacroRef.current = false
+    pendingMacroCountRef.current = 0
     setUploadedFile(null)
     setUploadedIgsB64(null)
     setOriginalIgsFile(null)
@@ -418,7 +411,7 @@ export function ToolPage() {
   }, [])
 
   const handleClear2 = React.useCallback(() => {
-    pendingMacroRef.current = false
+    pendingMacroCountRef.current = 0
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
     setOriginalIgsFile2(null)
@@ -427,7 +420,7 @@ export function ToolPage() {
 
   /* ── Calculate ── */
   const handleCalculate = React.useCallback(() => {
-    pendingMacroRef.current = false  // cancel any in-flight macro preview routing
+    pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
       setErrorMsg(allErrors[0].message)
