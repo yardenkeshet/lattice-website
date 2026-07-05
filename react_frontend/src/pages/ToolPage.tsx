@@ -6,10 +6,10 @@ import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
-import { DualViewerLayout } from '../components/DualViewerLayout'
+import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
-import { stlTextToGzB64 } from '../lib/stl'
+import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -31,8 +31,8 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  * can resend them at Calculate time — the backend no longer persists
  * uploaded files between requests.
  */
-async function convertIgsFile(file: File): Promise<{ stlFile: File; igsB64: string }> {
-  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file), fileToBase64(file)])
+async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
+  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -78,6 +78,7 @@ export function ToolPage() {
   const [g1, setG1]                 = React.useState(DEFAULT_G1)
   const [g2, setG2]                 = React.useState(DEFAULT_G2)
   const [calcMode, setCalcMode]     = React.useState<CalcMode>(DEFAULT_CALC_MODE)
+  const [extrudeLength, setExtrudeLength] = React.useState(10.0)
   const [meshColor, setMeshColor]     = React.useState<string>(DEFAULT_MESH_COLOR)
   const [backgroundColor, setBackgroundColor]     = React.useState<string>(DEFAULT_BACKGROUND_COLOR)
 
@@ -94,6 +95,51 @@ export function ToolPage() {
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
   const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
+
+  /* ── Tessellation tolerance + original IGS file references for re-conversion ── */
+  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(0.0)
+  // Keep a reference to the original File objects so tolerance changes can re-convert
+  const [originalIgsFile,  setOriginalIgsFile]  = React.useState<File | null>(null)
+  const [originalIgsFile2, setOriginalIgsFile2] = React.useState<File | null>(null)
+
+  /* ── Blob URLs for uploaded surface files (created here, consumed by layer assembly) ── */
+  const [uploadedBlobUrl, setUploadedBlobUrl] = React.useState<string | undefined>()
+  React.useEffect(() => {
+    if (!uploadedFile) { setUploadedBlobUrl(undefined); return }
+    const url = URL.createObjectURL(uploadedFile)
+    setUploadedBlobUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [uploadedFile])
+
+  const [uploadedBlobUrl2, setUploadedBlobUrl2] = React.useState<string | undefined>()
+  React.useEffect(() => {
+    if (!uploadedFile2) { setUploadedBlobUrl2(undefined); return }
+    const url = URL.createObjectURL(uploadedFile2)
+    setUploadedBlobUrl2(url)
+    return () => URL.revokeObjectURL(url)
+  }, [uploadedFile2])
+
+  /* ── Blob URL for calculation result (gz+b64 → Blob URL) ── */
+  const resultBlobUrl = useStlBlobUrl(resultGzB64)
+
+  /* ── Macro shape preview state ── */
+  const [macroShapeGzB64, setMacroShapeGzB64] = React.useState<string | null>(null)
+  const macroShapeBlobUrl = useStlBlobUrl(macroShapeGzB64)
+  const pendingMacroCountRef   = React.useRef(0)
+  const uploadedIgsB64Ref      = React.useRef<string | null>(null)
+  React.useEffect(() => { uploadedIgsB64Ref.current = uploadedIgsB64 }, [uploadedIgsB64])
+  const isCalculatingRef = React.useRef(false)
+  React.useEffect(() => { isCalculatingRef.current = isCalculating }, [isCalculating])
+
+  /* ── Layer assembly ── */
+  const layers: MeshLayer[] = React.useMemo(() => {
+    if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
+    return [
+      uploadedBlobUrl      ? { blobUrl: uploadedBlobUrl }                    : null,
+      uploadedBlobUrl2     ? { blobUrl: uploadedBlobUrl2 }                   : null,
+      macroShapeBlobUrl    ? { blobUrl: macroShapeBlobUrl, opacity: 0.25 }   : null,
+    ].filter((l): l is MeshLayer => l !== null)
+  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -150,21 +196,30 @@ export function ToolPage() {
           }
         }
       } else {
-        // model_stl from calculate — full lattice result
-        setIsCalculating(false)
-        setCalcLabel('Calculating…')
-        setResultGzB64(payload.stl_gz_b64)
-        setDownloadToken(payload.download_token)
-        if (payload.args_echo) {
-          pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
-        }
-        if (pendingResetKey.current !== null) {
-          setViewerResetKey(pendingResetKey.current)
-          pendingResetKey.current = null
+        // model_stl — either a macro shape preview or a real calculation result
+        if (pendingMacroCountRef.current > 0) {
+          pendingMacroCountRef.current -= 1
+          if (pendingMacroCountRef.current === 0) {
+            setMacroShapeGzB64(payload.stl_gz_b64)
+          }
+          // else: more responses still expected — intermediate response discarded silently
+        } else {
+          setIsCalculating(false)
+          setCalcLabel('Calculating…')
+          setResultGzB64(payload.stl_gz_b64)
+          setDownloadToken(payload.download_token)
+          if (payload.args_echo) {
+            pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
+          }
+          if (pendingResetKey.current !== null) {
+            setViewerResetKey(pendingResetKey.current)
+            pendingResetKey.current = null
+          }
         }
       }
     })
     const unsubError = socket.onError(err => {
+      pendingMacroCountRef.current = 0
       setIsCalculating(false)
       setCalcLabel('Calculating…')
       setErrorMsg(err.message)
@@ -176,6 +231,84 @@ export function ToolPage() {
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
+
+  /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
+  // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
+  React.useEffect(() => {
+    if (calcMode === RULING) {
+      if (!uploadedIgsB64 || !uploadedIgsB64_2) return
+    } else {
+      if (!uploadedIgsB64) return
+    }
+    setMacroShapeGzB64(null)
+    pendingMacroCountRef.current += 1
+    socket.calculate({
+      filename: uploadedFile?.name ?? 'surface.igs',
+      surface_b64: uploadedIgsB64,
+      ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
+      client_ts: performance.now(),
+      args: {
+        tileType,
+        calcMode,
+        nt1: 0, nt2: 0, nt3: 0,
+        g1, g2,
+        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+        extrudeLength,
+      },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // extrudeLength intentionally omitted: a separate debounced effect handles it.
+  }, [uploadedIgsB64, uploadedIgsB64_2, calcMode])
+
+  /* ── Re-trigger macro shape when extrudeLength changes (extrusion mode only) ── */
+  React.useEffect(() => {
+    if (calcModeRef.current !== 'extrusion' || !uploadedIgsB64Ref.current) return
+    const igsB64 = uploadedIgsB64Ref.current
+    const timer = setTimeout(() => {
+      if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
+      setMacroShapeGzB64(null)
+      pendingMacroCountRef.current += 1
+      socket.calculate({
+        filename: uploadedFile?.name ?? 'surface.igs',
+        surface_b64: igsB64,
+        client_ts: performance.now(),
+        args: {
+          tileType,
+          calcMode: calcModeRef.current,
+          nt1: 0, nt2: 0, nt3: 0,
+          g1, g2,
+          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+          extrudeLength,
+        },
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrudeLength])
+
+  /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
+  React.useEffect(() => {
+    if (!originalIgsFile) return
+    let cancelled = false
+    convertIgsFile(originalIgsFile, igsConversionTolerance)
+      .then(({ stlFile, igsB64 }) => {
+        if (cancelled) return
+        setUploadedFile(stlFile)
+        setUploadedIgsB64(igsB64)
+      })
+      .catch(() => {/* ignore re-conversion failures silently */})
+    if (originalIgsFile2) {
+      convertIgsFile(originalIgsFile2, igsConversionTolerance)
+        .then(({ stlFile, igsB64 }) => {
+          if (cancelled) return
+          setUploadedFile2(stlFile)
+          setUploadedIgsB64_2(igsB64)
+        })
+        .catch(() => {})
+    }
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [igsConversionTolerance])
 
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
@@ -199,8 +332,12 @@ export function ToolPage() {
   }, [socket])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
+    pendingMacroCountRef.current = 0
     setErrorMsg(null)
     setUploadedFile2(null)
+    setUploadedIgsB64_2(null)
+    setOriginalIgsFile2(null)
+    setMacroShapeGzB64(null)
     setCalcMode(mode)
   }, [])
 
@@ -213,7 +350,12 @@ export function ToolPage() {
       if (files.length >= 2) {
         setViewerResetKey('file-' + Date.now())
         try {
-          const [r1, r2] = await Promise.all([convertIgsFile(files[0]), convertIgsFile(files[1])])
+          const [r1, r2] = await Promise.all([
+            convertIgsFile(files[0], igsConversionTolerance),
+            convertIgsFile(files[1], igsConversionTolerance),
+          ])
+          setOriginalIgsFile(files[0])
+          setOriginalIgsFile2(files[1])
           setUploadedFile(r1.stlFile)
           setUploadedIgsB64(r1.igsB64)
           setUploadedFile2(r2.stlFile)
@@ -224,20 +366,24 @@ export function ToolPage() {
         if (!uploadedFile) {
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile2(file)
             setUploadedFile2(stlFile)
             setUploadedIgsB64_2(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
         } else {
+          // Both already loaded — replace the first file
           setViewerResetKey('file-' + Date.now())
           try {
-            const { stlFile, igsB64 } = await convertIgsFile(file)
+            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+            setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
           } catch { setErrorMsg('Failed to convert IGS file') }
@@ -247,44 +393,34 @@ export function ToolPage() {
       const file = files[0]
       setViewerResetKey('file-' + Date.now())
       try {
-        const { stlFile, igsB64 } = await convertIgsFile(file)
+        const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
+        setOriginalIgsFile(file)
         setUploadedFile(stlFile)
         setUploadedIgsB64(igsB64)
       } catch { setErrorMsg('Failed to convert IGS file') }
     }
-  }, [calcMode, uploadedFile, uploadedFile2])
-
-  const handleFile1Drop = React.useCallback(async (file: File) => {
-    setResultGzB64(null)
-    try {
-      const { stlFile, igsB64 } = await convertIgsFile(file)
-      setUploadedFile(stlFile)
-      setUploadedIgsB64(igsB64)
-    } catch { setErrorMsg('Failed to convert IGS file') }
-  }, [])
-
-  const handleFile2Drop = React.useCallback(async (file: File) => {
-    setResultGzB64(null)
-    try {
-      const { stlFile, igsB64 } = await convertIgsFile(file)
-      setUploadedFile2(stlFile)
-      setUploadedIgsB64_2(igsB64)
-    } catch { setErrorMsg('Failed to convert IGS file') }
-  }, [])
+  }, [calcMode, uploadedFile, uploadedFile2, igsConversionTolerance])
 
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
+    pendingMacroCountRef.current = 0
     setUploadedFile(null)
     setUploadedIgsB64(null)
+    setOriginalIgsFile(null)
+    setMacroShapeGzB64(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
+    pendingMacroCountRef.current = 0
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
+    setOriginalIgsFile2(null)
+    setMacroShapeGzB64(null)
   }, [])
 
   /* ── Calculate ── */
   const handleCalculate = React.useCallback(() => {
+    pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
       setErrorMsg(allErrors[0].message)
@@ -319,10 +455,10 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2], extrudeLength },
     }
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -392,6 +528,10 @@ export function ToolPage() {
             setModelColor={setMeshColor}
             backgroundColor={backgroundColor}
             setBackgroundColor={setBackgroundColor}
+            extrudeLength={extrudeLength}
+            onExtrudeLengthChange={setExtrudeLength}
+            tolerance={igsConversionTolerance}
+            onToleranceChange={setIgsConversionTolerance}
             />
         </div>
 
@@ -424,30 +564,15 @@ export function ToolPage() {
           )}
 
           <div style={viewerStyle}>
-            {calcMode === RULING && !resultGzB64
-              ? (
-                <DualViewerLayout
-                  file1={uploadedFile}
-                  file2={uploadedFile2}
-                  onFile1Drop={handleFile1Drop}
-                  onFile2Drop={handleFile2Drop}
-                  cameraMode={cameraMode}
-                  style={{ height: '100%' }}
-                />
-              )
-              : (
-                <ViewerScene
-                  uploadedFile={uploadedFile}
-                  resultStlGzB64={resultGzB64}
-                  cameraMode={cameraMode}
-                  cameraResetKey={viewerResetKey}
-                  onFileDrop={handleViewerFileDrop}
-                  onAutoFitComplete={handleAutoFitComplete}
-                  meshColor={meshColor}
-                  backgroundColor={backgroundColor}
-                />
-              )
-            }
+            <ViewerScene
+              layers={layers}
+              cameraMode={cameraMode}
+              cameraResetKey={viewerResetKey}
+              onFileDrop={handleViewerFileDrop}
+              onAutoFitComplete={handleAutoFitComplete}
+              meshColor={meshColor}
+              backgroundColor={backgroundColor}
+            />
           </div>
         </div>
 

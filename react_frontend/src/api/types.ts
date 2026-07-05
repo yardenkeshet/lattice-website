@@ -11,6 +11,7 @@ export interface CalculateArgs {
   p3: number;
   g1: number;
   g2: number;
+  extrudeLength?: number;  // extrusion mode only; backend defaults to 10.0 when absent
 }
 
 export interface CalculatePayload {

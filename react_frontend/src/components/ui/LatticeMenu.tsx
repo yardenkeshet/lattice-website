@@ -37,6 +37,10 @@ export interface LatticeMenuProps {
   setModelColor: (color: string) => void
   backgroundColor: string
   setBackgroundColor: (color: string) => void
+  extrudeLength: number
+  onExtrudeLengthChange: (v: number) => void
+  tolerance: number
+  onToleranceChange: (v: number) => void
 }
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -56,10 +60,16 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       setModelColor,
       backgroundColor,
       setBackgroundColor,
+      extrudeLength,
+      onExtrudeLengthChange,
+      tolerance,
+      onToleranceChange,
     },
     ref
   ) => {
     const [useViewerSettingsMenu, setUseViewerSettingsMenu] = React.useState(false)
+    const [localTolerance, setLocalTolerance] = React.useState(tolerance)
+    React.useEffect(() => { setLocalTolerance(tolerance) }, [tolerance])
     const [isAddFilesHovered, setIsAddFilesHovered] = React.useState(false)
     const [isAddFilesFocused, setIsAddFilesFocused] = React.useState(false)
 
@@ -112,6 +122,19 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             value={calculationMode}
             onChange={v => onCalculationModeChange(v as CalcMode)}
           />
+          {calculationMode === 'extrusion' && (
+            <div style={extrudeLengthWrapperStyle}>
+              <Tooltip content="Controls how far the input surface is extruded along its normal to form the 3D macro volume. A larger value produces a deeper extrusion.">
+                <span style={sectionLabelStyle}>Extrusion Length</span>
+              </Tooltip>
+              <NumberInput
+                value={extrudeLength}
+                min={0.1}
+                onChange={onExtrudeLengthChange}
+                aria-label="Extrusion length"
+              />
+            </div>
+          )}
         </div>
 
         <Divider />
@@ -234,6 +257,23 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             >
               Reset Colors
             </Button>
+            <Divider />
+            <Tooltip content="Controls the visual quality of the surface preview. Lower values produce a finer, more accurate tessellation. This affects only the display — the macro shape and lattice are always computed directly from the raw IGES data.">
+              <div style={sliderRowStyle}>
+                <Slider
+                  label="Tessellation Tolerance"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={[localTolerance]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => setLocalTolerance(v)}
+                  onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}
+                />
+              </div>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -370,6 +410,12 @@ const removeFileButtonStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   flexShrink: 0,
   padding: 2,
+}
+
+const extrudeLengthWrapperStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
 }
 
 export { LatticeMenu }

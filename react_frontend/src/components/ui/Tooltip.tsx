@@ -36,11 +36,11 @@ export function Tooltip({ content, children }: TooltipProps) {
   const trigger = React.cloneElement(children as React.ReactElement<any>, {
     ref,
     onMouseEnter: (e: React.MouseEvent) => {
-      children.props.onMouseEnter?.(e)
+      (children as React.ReactElement<any>).props.onMouseEnter?.(e)
       show()
     },
     onMouseLeave: (e: React.MouseEvent) => {
-      children.props.onMouseLeave?.(e)
+      (children as React.ReactElement<any>).props.onMouseLeave?.(e)
       hide()
     },
   })

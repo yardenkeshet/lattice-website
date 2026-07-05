@@ -444,12 +444,12 @@ def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, 
     return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
 
-def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
     result = _dll_from_extrusion(
         igs_path.encode('ascii'),
-        10.0,
+        extrude_length,
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
@@ -483,9 +483,10 @@ def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_p
 
 
 CALC_MODE_DISPATCH = {
-    CALC_MODE_EXTRUSION:  do_extrusion,
     CALC_MODE_REVOLUTION: do_revolution,
 }
+
+VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
 def calculate_tile(tile_params, graded, tile_type_str, sid):
@@ -690,6 +691,7 @@ def handle_calculate(data):
         p1  = float(args.get('p1', 0.2))
         p2  = float(args.get('p2', 0.0))
         p3  = float(args.get('p3', 0.4))
+        extrude_length = float(args.get('extrudeLength', 10.0))
     except (TypeError, ValueError) as exc:
         logger.exception(f"[CALC] Bad numeric argument: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
@@ -706,7 +708,7 @@ def handle_calculate(data):
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
-    if calc_mode != CALC_MODE_RULING and calc_mode not in CALC_MODE_DISPATCH:
+    if calc_mode not in VALID_CALC_MODES:
         logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
@@ -753,6 +755,11 @@ def handle_calculate(data):
                         out_folder, igs_path, igs_path2,
                         curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     )
+            elif calc_mode == CALC_MODE_EXTRUSION:
+                stl_content, out_stl_name, out_igs_name = do_extrusion(
+                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
+                    extrude_length,
+                )
             else:
                 dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
                 stl_content, out_stl_name, out_igs_name = dispatch_fn(
@@ -846,12 +853,13 @@ def handle_convert_igs_to_stl():
         return jsonify({'error': 'No file provided'}), 400
 
     igs_bytes = request.files['file'].read()
+    tolerance = float(request.form.get('tolerance', 0.0))
 
     try:
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), 0.0)
+            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), tolerance)
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")

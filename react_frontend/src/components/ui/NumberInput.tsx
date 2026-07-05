@@ -155,7 +155,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             value={internalValue}
             onChange={handleInputChange}
             onBlur={handleBlur}
-            onFocus={() => setIsFocused(true)}
+            onFocus={(e) => { setIsFocused(true); e.target.select() }}
             onKeyDown={handleKeyDown}
             disabled={disabled}
             aria-label={ariaLabel ?? (label ? undefined : 'Number input')}
