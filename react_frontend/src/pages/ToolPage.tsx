@@ -334,9 +334,14 @@ export function ToolPage() {
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     pendingMacroCountRef.current = 0
     setErrorMsg(null)
+    setUploadedFile(null)
+    setUploadedIgsB64(null)
+    setOriginalIgsFile(null)
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
     setOriginalIgsFile2(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
     setMacroShapeGzB64(null)
     setCalcMode(mode)
   }, [])
