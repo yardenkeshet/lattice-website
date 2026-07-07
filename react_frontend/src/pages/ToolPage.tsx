@@ -199,7 +199,7 @@ export function ToolPage() {
         // model_stl — either a macro shape preview or a real calculation result
         if (pendingMacroCountRef.current > 0) {
           pendingMacroCountRef.current -= 1
-          if (pendingMacroCountRef.current === 0) {
+          if (payload.stl_gz_b64) {
             setMacroShapeGzB64(payload.stl_gz_b64)
           }
           // else: more responses still expected — intermediate response discarded silently

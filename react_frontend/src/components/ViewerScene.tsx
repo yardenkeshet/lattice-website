@@ -457,7 +457,7 @@ const placeholderTextStyle: React.CSSProperties = {
 
 const dropHintBarStyle: React.CSSProperties = {
   position: 'absolute',
-  top: 0,
+  top: 24,
   left: 0,
   right: 0,
   height: 30,
