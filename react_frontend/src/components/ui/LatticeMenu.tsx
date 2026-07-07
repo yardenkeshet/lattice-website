@@ -104,9 +104,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             <span style={sectionLabelStyle}>Tiles Counts</span>
           </Tooltip>
           <div style={numTilesRowStyle}>
-            <NumberInput label="X" value={nt1} min={1} onChange={onNt1Change} aria-label="X tiles" />
-            <NumberInput label="Y" value={nt2} min={1} onChange={onNt2Change} aria-label="Y tiles" />
-            <NumberInput label="Z" value={nt3} min={1} onChange={onNt3Change} aria-label="Z tiles" />
+            <NumberInput label="X" value={nt1} min={1} max={10} onChange={onNt1Change} aria-label="X tiles" />
+            <NumberInput label="Y" value={nt2} min={1} max={10} onChange={onNt2Change} aria-label="Y tiles" />
+            <NumberInput label="Z" value={nt3} min={1} max={10} onChange={onNt3Change} aria-label="Z tiles" />
           </div>
         </div>
 
@@ -207,8 +207,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <div style={sliderRowStyle}>
                 <Slider
                   label="Grading Start"
-                  min={0}
-                  max={1}
+                  min={0.1}
+                  max={2.5}
                   step={0.01}
                   value={[g1]}
                   showValue
@@ -218,8 +218,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 />
                 <Slider
                   label="Grading End"
-                  min={0}
-                  max={1}
+                  min={0.1}
+                  max={2.5}
                   step={0.01}
                   value={[g2]}
                   showValue
