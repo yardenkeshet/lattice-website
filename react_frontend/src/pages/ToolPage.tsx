@@ -241,7 +241,7 @@ export function ToolPage() {
       if (!uploadedIgsB64) return
     }
     setMacroShapeGzB64(null)
-    pendingMacroCountRef.current += 1
+    pendingMacroCountRef.current += 2
     socket.calculate({
       filename: uploadedFile?.name ?? 'surface.igs',
       surface_b64: uploadedIgsB64,
@@ -267,7 +267,7 @@ export function ToolPage() {
     const timer = setTimeout(() => {
       if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
       setMacroShapeGzB64(null)
-      pendingMacroCountRef.current += 1
+      pendingMacroCountRef.current += 2
       socket.calculate({
         filename: uploadedFile?.name ?? 'surface.igs',
         surface_b64: igsB64,
@@ -413,6 +413,8 @@ export function ToolPage() {
     setUploadedIgsB64(null)
     setOriginalIgsFile(null)
     setMacroShapeGzB64(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
