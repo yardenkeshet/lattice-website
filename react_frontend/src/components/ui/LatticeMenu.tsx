@@ -203,7 +203,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between zero and one.">
+            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between 0.1 and 2.5.">
           <div style={sliderRowStyle}>
                 <Slider
                   label="Grading Start"
