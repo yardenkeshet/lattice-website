@@ -506,6 +506,8 @@ export function ToolPage() {
     [uploadedFile, uploadedFile2]
   )
 
+  const showDropHint = !uploadedFile && !downloadToken
+
   const handleFileRemove = React.useCallback((name: string) => {
     if (uploadedFile?.name === name) handleClear1()
     else if (uploadedFile2?.name === name) handleClear2()
@@ -579,6 +581,7 @@ export function ToolPage() {
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
               backgroundColor={backgroundColor}
+              showDropHint={showDropHint}
             />
           </div>
         </div>
