@@ -52,6 +52,17 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
 
           <PillDivider />
 
+          {/* Make Lattice button */}
+          <Button
+            variant="secondary"
+            disabled={isCalculating}
+            onClick={onCalculate}
+          >
+            {isCalculating ? calcLabel : 'Make Lattice'}
+          </Button>
+
+          <PillDivider />
+
           {/* Export Lattice button */}
           {canExport ? (
             <Button
@@ -65,17 +76,6 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
               Export Lattice
             </Button>
           )}
-
-          <PillDivider />
-
-          {/* Make Lattice button */}
-          <Button
-            variant="secondary"
-            disabled={isCalculating}
-            onClick={onCalculate}
-          >
-            {isCalculating ? calcLabel : 'Make Lattice'}
-          </Button>
         </div>
 
         <Popup isOpen={isExportPopupOpen} onClose={() => setIsExportPopupOpen(false)}>
