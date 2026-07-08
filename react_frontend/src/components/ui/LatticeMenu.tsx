@@ -75,6 +75,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+    const fileLabel = calcMode === 'ruling'
+      ? 'Load two surfaces as IGES files'
+      : 'Load one surface as IGES file'
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
@@ -143,7 +147,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         <div
           role="button"
           tabIndex={0}
-          aria-label="Load surfaces as IGES Files"
+          aria-label={fileLabel}
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
           onMouseEnter={() => setIsAddFilesHovered(true)}
@@ -161,8 +165,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <Tooltip content="The Extrusion and Revolution constructors of the macro-shape require that one IGES file surface be specified here. The Ruling constructor requires two IGES file surfaces. Each IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface with no interior knots. U/V degrees could be anything.">
-              <span style={sectionLabelStyle}>Load surfaces as IGES Files</span>
+            <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots.">
+              <span style={sectionLabelStyle}>{fileLabel}</span>
             </Tooltip>
             <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
@@ -239,7 +243,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">
-                <span>Mesh Color:</span>
+                <span>Foreground Color:</span>
               </Tooltip>
               <ColorPicker disableAlpha value={modelColor} onChange={setModelColor} />
             </div>
