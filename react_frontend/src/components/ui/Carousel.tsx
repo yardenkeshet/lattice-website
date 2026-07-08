@@ -55,7 +55,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     const [isPaused, setIsPaused] = React.useState(false)
     const pauseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    // Clean up debounce timer on unmount
+    // Clean up pause timer on unmount
     React.useEffect(() => {
       return () => {
         if (pauseTimerRef.current !== null) clearTimeout(pauseTimerRef.current)
@@ -83,7 +83,10 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     // Auto-play
     React.useEffect(() => {
       if (!autoPlay || disabled || isPaused) return
-      const id = setInterval(next, autoPlay)
+      const id = setInterval(
+        () => setCurrent(i => (i === count - 1 ? (loop ? 0 : count - 1) : i + 1)),
+        autoPlay
+      )
       return () => clearInterval(id)
     }, [autoPlay, disabled, count, loop, isPaused])
 
