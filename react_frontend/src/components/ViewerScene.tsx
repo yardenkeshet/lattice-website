@@ -4,6 +4,8 @@ import { OrbitControls } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
 import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
+import { ShadedMaterial } from './ShadedMaterial'
+import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
 
 /* ─── Public API ─── */
 
@@ -39,6 +41,9 @@ export interface ViewerSceneProps {
   meshColor: string
   backgroundColor: string
   showDropHint?: boolean
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -71,6 +76,9 @@ function ViewerSceneFn({
   meshColor,
   backgroundColor,
   showDropHint = false,
+  shadingMode = DEFAULT_SHADING_MODE,
+  specularGray = DEFAULT_SPECULAR_GRAY,
+  shininess = DEFAULT_SHININESS,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -245,6 +253,9 @@ function ViewerSceneFn({
                     opacity={layer.opacity ?? 1}
                     externalNorm={isMultiLayer && !isMacroLayer ? previewNorm : undefined}
                     onNormalized={isMacroLayer ? handlePreviewNorm : undefined}
+                    shadingMode={shadingMode}
+                    specularGray={specularGray}
+                    shininess={shininess}
                   />
                 </React.Suspense>
               </STLErrorBoundary>
@@ -322,9 +333,15 @@ interface STLMeshProps {
   opacity?: number
   externalNorm?: { scale: number; center: THREE.Vector3 } | null
   onNormalized?: (scale: number, center: THREE.Vector3) => void
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
 }
 
-function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized }: STLMeshProps) {
+function STLMesh({
+  url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized,
+  shadingMode = DEFAULT_SHADING_MODE, specularGray = DEFAULT_SPECULAR_GRAY, shininess = DEFAULT_SHININESS,
+}: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -418,13 +435,13 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshPhongMaterial
+      <ShadedMaterial
+        mode={shadingMode}
         color={meshColor}
-        specular={0x111111}
-        shininess={50}
+        specularGray={specularGray}
+        shininess={shininess}
         side={THREE.DoubleSide}
         opacity={opacity}
-        transparent={opacity < 1}
       />
     </mesh>
   )

@@ -6,6 +6,8 @@ import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
 import * as THREE from 'three'
 import { perspectiveFitDistance } from '../../lib/cameraFit'
+import { ShadedMaterial } from '../ShadedMaterial'
+import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../../lib/parameters'
 
 /* ─── Public API ─── */
 
@@ -37,6 +39,9 @@ export interface TileCardProps {
    */
   meshColor: string
   backgroundColor: string
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
   /**
    * Allow camera orbit interaction (drag to rotate and scroll to zoom).
    * Disabled by default for small cards so click-to-select works cleanly.
@@ -70,6 +75,9 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
       'aria-label': ariaLabel,
       meshColor,
       backgroundColor,
+      shadingMode = DEFAULT_SHADING_MODE,
+      specularGray = DEFAULT_SPECULAR_GRAY,
+      shininess = DEFAULT_SHININESS,
       enableOrbit = false,
       cameraResetKey,
       imageUrl,
@@ -161,10 +169,12 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
                 />
               )}
 
-              <React.Suspense fallback={modelUrl ? null : <PlaceholderMesh color={meshColor} />}>
+              <React.Suspense fallback={modelUrl ? null : (
+                <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+              )}>
                 {modelUrl
-                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey}/>
-                  : <PlaceholderMesh color={meshColor} />
+                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+                  : <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
                 }
               </React.Suspense>
             </Canvas>
@@ -186,7 +196,19 @@ TileCard.displayName = 'TileCard'
 
 /* ─── STL model loader ─── */
 
-function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?: string }) {
+interface STLModelProps {
+  url: string
+  color: string
+  fitKey?: string
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
+}
+
+function STLModel({
+  url, color, fitKey,
+  shadingMode = DEFAULT_SHADING_MODE, specularGray = DEFAULT_SPECULAR_GRAY, shininess = DEFAULT_SHININESS,
+}: STLModelProps) {
   const geometry = useLoader(STLLoader, url)
   const ref = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -246,19 +268,31 @@ function STLModel({ url, color, fitKey }: { url: string; color: string; fitKey?:
 
   return (
     <mesh ref={ref} geometry={geometry} castShadow>
-      <meshPhongMaterial color={color} specular={0x111111} shininess={50} />
+      <ShadedMaterial mode={shadingMode} color={color} specularGray={specularGray} shininess={shininess} />
     </mesh>
   )
 }
 
 /* ─── Fallback geometry rendered when no modelUrl is provided ─── */
 
-function PlaceholderMesh({ color }: { color: string }) {
+interface PlaceholderMeshProps {
+  color: string
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
+}
+
+function PlaceholderMesh({
+  color,
+  shadingMode = DEFAULT_SHADING_MODE,
+  specularGray = DEFAULT_SPECULAR_GRAY,
+  shininess = DEFAULT_SHININESS,
+}: PlaceholderMeshProps) {
   return (
     <Center>
       <mesh castShadow>
         <torusKnotGeometry args={[0.6, 0.2, 128, 32]} />
-        <meshPhongMaterial color={color} specular={0x111111} shininess={50}/>
+        <ShadedMaterial mode={shadingMode} color={color} specularGray={specularGray} shininess={shininess} />
       </mesh>
     </Center>
   )

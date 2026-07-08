@@ -7,13 +7,30 @@ import { Dropdown, type DropdownOption } from './Dropdown'
 import { CALC_MODE_DEFS, type CalcMode } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
-import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../../lib/parameters'
+import {
+  DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR,
+  NORMAL, GOURAUD, PHONG,
+  DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  type ShadingMode,
+} from '../../lib/parameters'
 import { Tooltip } from './Tooltip'
 import { sliderRowStyle } from './TileMenu'
 
 const CALC_MODE_OPTIONS: DropdownOption[] = Object.entries(CALC_MODE_DEFS).map(
   ([mode, def]) => ({ value: mode, label: def.label })
 )
+
+const SHADING_OPTIONS: DropdownOption[] = [
+  { value: NORMAL, label: 'Normal' },
+  { value: GOURAUD, label: 'Gouraud' },
+  { value: PHONG, label: 'Phong' },
+]
+
+const SHADING_TOOLTIPS: Record<ShadingMode, string> = {
+  [NORMAL]: 'Normal — colors the surface by its normal direction. Ignores the foreground color.',
+  [GOURAUD]: 'Gouraud — per-vertex (Lambert) lighting. Matte, no specular highlights.',
+  [PHONG]: 'Phong — per-pixel lighting with specular highlights, controlled by the sliders below.',
+}
 
 export interface LatticeMenuProps {
   nt1: number
@@ -41,6 +58,12 @@ export interface LatticeMenuProps {
   onExtrudeLengthChange: (v: number) => void
   tolerance: number
   onToleranceChange: (v: number) => void
+  shadingMode: ShadingMode
+  setShadingMode: (mode: ShadingMode) => void
+  specularGray: number
+  setSpecularGray: (v: number) => void
+  shininess: number
+  setShininess: (v: number) => void
 }
 
 const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
@@ -64,6 +87,12 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
       onExtrudeLengthChange,
       tolerance,
       onToleranceChange,
+      shadingMode,
+      setShadingMode,
+      specularGray,
+      setSpecularGray,
+      shininess,
+      setShininess,
     },
     ref
   ) => {
@@ -257,11 +286,62 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               <ColorPicker disableAlpha value={backgroundColor} onChange={setBackgroundColor} />
             </div>
             <Divider />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Tooltip content={SHADING_TOOLTIPS[shadingMode]}>
+                <span>Shading:</span>
+              </Tooltip>
+              <Dropdown
+                options={SHADING_OPTIONS}
+                value={shadingMode}
+                onChange={v => setShadingMode(v as ShadingMode)}
+              />
+            </div>
+            {shadingMode === PHONG && (
+              <>
+                <Tooltip content="Grayscale intensity of the specular highlight. Higher values produce a brighter, more mirror-like highlight.">
+                  <div style={sliderRowStyle}>
+                    <Slider
+                      label="Specular"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={[specularGray]}
+                      showValue
+                      valuePrecision={0}
+                      fontSize={12}
+                      onValueChange={([v]) => setSpecularGray(v)}
+                    />
+                  </div>
+                </Tooltip>
+                <Tooltip content="Size and sharpness of the specular highlight. Higher values produce a smaller, tighter highlight.">
+                  <div style={sliderRowStyle}>
+                    <Slider
+                      label="Shininess"
+                      min={0}
+                      max={200}
+                      step={1}
+                      value={[shininess]}
+                      showValue
+                      valuePrecision={0}
+                      fontSize={12}
+                      onValueChange={([v]) => setShininess(v)}
+                    />
+                  </div>
+                </Tooltip>
+              </>
+            )}
+            <Divider />
             <Button
-              onClick={() => { setModelColor(DEFAULT_MODEL_COLOR); setBackgroundColor(DEFAULT_BACKGROUND_COLOR) }}
+              onClick={() => {
+                setModelColor(DEFAULT_MODEL_COLOR)
+                setBackgroundColor(DEFAULT_BACKGROUND_COLOR)
+                setShadingMode(DEFAULT_SHADING_MODE)
+                setSpecularGray(DEFAULT_SPECULAR_GRAY)
+                setShininess(DEFAULT_SHININESS)
+              }}
               variant="secondary"
             >
-              Reset Colors
+              Reset Display Settings
             </Button>
             <Divider />
             <Tooltip content="Controls the visual quality of the surface preview. Lower values produce a finer, more accurate tessellation. This affects only the display — the macro shape and lattice are always computed directly from the raw IGES data.">

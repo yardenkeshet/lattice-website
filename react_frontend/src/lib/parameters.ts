@@ -25,6 +25,17 @@ export const INITIAL_VIEWER_RESET_KEY = 'initial'
 export const DEFAULT_MODEL_COLOR = "#00aaff"
 export const DEFAULT_BACKGROUND_COLOR = "#fff"
 
+export const NORMAL = 'normal'
+export const GOURAUD = 'gouraud'
+export const PHONG = 'phong'
+
+export type ShadingMode = typeof NORMAL | typeof GOURAUD | typeof PHONG
+
+export const DEFAULT_SHADING_MODE: ShadingMode = PHONG
+// Matches the mesh material hardcoded across the app before shading became configurable.
+export const DEFAULT_SPECULAR_GRAY = 17
+export const DEFAULT_SHININESS = 50
+
 //Tile types and parameters:
 
 export const DEFAULT_TILE_TYPE: TileType = DIAGONAL

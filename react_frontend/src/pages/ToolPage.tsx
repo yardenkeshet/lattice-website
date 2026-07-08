@@ -19,6 +19,8 @@ import {
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  type ShadingMode,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
 import type { CalculateArgs, ValidationError } from '../api/types'
@@ -81,6 +83,9 @@ export function ToolPage() {
   const [extrudeLength, setExtrudeLength] = React.useState(10.0)
   const [meshColor, setMeshColor]     = React.useState<string>(DEFAULT_MESH_COLOR)
   const [backgroundColor, setBackgroundColor]     = React.useState<string>(DEFAULT_BACKGROUND_COLOR)
+  const [shadingMode, setShadingMode] = React.useState<ShadingMode>(DEFAULT_SHADING_MODE)
+  const [specularGray, setSpecularGray] = React.useState<number>(DEFAULT_SPECULAR_GRAY)
+  const [shininess, setShininess]     = React.useState<number>(DEFAULT_SHININESS)
 
 
   /* ── File / result state ── */
@@ -538,6 +543,12 @@ export function ToolPage() {
             setModelColor={setMeshColor}
             backgroundColor={backgroundColor}
             setBackgroundColor={setBackgroundColor}
+            shadingMode={shadingMode}
+            setShadingMode={setShadingMode}
+            specularGray={specularGray}
+            setSpecularGray={setSpecularGray}
+            shininess={shininess}
+            setShininess={setShininess}
             extrudeLength={extrudeLength}
             onExtrudeLengthChange={setExtrudeLength}
             tolerance={igsConversionTolerance}
@@ -582,6 +593,9 @@ export function ToolPage() {
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
               backgroundColor={backgroundColor}
+              shadingMode={shadingMode}
+              specularGray={specularGray}
+              shininess={shininess}
               showDropHint={showDropHint}
             />
           </div>
@@ -599,6 +613,9 @@ export function ToolPage() {
             onValidationChange={handleValidationChange}
             meshColor={meshColor}
             backgroundColor={backgroundColor}
+            shadingMode={shadingMode}
+            specularGray={specularGray}
+            shininess={shininess}
           />
         </div>
       </div>
