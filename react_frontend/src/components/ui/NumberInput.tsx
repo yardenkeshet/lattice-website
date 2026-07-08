@@ -32,6 +32,8 @@ export interface NumberInputProps {
   /** Accessible name when no visible label is provided */
   'aria-label'?: string
   id?: string
+  /** Allow decimal input: uses inputMode="decimal" and permits a trailing dot mid-type. */
+  decimal?: boolean
 }
 
 // Note: ref is forwarded to the inner <input> element for focus control.
@@ -51,6 +53,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       className,
       'aria-label': ariaLabel,
       id,
+      decimal = false,
       ...rest
     },
     ref
@@ -87,8 +90,8 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value
-      if (raw === '' || raw === '-') {
-        // Allow empty / in-progress typing without committing yet
+      if (raw === '' || raw === '-' || raw.endsWith('.')) {
+        // Allow empty, negative sign, or trailing dot — don't commit yet
         setInternalValue(raw as unknown as number)
         return
       }
@@ -98,11 +101,13 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 
     const handleBlur = () => {
       setIsFocused(false)
-      // Snap to a valid clamped number on blur if field was left empty
-      if (typeof internalValue !== 'number' || isNaN(internalValue)) {
+      const num = typeof internalValue === 'number'
+        ? internalValue
+        : parseFloat(String(internalValue))
+      if (isNaN(num)) {
         commit(defaultValue)
       } else {
-        commit(internalValue)
+        commit(num)
       }
     }
 
@@ -151,7 +156,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             ref={ref}
             id={id}
             type="text"
-            inputMode="numeric"
+            inputMode={decimal ? 'decimal' : 'numeric'}
             value={internalValue}
             onChange={handleInputChange}
             onBlur={handleBlur}

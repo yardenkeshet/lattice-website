@@ -132,6 +132,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 <span style={sectionLabelStyle}>Extrusion Length</span>
               </Tooltip>
               <NumberInput
+                decimal
+                step={0.01}
                 value={extrudeLength}
                 min={0.1}
                 onChange={onExtrudeLengthChange}
