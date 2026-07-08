@@ -36,13 +36,6 @@ const paragraphStyle: React.CSSProperties = {
   margin: '0 0 var(--space-sm)',
 }
 
-const separatorStyle: React.CSSProperties = {
-  height: 7,
-  backgroundColor: 'var(--navy-primary)',
-  width: '100%',
-  flexShrink: 0,
-}
-
 /* ── CTA section ── */
 
 const ctaSectionStyle: React.CSSProperties = {
@@ -90,16 +83,6 @@ export function HomePage() {
     <div style={pageStyle}>
       <Banner />
 
-      {/* ── Body text ── */}
-      <div style={bodyTextStyle}>
-        {TAMC_TEXT.split('\n\n').map((para, i) => (
-          <p key={i} style={paragraphStyle}>{para}</p>
-        ))}
-      </div>
-
-      {/* Navy separator */}
-      <div style={separatorStyle} aria-hidden="true" />
-
       {/* ── Carousel ── */}
       <Carousel images={SLIDES} loop autoPlay={5000} showDots={false} />
 
@@ -116,6 +99,13 @@ export function HomePage() {
         >
           Open Lattice Maker →
         </button>
+      </div>
+
+      {/* ── Body text ── */}
+      <div style={bodyTextStyle}>
+        {TAMC_TEXT.split('\n\n').map((para, i) => (
+          <p key={i} style={paragraphStyle}>{para}</p>
+        ))}
       </div>
 
       <Footer />
