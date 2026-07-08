@@ -350,6 +350,7 @@ export function ToolPage() {
   const handleFilesAdd = React.useCallback(async (files: File[]) => {
     setResultGzB64(null)
     setErrorMsg(null)
+    pendingMacroCountRef.current = 0
 
     if (calcMode === RULING) {
       if (files.length >= 2) {
