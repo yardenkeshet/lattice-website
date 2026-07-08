@@ -217,6 +217,12 @@ function ViewerSceneFn({
         {/* Camera zoom controller — scales around the auto-fit base */}
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
+        {/* Forces a repaint whenever the layer set itself changes (added, removed,
+            reordered, or opacity changed) — belt-and-suspenders on top of R3F's own
+            reconciler-driven invalidation so a removed mesh can never linger on
+            screen under frameloop="demand". */}
+        <LayersInvalidator layers={layers} />
+
         {/* Mesh layers.
             Single-layer (result mode): layer 0 drives auto-fit, independent normalization.
             Multi-layer (preview mode): last layer is the macro shape — it drives auto-fit and
@@ -285,6 +291,22 @@ function CameraZoom({
     }
     invalidate()  // demand mode: trigger a frame after camera update
   }, [zoom, mode, camera, baseZ, baseOrthoZoom, invalidate])
+
+  return null
+}
+
+/* ─── Layers invalidator ───
+   Forces a repaint whenever the layer set itself changes, independent of any
+   individual STLMesh's own effects — so a removed layer can't leave a stale
+   frame on screen under frameloop="demand". */
+
+function LayersInvalidator({ layers }: { layers: MeshLayer[] }) {
+  const invalidate = useThree(s => s.invalidate)
+  const layersKey = layers.map(l => `${l.blobUrl}:${l.opacity ?? 1}`).join('|')
+
+  React.useEffect(() => {
+    invalidate()
+  }, [layersKey, invalidate])
 
   return null
 }

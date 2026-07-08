@@ -240,7 +240,7 @@ export function ToolPage() {
     } else {
       if (!uploadedIgsB64) return
     }
-    setMacroShapeGzB64(null)
+
     pendingMacroCountRef.current += 2
     socket.calculate({
       filename: uploadedFile?.name ?? 'surface.igs',
