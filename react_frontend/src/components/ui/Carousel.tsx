@@ -20,6 +20,8 @@ export interface CarouselProps {
   loop?: boolean
   /** Auto-advance slides (ms between transitions). 0 = disabled. */
   autoPlay?: number
+  /** Milliseconds to wait after the last arrow press before resuming auto-play. Default 3000. */
+  pauseAfterInteraction?: number
   /** Disable all interaction */
   disabled?: boolean
   /** Render the outer wrapper as its child (Slot / asChild pattern) */
@@ -37,6 +39,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
       showDots = true,
       loop = true,
       autoPlay = 0,
+      pauseAfterInteraction = 3000,
       disabled = false,
       asChild = false,
       className,
@@ -44,26 +47,45 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     },
     ref
   ) => {
-    const [current, setCurrent] = React.useState(0)
+    const [current, setCurrent] = React.useState(() =>
+      images.length > 1 ? Math.floor(Math.random() * images.length) : 0
+    )
     const [hoveredArrow, setHoveredArrow] = React.useState<'left' | 'right' | null>(null)
     const count = images.length
+    const [isPaused, setIsPaused] = React.useState(false)
+    const pauseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Clean up debounce timer on unmount
+    React.useEffect(() => {
+      return () => {
+        if (pauseTimerRef.current !== null) clearTimeout(pauseTimerRef.current)
+      }
+    }, [])
+
+    const handleArrowInteraction = () => {
+      setIsPaused(true)
+      if (pauseTimerRef.current !== null) clearTimeout(pauseTimerRef.current)
+      pauseTimerRef.current = setTimeout(() => setIsPaused(false), pauseAfterInteraction)
+    }
 
     const prev = () => {
       if (disabled) return
+      handleArrowInteraction()
       setCurrent(i => (i === 0 ? (loop ? count - 1 : 0) : i - 1))
     }
     const next = () => {
       if (disabled) return
+      handleArrowInteraction()
       setCurrent(i => (i === count - 1 ? (loop ? 0 : count - 1) : i + 1))
     }
     const goTo = (i: number) => { if (!disabled) setCurrent(i) }
 
     // Auto-play
     React.useEffect(() => {
-      if (!autoPlay || disabled) return
+      if (!autoPlay || disabled || isPaused) return
       const id = setInterval(next, autoPlay)
       return () => clearInterval(id)
-    }, [autoPlay, disabled, count, loop])
+    }, [autoPlay, disabled, count, loop, isPaused])
 
     // Keyboard navigation
     const handleKeyDown = (e: React.KeyboardEvent) => {
