@@ -17,13 +17,13 @@ Serves the main single-page app (`templates/index.html`).
 
 ---
 
-### `GET /viewlog007`
+### `GET /viewlog`
 Renders the real-time log viewer page (`templates/log_view.html`).  
 The page uses SocketIO to receive `log_update` events.
 
 ---
 
-### `GET /viewfulllog007`
+### `GET /viewfulllog`
 Renders a static full-log dump (`templates/full_log_view.html`).  
 Reads the entire `lattice.log` file into the template at request time.
 

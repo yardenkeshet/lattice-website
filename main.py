@@ -432,13 +432,15 @@ DOWNLOAD_CACHE = {}
 def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRevolv.stl").encode('ascii')
-    _dll_from_revolution(
+    dll_error = _dll_from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
         out_igs, out_stl,
     )
+    if dll_error:
+        raise RuntimeError(dll_error)
     stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
     return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
@@ -446,7 +448,7 @@ def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, 
 def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
-    result = _dll_from_extrusion(
+    dll_error = _dll_from_extrusion(
         igs_path.encode('ascii'),
         extrude_length,
         num_tiles, grading_params,
@@ -454,14 +456,10 @@ def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, t
         tile_params,
         out_igs, out_stl,
     )
+    if dll_error:
+        raise RuntimeError(dll_error)
 
-    if result == "First input file is not holding a polynomial Bezier surface.":
-        logger.warning("[EXTRUSION] DLL failed — returning dummy STL")
-        dummy_path = os.path.join(os.path.dirname(__file__), "last_results", "dummyResult.stl")
-        stl_content = read_ascii_stl_file(dummy_path)
-    else:
-        stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-
+    stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
     return stl_content, "MSExtrd.stl", "MSExtrd.igs"
 
 
@@ -469,13 +467,15 @@ def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_p
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRuled.stl").encode('ascii')
 
-    _dll_from_ruling(
+    dll_error = _dll_from_ruling(
         igs_path.encode('ascii'), igs_path2.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
         out_igs, out_stl,
     )
+    if dll_error:
+        raise RuntimeError(dll_error)
 
     stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
     return stl_content, "MSRuled.stl", "MSRuled.igs"
@@ -496,11 +496,15 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
         return
 
     stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
-    _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
+    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
+    if dll_error:
+        emit('error', {'msg': f'Tile generation failed: {dll_error}'})
+        return
 
     t_processed = time.time()
     if not os.path.exists(stl_tile_path):
         logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+        emit('error', {'msg': 'Tile generation produced no output'})
         return
 
     try:
@@ -858,13 +862,15 @@ def handle_convert_igs_to_stl():
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), c_double(tolerance))
+            err = _dll_iges2stl(igs_path.encode('ascii'), 
+                                stl_path.encode('ascii'), 
+                                c_double(tolerance))
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")
 
             if not os.path.exists(stl_path):
-                return jsonify({'error': 'IGS conversion produced no output'}), 500
+                return jsonify({'error': err or 'IGS conversion produced no output'}), 500
 
             try:
                 with open(stl_path, 'rb') as f:
@@ -877,7 +883,10 @@ def handle_convert_igs_to_stl():
 
         b64_str = base64.b64encode(stl_content).decode('utf-8')
         logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
-        return jsonify({'stl_b64': b64_str})
+        response = {'stl_b64': b64_str}
+        if err:
+            response['warning'] = err
+        return jsonify(response)
 
     except Exception as exc:
         logger.exception(f"[IGS2STL] {exc}")

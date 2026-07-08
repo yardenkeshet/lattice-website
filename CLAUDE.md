@@ -68,7 +68,7 @@ The mapping from the string values used in the frontend (`"cross"`, `"diagonal"`
 
 ## Log Viewer
 
-Visit `/viewlog007` for a real-time log tail, or `/viewfulllog007` for the full log.
+Visit `/viewlog` for a real-time log tail, or `/viewfulllog` for the full log.
 
 ## React Frontend
 
