@@ -75,6 +75,10 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+    const fileLabel = calcMode === 'ruling'
+      ? 'Load two surfaces as IGES files'
+      : 'Load one surface as IGES file'
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
@@ -104,9 +108,9 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             <span style={sectionLabelStyle}>Tiles Counts</span>
           </Tooltip>
           <div style={numTilesRowStyle}>
-            <NumberInput label="X" value={nt1} min={1} onChange={onNt1Change} aria-label="X tiles" />
-            <NumberInput label="Y" value={nt2} min={1} onChange={onNt2Change} aria-label="Y tiles" />
-            <NumberInput label="Z" value={nt3} min={1} onChange={onNt3Change} aria-label="Z tiles" />
+            <NumberInput label="X" value={nt1} min={1} max={10} onChange={onNt1Change} aria-label="X tiles" />
+            <NumberInput label="Y" value={nt2} min={1} max={10} onChange={onNt2Change} aria-label="Y tiles" />
+            <NumberInput label="Z" value={nt3} min={1} max={10} onChange={onNt3Change} aria-label="Z tiles" />
           </div>
         </div>
 
@@ -128,6 +132,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 <span style={sectionLabelStyle}>Extrusion Length</span>
               </Tooltip>
               <NumberInput
+                decimal
+                step={0.01}
                 value={extrudeLength}
                 min={0.1}
                 onChange={onExtrudeLengthChange}
@@ -143,7 +149,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
         <div
           role="button"
           tabIndex={0}
-          aria-label="Load surfaces as IGES Files"
+          aria-label={fileLabel}
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
           onMouseEnter={() => setIsAddFilesHovered(true)}
@@ -161,8 +167,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <Tooltip content="The Extrusion and Revolution constructors of the macro-shape require that one IGES file surface be specified here. The Ruling constructor requires two IGES file surfaces. Each IGES file should contain either a single tensor-product Bezier surface or a single tensor-product B-spline surface with no interior knots. U/V degrees could be anything.">
-              <span style={sectionLabelStyle}>Load surfaces as IGES Files</span>
+            <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots. U/V degrees can be any value.">
+              <span style={sectionLabelStyle}>{fileLabel}</span>
             </Tooltip>
             <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
@@ -203,12 +209,12 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
 
         <Divider />
 
-            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between zero and one.">
+            <Tooltip content="A linear grading control over the thickness of the arm in the tiles, along the third, Z, direction. Values between 0.1 and 2.5.">
           <div style={sliderRowStyle}>
                 <Slider
                   label="Grading Start"
-                  min={0}
-                  max={1}
+                  min={0.1}
+                  max={2.5}
                   step={0.01}
                   value={[g1]}
                   showValue
@@ -218,8 +224,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 />
                 <Slider
                   label="Grading End"
-                  min={0}
-                  max={1}
+                  min={0.1}
+                  max={2.5}
                   step={0.01}
                   value={[g2]}
                   showValue
@@ -239,7 +245,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">
-                <span>Mesh Color:</span>
+                <span>Foreground Color:</span>
               </Tooltip>
               <ColorPicker disableAlpha value={modelColor} onChange={setModelColor} />
             </div>

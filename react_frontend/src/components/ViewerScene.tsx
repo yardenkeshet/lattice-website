@@ -38,6 +38,7 @@ export interface ViewerSceneProps {
   style?: React.CSSProperties
   meshColor: string
   backgroundColor: string
+  showDropHint?: boolean
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -68,7 +69,8 @@ function ViewerSceneFn({
   className,
   style,
   meshColor,
-  backgroundColor
+  backgroundColor,
+  showDropHint = false,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -181,6 +183,13 @@ function ViewerSceneFn({
         <div style={dragOverlayStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>Drop to load</span>
+        </div>
+      )}
+
+      {showDropHint && !isEmpty && (
+        <div style={dropHintBarStyle}>
+          <UploadCloudIcon size={16} />
+          <span style={placeholderTextStyle}>Drop .igs file here to load a surface</span>
         </div>
       )}
 
@@ -401,9 +410,9 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
 
 /* ─── Icons & placeholder ─── */
 
-function UploadCloudIcon() {
+function UploadCloudIcon({ size = 48 }: { size?: number }) {
   return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>
       <path d="M32 32l-8-8-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M24 24v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M40.3 36.3A10 10 0 0 0 36 18h-2.5A16 16 0 1 0 8 33.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -444,6 +453,22 @@ const placeholderTextStyle: React.CSSProperties = {
   color: 'var(--text-tertiary)',
   textAlign: 'center',
   lineHeight: 1.5,
+}
+
+const dropHintBarStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 44,
+  left: 0,
+  right: 0,
+  height: 30,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  backgroundColor: 'rgba(255, 255, 255, 0.72)',
+  backdropFilter: 'blur(4px)',
+  zIndex: 2,
+  pointerEvents: 'none',
 }
 
 export const ViewerScene = React.memo(ViewerSceneFn)

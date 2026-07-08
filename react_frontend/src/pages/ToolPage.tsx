@@ -199,7 +199,7 @@ export function ToolPage() {
         // model_stl — either a macro shape preview or a real calculation result
         if (pendingMacroCountRef.current > 0) {
           pendingMacroCountRef.current -= 1
-          if (pendingMacroCountRef.current === 0) {
+          if (payload.stl_gz_b64) {
             setMacroShapeGzB64(payload.stl_gz_b64)
           }
           // else: more responses still expected — intermediate response discarded silently
@@ -241,7 +241,7 @@ export function ToolPage() {
       if (!uploadedIgsB64) return
     }
     setMacroShapeGzB64(null)
-    pendingMacroCountRef.current += 1
+    pendingMacroCountRef.current += 2
     socket.calculate({
       filename: uploadedFile?.name ?? 'surface.igs',
       surface_b64: uploadedIgsB64,
@@ -252,7 +252,7 @@ export function ToolPage() {
         calcMode,
         nt1: 0, nt2: 0, nt3: 0,
         g1, g2,
-        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
         extrudeLength,
       },
     })
@@ -267,7 +267,7 @@ export function ToolPage() {
     const timer = setTimeout(() => {
       if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
       setMacroShapeGzB64(null)
-      pendingMacroCountRef.current += 1
+      pendingMacroCountRef.current += 2
       socket.calculate({
         filename: uploadedFile?.name ?? 'surface.igs',
         surface_b64: igsB64,
@@ -277,7 +277,7 @@ export function ToolPage() {
           calcMode: calcModeRef.current,
           nt1: 0, nt2: 0, nt3: 0,
           g1, g2,
-          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
           extrudeLength,
         },
       })
@@ -334,9 +334,14 @@ export function ToolPage() {
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     pendingMacroCountRef.current = 0
     setErrorMsg(null)
+    setUploadedFile(null)
+    setUploadedIgsB64(null)
+    setOriginalIgsFile(null)
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
     setOriginalIgsFile2(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
     setMacroShapeGzB64(null)
     setCalcMode(mode)
   }, [])
@@ -345,6 +350,7 @@ export function ToolPage() {
   const handleFilesAdd = React.useCallback(async (files: File[]) => {
     setResultGzB64(null)
     setErrorMsg(null)
+    pendingMacroCountRef.current = 0
 
     if (calcMode === RULING) {
       if (files.length >= 2) {
@@ -408,6 +414,8 @@ export function ToolPage() {
     setUploadedIgsB64(null)
     setOriginalIgsFile(null)
     setMacroShapeGzB64(null)
+    setResultGzB64(null)
+    setDownloadToken(null)
   }, [])
 
   const handleClear2 = React.useCallback(() => {
@@ -455,7 +463,7 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2], extrudeLength },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0, extrudeLength },
     }
     socket.calculate(calculateArgs)
   }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, socket])
@@ -498,6 +506,8 @@ export function ToolPage() {
     () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
     [uploadedFile, uploadedFile2]
   )
+
+  const showDropHint = !uploadedFile && !downloadToken
 
   const handleFileRemove = React.useCallback((name: string) => {
     if (uploadedFile?.name === name) handleClear1()
@@ -572,6 +582,7 @@ export function ToolPage() {
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
               backgroundColor={backgroundColor}
+              showDropHint={showDropHint}
             />
           </div>
         </div>
