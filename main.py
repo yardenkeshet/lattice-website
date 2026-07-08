@@ -127,9 +127,8 @@ _dll.MSDLLMSFromRevolution.argtypes = [
     c_char_p,           # MSTLSFile
 ]
 
-# Tolerance is c_float (4-byte), not c_double — confirmed by reference lattice.py
 _dll.MSDLLIGES2STL.restype  = c_char_p
-_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_float]
+_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_double]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -189,8 +188,8 @@ def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, til
                  srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
 
 
-def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: float = 0.0) -> str | None:
-    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file, c_float(tolerance))
+def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: c_double) -> str | None:
+    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file, tolerance)
 
 
 
@@ -859,7 +858,7 @@ def handle_convert_igs_to_stl():
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), tolerance)
+            err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'), c_double(tolerance))
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")
