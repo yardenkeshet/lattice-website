@@ -252,7 +252,7 @@ export function ToolPage() {
         calcMode,
         nt1: 0, nt2: 0, nt3: 0,
         g1, g2,
-        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
         extrudeLength,
       },
     })
@@ -277,7 +277,7 @@ export function ToolPage() {
           calcMode: calcModeRef.current,
           nt1: 0, nt2: 0, nt3: 0,
           g1, g2,
-          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2],
+          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
           extrudeLength,
         },
       })
@@ -462,7 +462,7 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2], extrudeLength },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0, extrudeLength },
     }
     socket.calculate(calculateArgs)
   }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, socket])
