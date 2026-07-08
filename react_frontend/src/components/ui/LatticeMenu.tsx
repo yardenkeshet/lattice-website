@@ -167,7 +167,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots.">
+            <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots. U/V degrees can be any value.">
               <span style={sectionLabelStyle}>{fileLabel}</span>
             </Tooltip>
             <span aria-hidden="true" style={plusButtonStyle}>
