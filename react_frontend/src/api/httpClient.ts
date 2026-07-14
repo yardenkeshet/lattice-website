@@ -18,7 +18,11 @@ export async function convertIgsToStl(file: File, tolerance: number = 0.0): Prom
   });
   console.log("got", response);
   if (!response.ok) {
-    throw new Error(`IGS conversion failed: ${response.status} ${response.statusText}`);
+    const message = await response
+      .json()
+      .then(body => body?.error as string | undefined)
+      .catch(() => undefined);
+    throw new Error(message ?? `IGS conversion failed: ${response.status} ${response.statusText} ${response.body}`);
   }
   const data = await response.json();
   return data.stl_b64 as string;
@@ -33,6 +37,11 @@ export async function convertIgsToStl(file: File, tolerance: number = 0.0): Prom
  *
  * On an invalid/expired token the server redirects to `/`, so the download
  * simply silently fails rather than throwing.
+ *
+ * When the File System Access API is available (Chromium browsers), a native
+ * "Save As" dialog lets the user pick the destination folder and file name.
+ * Other browsers fall back to a plain anchor download into the default
+ * downloads folder.
  */
 export async function downloadResults(token: string, fileType: 'stl' | 'igs'): Promise<void> {
   const response = await fetch(`${BASE_URL}/download-results`, {
@@ -51,13 +60,41 @@ export async function downloadResults(token: string, fileType: 'stl' | 'igs'): P
   const filename = match?.[1] ?? `results.${fileType}`;
 
   const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
 
+  const showSaveFilePicker = (window as unknown as {
+    showSaveFilePicker?: (options?: {
+      suggestedName?: string;
+      types?: { description: string; accept: Record<string, string[]> }[];
+    }) => Promise<FileSystemFileHandle>;
+  }).showSaveFilePicker;
+
+  if (showSaveFilePicker) {
+    try {
+      const handle = await showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: 'Archive',
+            accept: { 'application/zip': ['.zip'] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (err) {
+      // User dismissed the save dialog — not an error.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      throw err;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
-
   URL.revokeObjectURL(url);
 }
 

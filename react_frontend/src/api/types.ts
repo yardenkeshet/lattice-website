@@ -23,6 +23,7 @@ export interface CalculatePayload {
   /** performance.now() value captured just before emit, for round-trip timing */
   client_ts: number;
   args: CalculateArgs;
+  tolerance: number;
 }
 
 // ─── calculate_tile event ────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ export interface CalculateTilePayload {
   type: TileType;
   /** [p1, p2, p3] — tile shape parameters */
   values: [number, number, number];
+  tolerance: number;
 }
 
 // ─── result event (server → client) ──────────────────────────────────────────

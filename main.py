@@ -164,7 +164,7 @@ def _call(fn, *args):
     return None
 
 
-def _dll_get_tile(tile_type, tile_params, graded, out_stl_file: bytes):
+def _dll_get_tile(tile_type, tile_params, graded, tolerance, out_stl_file: bytes):
     return _call(_dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
 
 
@@ -488,7 +488,7 @@ CALC_MODE_DISPATCH = {
 VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
-def calculate_tile(tile_params, graded, tile_type_str, sid):
+def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
     if tile_type_int is None:
@@ -496,7 +496,10 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
         return
 
     stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
-    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
+    
+    # Actual calculation
+    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
+    
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
         return
@@ -531,6 +534,7 @@ def calculate_tile(tile_params, graded, tile_type_str, sid):
             f"[TILE] {tile_type_str}"
             f"  p=({tile_params[0]:.2f},{tile_params[1]:.2f},{tile_params[2]:.2f})"
             f"  g=({graded[0]:.2f},{graded[1]:.2f})"
+            f"  t=({tolerance:.2f})"
             f"  {timings['overall_ms']:.0f}ms",
             extra=_log_extra(sid),
         )
@@ -842,9 +846,9 @@ def handle_calculate_tile(data):
         tile_params = (c_double * 3)(p1, p2, p3)
         graded1, graded2   = data.get('graded', [1, 1])
         graded  = (c_double * 2)(graded1, graded2)
-        print("calculate with " +  str(graded[0])+" "+ str(graded[1]))
+        tolerance = float(data.get('tolerance', 0.0))
 
-        calculate_tile(tile_params, graded, tile_type, request.sid)
+        calculate_tile(tile_params, graded, tile_type, tolerance, request.sid)
     except Exception as exc:
         logger.exception(f"[TILE] bad request: {exc}", extra={'sid': request.sid})
         emit('error', {'msg': f'Bad tile request: {exc}'})
@@ -868,8 +872,9 @@ def handle_convert_igs_to_stl():
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")
-
+                return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
             if not os.path.exists(stl_path):
+                logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
                 return jsonify({'error': err or 'IGS conversion produced no output'}), 500
 
             try:

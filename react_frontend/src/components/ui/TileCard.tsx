@@ -9,6 +9,21 @@ import { perspectiveFitDistance } from '../../lib/cameraFit'
 import { ShadedMaterial } from '../ShadedMaterial'
 import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../../lib/parameters'
 
+/* ─── Error boundary ───
+   A malformed/truncated STL (e.g. from a server-side race writing the temp
+   file) throws inside STLLoader's Suspense resource. Without this boundary
+   the error escapes the Canvas and unmounts the whole React tree. */
+class STLErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    return this.state.hasError ? (this.props.fallback ?? null) : this.props.children
+  }
+}
+
 /* ─── Public API ─── */
 
 export interface TileCardProps {
@@ -169,14 +184,18 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
                 />
               )}
 
-              <React.Suspense fallback={modelUrl ? null : (
+              <STLErrorBoundary key={modelUrl} fallback={
                 <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
-              )}>
-                {modelUrl
-                  ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
-                  : <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
-                }
-              </React.Suspense>
+              }>
+                <React.Suspense fallback={modelUrl ? null : (
+                  <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+                )}>
+                  {modelUrl
+                    ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+                    : <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+                  }
+                </React.Suspense>
+              </STLErrorBoundary>
             </Canvas>
           )
         }
