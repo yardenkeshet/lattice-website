@@ -142,11 +142,23 @@ export function ToolPage() {
      computeDisplayedLayers for the exact rules. */
   const [displayedLayers, setDisplayedLayers] = React.useState<MeshLayer[]>([])
   React.useEffect(() => {
+    // uploadedBlobUrl/uploadedBlobUrl2/macroShapeBlobUrl are derived from
+    // uploadedFile/uploadedFile2/macroShapeGzB64 via their own effects, so they
+    // lag one render behind on changes like a calc-mode switch (which clears
+    // the raw file state synchronously). If the blob-URL-derived upload count
+    // doesn't yet match the raw file count, skip this update rather than
+    // computing from stale blob URLs — that would transiently overwrite an
+    // explicit reset (e.g. handleCalcModeChange's setDisplayedLayers([])) with
+    // leftover geometry from the previous mode. Once the derived state catches
+    // up (next render), the counts match again and this recomputes correctly.
+    const rawUploadedCount  = (uploadedFile ? 1 : 0) + (uploadedFile2 ? 1 : 0)
+    const blobUploadedCount = (uploadedBlobUrl ? 1 : 0) + (uploadedBlobUrl2 ? 1 : 0)
+    if (rawUploadedCount !== blobUploadedCount) return
     setDisplayedLayers(prev => computeDisplayedLayers(
       { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl },
       prev,
     ))
-  }, [calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
+  }, [calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl, uploadedFile, uploadedFile2])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
