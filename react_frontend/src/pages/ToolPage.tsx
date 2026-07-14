@@ -9,6 +9,7 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
+import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
 import { calcLabelForUpdate } from '../lib/progressDisplay'
@@ -134,15 +135,18 @@ export function ToolPage() {
   const isCalculatingRef = React.useRef(false)
   React.useEffect(() => { isCalculatingRef.current = isCalculating }, [isCalculating])
 
-  /* ── Layer assembly ── */
-  const layers: MeshLayer[] = React.useMemo(() => {
-    if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
-    return [
-      uploadedBlobUrl      ? { blobUrl: uploadedBlobUrl }                    : null,
-      uploadedBlobUrl2     ? { blobUrl: uploadedBlobUrl2 }                   : null,
-      macroShapeBlobUrl    ? { blobUrl: macroShapeBlobUrl, opacity: 0.25 }   : null,
-    ].filter((l): l is MeshLayer => l !== null)
-  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
+  /* ── Layer assembly ──
+     Only updates once all currently-obtainable information (surfaces +
+     macro shape) is ready; freezes on the previous render while waiting on
+     a macro-shape recalculation instead of flashing a bare surface. See
+     computeDisplayedLayers for the exact rules. */
+  const [displayedLayers, setDisplayedLayers] = React.useState<MeshLayer[]>([])
+  React.useEffect(() => {
+    setDisplayedLayers(prev => computeDisplayedLayers(
+      { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl },
+      prev,
+    ))
+  }, [calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -355,6 +359,7 @@ export function ToolPage() {
     setResultGzB64(null)
     setDownloadToken(null)
     setMacroShapeGzB64(null)
+    setDisplayedLayers([])
     setCalcMode(mode)
   }, [])
 
@@ -587,7 +592,7 @@ export function ToolPage() {
 
           <div style={viewerStyle}>
             <ViewerScene
-              layers={layers}
+              layers={displayedLayers}
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
               onFileDrop={handleViewerFileDrop}
@@ -595,6 +600,7 @@ export function ToolPage() {
               meshColor={meshColor}
               backgroundColor={backgroundColor}
               showDropHint={showDropHint}
+              hideEmptyPlaceholder={!!uploadedFile || !!uploadedFile2}
             />
           </div>
         </div>
