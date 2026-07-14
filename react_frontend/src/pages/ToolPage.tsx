@@ -12,6 +12,7 @@ import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
 import { calcLabelForUpdate } from '../lib/progressDisplay'
+import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -231,6 +232,17 @@ export function ToolPage() {
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
+
+  /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!isLogViewerShortcut(e)) return
+      const origin = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? ''
+      window.open(`${origin}/viewlog`, '_blank', 'noopener,noreferrer')
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
   // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
