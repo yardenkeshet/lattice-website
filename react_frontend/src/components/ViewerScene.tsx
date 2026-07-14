@@ -39,6 +39,10 @@ export interface ViewerSceneProps {
   meshColor: string
   backgroundColor: string
   showDropHint?: boolean
+  /** When true, suppresses the "Drop a .igs file here" empty-state placeholder
+   *  even if `layers` is empty — used while a file is uploaded but its
+   *  display is intentionally frozen pending a macro-shape recalculation. */
+  hideEmptyPlaceholder?: boolean
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -71,6 +75,7 @@ function ViewerSceneFn({
   meshColor,
   backgroundColor,
   showDropHint = false,
+  hideEmptyPlaceholder = false,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -170,7 +175,7 @@ function ViewerSceneFn({
       onDrop={handleDrop}
     >
       {/* ── Empty placeholder ── */}
-      {isEmpty && !isDragOver && (
+      {isEmpty && !isDragOver && !hideEmptyPlaceholder && (
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>
