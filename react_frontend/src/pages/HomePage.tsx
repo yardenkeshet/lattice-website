@@ -63,6 +63,15 @@ const ctaSubtitleStyle: React.CSSProperties = {
   margin: 0,
 }
 
+
+const hyperlinkStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: 20,
+  color: 'rgba(255,255,255,0.7)',
+  margin: 0,
+  textDecoration: 'underline'
+}
+
 const ctaButtonStyle: React.CSSProperties = {
   backgroundColor: 'var(--gray-50)',
   color: 'var(--navy-primary)',
@@ -91,6 +100,9 @@ export function HomePage() {
         <p style={ctaTitleStyle}>Ready to build a lattice structure?</p>
         <p style={ctaSubtitleStyle}>
           Upload your surface file and generate a parametric lattice in seconds.
+        </p>
+        <p style={ctaSubtitleStyle}>
+          Go to the <a href="/help" style={hyperlinkStyle} >help page</a> or hover over an item to see helpful tips.
         </p>
         <button
           type="button"

@@ -153,7 +153,7 @@ const ColorPicker = React.forwardRef<HTMLButtonElement, ColorPickerProps>(
                 onMouseEnter={() => setBadgeHovered(true)}
                 onMouseLeave={() => setBadgeHovered(false)}
                 onFocus={e => { setBadgeFocused(true); e.target.select() }}
-                // onBlur={() => { inputFocused.current = false; setBadgeFocused(false); }}
+                onBlur={() => { setBadgeFocused(false); }}
                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                 aria-label={label ? `${label} value` : 'slider value'}
               />
@@ -185,7 +185,7 @@ ColorPicker.displayName = 'ColorPicker'
 const wrapperStyle: React.CSSProperties = {
   position: 'relative',
   display: 'inline-flex',
-  flexDirection: 'column',
+  flexDirection: 'row',
   gap: 'var(--space-sm)',
 }
 
@@ -202,11 +202,12 @@ const swatchStyle: React.CSSProperties = {
   height: '20px',
   padding: 0,
   borderRadius: 'var(--radius-tag)',
-  border: '1px solid var(--border-base)',
+  borderWidth: '2px',
+  borderStyle: 'solid',
+  borderColor: 'var(--gray-400)',
   cursor: 'pointer',
   outline: 'none',
   boxSizing: 'border-box',
-  transition: 'border-color 150ms ease',
   flexShrink: 0,
 }
 
@@ -215,7 +216,8 @@ const swatchActiveStyle: React.CSSProperties = {
 }
 
 const swatchDisabledStyle: React.CSSProperties = {
-  opacity: 0.45,
+  opacity: 0.6,
+  border: '2px solid var(--gray-600)',
   cursor: 'not-allowed',
   pointerEvents: 'none',
 }
