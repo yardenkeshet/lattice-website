@@ -224,6 +224,7 @@ Emitted when a server-side error occurs during `calculate` or file I/O.
 - **`tile_generated` event does not exist on the server.** The server emits `result` for tile responses too. The legacy frontend's `socket.on('tile_generated', …)` listener is dead code. *(Not present in the React client.)*
 - **`nt1`/`nt2`/`nt3`/`g1`/`g2` not forwarded to DLL** — the current implementation routes by tile type only and uses hardcoded parameters inside `do_revolution`, `do_extrusion`, `do_Ruling`.
 - **Static tile STL files** (`/static/tiles/TileCross.stl`, etc.) are served directly for the intro animation — these are not generated at runtime.
+- **Cross-diagonal tiles produce much larger output meshes, which is why they're slower.** Diagnostic testing (2026-07-14) confirmed the DLL's own "microstructure building" phase (tracked via progress callbacks) is *not* the bottleneck — for cross-diagonal it actually completes faster than diagonal at the same tile count. The slowdown comes from a later, un-instrumented phase: writing the much larger output STL to disk (inside the DLL call, folded into `time_dll_ms`) and our own gzip compression of that larger payload afterward (measured at ~13s out of a ~36s total for one test run). This is inherent to cross-diagonal's higher triangle count per tile, not something happening before the DLL is invoked.
 
 ---
 
