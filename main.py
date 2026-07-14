@@ -658,7 +658,7 @@ def clean_session(sid, token):
 
 
 @socketio.on('disconnect')
-def on_disconnect():
+def on_disconnect(reason=None):
     sid = request.sid
     logger.info(f'Client disconnected  ip={_client_ip(sid)}', extra=_log_extra(sid))
     token = (client_state.get(sid) or {}).get('current_token')
