@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
 import { Footer } from '../components/ui/Footer'
@@ -10,6 +11,7 @@ import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
+import { calcLabelForUpdate } from '../lib/progressDisplay'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -225,9 +227,7 @@ export function ToolPage() {
       setErrorMsg(err.message)
     })
     const unsubUpdate = socket.onUpdate(upd => {
-      if (upd.type === 'progress_start')  setCalcLabel(upd.message)
-      else if (upd.type === 'progress_update') setCalcLabel(`Calculating… ${upd.progress}%`)
-      else setCalcLabel('Calculating… 100%')
+      flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
