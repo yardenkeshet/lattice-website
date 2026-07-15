@@ -4,7 +4,7 @@ import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
 import { Dropdown, type DropdownOption } from './Dropdown'
-import { CALC_MODE_DEFS, type CalcMode } from '../../calculation_params'
+import { CALC_MODE_DEFS, MAX_EXTRUSION_LENGTH, type CalcMode } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import {
@@ -165,6 +165,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
                 step={0.01}
                 value={extrudeLength}
                 min={0.1}
+                max={MAX_EXTRUSION_LENGTH}
                 onChange={onExtrudeLengthChange}
                 aria-label="Extrusion length"
               />

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
 import { Footer } from '../components/ui/Footer'
@@ -8,8 +9,11 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
+import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
+import { calcLabelForUpdate } from '../lib/progressDisplay'
+import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -133,15 +137,30 @@ export function ToolPage() {
   const isCalculatingRef = React.useRef(false)
   React.useEffect(() => { isCalculatingRef.current = isCalculating }, [isCalculating])
 
-  /* ── Layer assembly ── */
-  const layers: MeshLayer[] = React.useMemo(() => {
-    if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
-    return [
-      uploadedBlobUrl      ? { blobUrl: uploadedBlobUrl }                    : null,
-      uploadedBlobUrl2     ? { blobUrl: uploadedBlobUrl2 }                   : null,
-      macroShapeBlobUrl    ? { blobUrl: macroShapeBlobUrl, opacity: 0.25 }   : null,
-    ].filter((l): l is MeshLayer => l !== null)
-  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
+  /* ── Layer assembly ──
+     Only updates once all currently-obtainable information (surfaces +
+     macro shape) is ready; freezes on the previous render while waiting on
+     a macro-shape recalculation instead of flashing a bare surface. See
+     computeDisplayedLayers for the exact rules. */
+  const [displayedLayers, setDisplayedLayers] = React.useState<MeshLayer[]>([])
+  React.useEffect(() => {
+    // uploadedBlobUrl/uploadedBlobUrl2/macroShapeBlobUrl are derived from
+    // uploadedFile/uploadedFile2/macroShapeGzB64 via their own effects, so they
+    // lag one render behind on changes like a calc-mode switch (which clears
+    // the raw file state synchronously). If the blob-URL-derived upload count
+    // doesn't yet match the raw file count, skip this update rather than
+    // computing from stale blob URLs — that would transiently overwrite an
+    // explicit reset (e.g. handleCalcModeChange's setDisplayedLayers([])) with
+    // leftover geometry from the previous mode. Once the derived state catches
+    // up (next render), the counts match again and this recomputes correctly.
+    const rawUploadedCount  = (uploadedFile ? 1 : 0) + (uploadedFile2 ? 1 : 0)
+    const blobUploadedCount = (uploadedBlobUrl ? 1 : 0) + (uploadedBlobUrl2 ? 1 : 0)
+    if (rawUploadedCount !== blobUploadedCount) return
+    setDisplayedLayers(prev => computeDisplayedLayers(
+      { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl },
+      prev,
+    ))
+  }, [calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl, uploadedFile, uploadedFile2])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -227,12 +246,21 @@ export function ToolPage() {
       setErrorMsg(err.message)
     })
     const unsubUpdate = socket.onUpdate(upd => {
-      if (upd.type === 'progress_start')  setCalcLabel(upd.message)
-      else if (upd.type === 'progress_update') setCalcLabel(`Calculating… ${upd.progress}%`)
-      else setCalcLabel('Calculating… 100%')
+      flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
+
+  /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!isLogViewerShortcut(e)) return
+      const origin = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? ''
+      window.open(`${origin}/viewlog`, '_blank', 'noopener,noreferrer')
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
   // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
@@ -361,6 +389,7 @@ export function ToolPage() {
     setResultGzB64(null)
     setDownloadToken(null)
     setMacroShapeGzB64(null)
+    setDisplayedLayers([])
     setCalcMode(mode)
   }, [])
 
@@ -600,7 +629,7 @@ export function ToolPage() {
 
           <div style={viewerStyle}>
             <ViewerScene
-              layers={layers}
+              layers={displayedLayers}
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
               onFileDrop={handleViewerFileDrop}
@@ -611,6 +640,7 @@ export function ToolPage() {
               specularGray={specularGray}
               shininess={shininess}
               showDropHint={showDropHint}
+              hideEmptyPlaceholder={!!uploadedFile || !!uploadedFile2}
             />
           </div>
         </div>
