@@ -4,6 +4,8 @@ import { OrbitControls } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
 import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
+import { ShadedMaterial } from './ShadedMaterial'
+import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
 
 /* ─── Public API ─── */
 
@@ -39,6 +41,13 @@ export interface ViewerSceneProps {
   meshColor: string
   backgroundColor: string
   showDropHint?: boolean
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
+  /** When true, suppresses the "Drop a .igs file here" empty-state placeholder
+   *  even if `layers` is empty — used while a file is uploaded but its
+   *  display is intentionally frozen pending a macro-shape recalculation. */
+  hideEmptyPlaceholder?: boolean
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -71,6 +80,10 @@ function ViewerSceneFn({
   meshColor,
   backgroundColor,
   showDropHint = false,
+  shadingMode = DEFAULT_SHADING_MODE,
+  specularGray = DEFAULT_SPECULAR_GRAY,
+  shininess = DEFAULT_SHININESS,
+  hideEmptyPlaceholder = false,
 }: ViewerSceneProps) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -170,7 +183,7 @@ function ViewerSceneFn({
       onDrop={handleDrop}
     >
       {/* ── Empty placeholder ── */}
-      {isEmpty && !isDragOver && (
+      {isEmpty && !isDragOver && !hideEmptyPlaceholder && (
         <div style={placeholderStyle}>
           <UploadCloudIcon />
           <span style={placeholderTextStyle}>
@@ -217,6 +230,12 @@ function ViewerSceneFn({
         {/* Camera zoom controller — scales around the auto-fit base */}
         <CameraZoom zoom={zoom} mode={cameraMode} baseZ={baseZ} baseOrthoZoom={baseOrthoZoom} />
 
+        {/* Forces a repaint whenever the layer set itself changes (added, removed,
+            reordered, or opacity changed) — belt-and-suspenders on top of R3F's own
+            reconciler-driven invalidation so a removed mesh can never linger on
+            screen under frameloop="demand". */}
+        <LayersInvalidator layers={layers} />
+
         {/* Mesh layers.
             Single-layer (result mode): layer 0 drives auto-fit, independent normalization.
             Multi-layer (preview mode): last layer is the macro shape — it drives auto-fit and
@@ -239,6 +258,9 @@ function ViewerSceneFn({
                     opacity={layer.opacity ?? 1}
                     externalNorm={isMultiLayer && !isMacroLayer ? previewNorm : undefined}
                     onNormalized={isMacroLayer ? handlePreviewNorm : undefined}
+                    shadingMode={shadingMode}
+                    specularGray={specularGray}
+                    shininess={shininess}
                   />
                 </React.Suspense>
               </STLErrorBoundary>
@@ -289,6 +311,22 @@ function CameraZoom({
   return null
 }
 
+/* ─── Layers invalidator ───
+   Forces a repaint whenever the layer set itself changes, independent of any
+   individual STLMesh's own effects — so a removed layer can't leave a stale
+   frame on screen under frameloop="demand". */
+
+function LayersInvalidator({ layers }: { layers: MeshLayer[] }) {
+  const invalidate = useThree(s => s.invalidate)
+  const layersKey = layers.map(l => `${l.blobUrl}:${l.opacity ?? 1}`).join('|')
+
+  React.useEffect(() => {
+    invalidate()
+  }, [layersKey, invalidate])
+
+  return null
+}
+
 /* ─── STL mesh loader ─── */
 
 interface STLMeshProps {
@@ -300,9 +338,15 @@ interface STLMeshProps {
   opacity?: number
   externalNorm?: { scale: number; center: THREE.Vector3 } | null
   onNormalized?: (scale: number, center: THREE.Vector3) => void
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
 }
 
-function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized }: STLMeshProps) {
+function STLMesh({
+  url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized,
+  shadingMode = DEFAULT_SHADING_MODE, specularGray = DEFAULT_SPECULAR_GRAY, shininess = DEFAULT_SHININESS,
+}: STLMeshProps) {
   const geometry = useLoader(STLLoader, url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
@@ -396,13 +440,13 @@ function STLMesh({ url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacit
 
   return (
     <mesh ref={meshRef} geometry={geometry} castShadow>
-      <meshPhongMaterial
+      <ShadedMaterial
+        mode={shadingMode}
         color={meshColor}
-        specular={0x111111}
-        shininess={50}
+        specularGray={specularGray}
+        shininess={shininess}
         side={THREE.DoubleSide}
         opacity={opacity}
-        transparent={opacity < 1}
       />
     </mesh>
   )

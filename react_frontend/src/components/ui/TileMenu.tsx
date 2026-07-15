@@ -4,7 +4,7 @@ import { useStlBlobUrl } from '../../lib/stl'
 import { type ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
-import { CROSS } from '../../lib/parameters'
+import { CROSS, DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../../lib/parameters'
 import { TILE_DEFS, type TileType } from '../../calculation_params'
 import { Tooltip } from './Tooltip'
 
@@ -36,6 +36,9 @@ export interface TileMenuProps {
   className?: string
   meshColor: string
   backgroundColor: string
+  shadingMode?: ShadingMode
+  specularGray?: number
+  shininess?: number
 }
 
 
@@ -51,7 +54,10 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
       onValidationChange,
       className,
       meshColor,
-      backgroundColor
+      backgroundColor,
+      shadingMode = DEFAULT_SHADING_MODE,
+      specularGray = DEFAULT_SPECULAR_GRAY,
+      shininess = DEFAULT_SHININESS,
     },
     ref
   ) => {
@@ -107,6 +113,9 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
             size="large"
             meshColor={meshColor}
             backgroundColor={backgroundColor}
+            shadingMode={shadingMode}
+            specularGray={specularGray}
+            shininess={shininess}
             modelUrl={previewUrl}
             enableOrbit
             cameraResetKey={tileType}

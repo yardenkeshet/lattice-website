@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
 import { Footer } from '../components/ui/Footer'
@@ -8,8 +9,11 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
 import type { MeshLayer } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
+import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
+import { calcLabelForUpdate } from '../lib/progressDisplay'
+import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -19,6 +23,8 @@ import {
   RULING,
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  type ShadingMode,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
 import type { CalculateArgs, ValidationError } from '../api/types'
@@ -32,7 +38,8 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  * uploaded files between requests.
  */
 async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
-  const [stlB64, igsB64] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
+  const [stlB64, igsB64, ...rest] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
+  console.log("rest:", rest)
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -81,6 +88,9 @@ export function ToolPage() {
   const [extrudeLength, setExtrudeLength] = React.useState(10.0)
   const [meshColor, setMeshColor]     = React.useState<string>(DEFAULT_MESH_COLOR)
   const [backgroundColor, setBackgroundColor]     = React.useState<string>(DEFAULT_BACKGROUND_COLOR)
+  const [shadingMode, setShadingMode] = React.useState<ShadingMode>(DEFAULT_SHADING_MODE)
+  const [specularGray, setSpecularGray] = React.useState<number>(DEFAULT_SPECULAR_GRAY)
+  const [shininess, setShininess]     = React.useState<number>(DEFAULT_SHININESS)
 
 
   /* ── File / result state ── */
@@ -103,21 +113,17 @@ export function ToolPage() {
   const [originalIgsFile2, setOriginalIgsFile2] = React.useState<File | null>(null)
 
   /* ── Blob URLs for uploaded surface files (created here, consumed by layer assembly) ── */
-  const [uploadedBlobUrl, setUploadedBlobUrl] = React.useState<string | undefined>()
-  React.useEffect(() => {
-    if (!uploadedFile) { setUploadedBlobUrl(undefined); return }
-    const url = URL.createObjectURL(uploadedFile)
-    setUploadedBlobUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [uploadedFile])
+  const uploadedBlobUrl = React.useMemo(
+    () => uploadedFile ? URL.createObjectURL(uploadedFile) : undefined,
+    [uploadedFile]
+  )
+  React.useEffect(() => () => { if (uploadedBlobUrl) URL.revokeObjectURL(uploadedBlobUrl) }, [uploadedBlobUrl])
 
-  const [uploadedBlobUrl2, setUploadedBlobUrl2] = React.useState<string | undefined>()
-  React.useEffect(() => {
-    if (!uploadedFile2) { setUploadedBlobUrl2(undefined); return }
-    const url = URL.createObjectURL(uploadedFile2)
-    setUploadedBlobUrl2(url)
-    return () => URL.revokeObjectURL(url)
-  }, [uploadedFile2])
+  const uploadedBlobUrl2 = React.useMemo(
+    () => uploadedFile2 ? URL.createObjectURL(uploadedFile2) : undefined,
+    [uploadedFile2]
+  )
+  React.useEffect(() => () => { if (uploadedBlobUrl2) URL.revokeObjectURL(uploadedBlobUrl2) }, [uploadedBlobUrl2])
 
   /* ── Blob URL for calculation result (gz+b64 → Blob URL) ── */
   const resultBlobUrl = useStlBlobUrl(resultGzB64)
@@ -131,15 +137,30 @@ export function ToolPage() {
   const isCalculatingRef = React.useRef(false)
   React.useEffect(() => { isCalculatingRef.current = isCalculating }, [isCalculating])
 
-  /* ── Layer assembly ── */
-  const layers: MeshLayer[] = React.useMemo(() => {
-    if (resultBlobUrl) return [{ blobUrl: resultBlobUrl }]
-    return [
-      uploadedBlobUrl      ? { blobUrl: uploadedBlobUrl }                    : null,
-      uploadedBlobUrl2     ? { blobUrl: uploadedBlobUrl2 }                   : null,
-      macroShapeBlobUrl    ? { blobUrl: macroShapeBlobUrl, opacity: 0.25 }   : null,
-    ].filter((l): l is MeshLayer => l !== null)
-  }, [resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl])
+  /* ── Layer assembly ──
+     Only updates once all currently-obtainable information (surfaces +
+     macro shape) is ready; freezes on the previous render while waiting on
+     a macro-shape recalculation instead of flashing a bare surface. See
+     computeDisplayedLayers for the exact rules. */
+  const [displayedLayers, setDisplayedLayers] = React.useState<MeshLayer[]>([])
+  React.useEffect(() => {
+    // uploadedBlobUrl/uploadedBlobUrl2/macroShapeBlobUrl are derived from
+    // uploadedFile/uploadedFile2/macroShapeGzB64 via their own effects, so they
+    // lag one render behind on changes like a calc-mode switch (which clears
+    // the raw file state synchronously). If the blob-URL-derived upload count
+    // doesn't yet match the raw file count, skip this update rather than
+    // computing from stale blob URLs — that would transiently overwrite an
+    // explicit reset (e.g. handleCalcModeChange's setDisplayedLayers([])) with
+    // leftover geometry from the previous mode. Once the derived state catches
+    // up (next render), the counts match again and this recomputes correctly.
+    const rawUploadedCount  = (uploadedFile ? 1 : 0) + (uploadedFile2 ? 1 : 0)
+    const blobUploadedCount = (uploadedBlobUrl ? 1 : 0) + (uploadedBlobUrl2 ? 1 : 0)
+    if (rawUploadedCount !== blobUploadedCount) return
+    setDisplayedLayers(prev => computeDisplayedLayers(
+      { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl },
+      prev,
+    ))
+  }, [calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl, uploadedFile, uploadedFile2])
 
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
@@ -225,12 +246,21 @@ export function ToolPage() {
       setErrorMsg(err.message)
     })
     const unsubUpdate = socket.onUpdate(upd => {
-      if (upd.type === 'progress_start')  setCalcLabel(upd.message)
-      else if (upd.type === 'progress_update') setCalcLabel(`Calculating… ${upd.progress}%`)
-      else setCalcLabel('Calculating… 100%')
+      flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
     })
     return () => { unsubResult(); unsubError(); unsubUpdate() }
   }, [socket])
+
+  /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!isLogViewerShortcut(e)) return
+      const origin = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? ''
+      window.open(`${origin}/viewlog`, '_blank', 'noopener,noreferrer')
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
   // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
@@ -240,7 +270,7 @@ export function ToolPage() {
     } else {
       if (!uploadedIgsB64) return
     }
-    setMacroShapeGzB64(null)
+
     pendingMacroCountRef.current += 2
     socket.calculate({
       filename: uploadedFile?.name ?? 'surface.igs',
@@ -255,6 +285,7 @@ export function ToolPage() {
         p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
         extrudeLength,
       },
+      tolerance: igsConversionTolerance
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // extrudeLength intentionally omitted: a separate debounced effect handles it.
@@ -266,7 +297,7 @@ export function ToolPage() {
     const igsB64 = uploadedIgsB64Ref.current
     const timer = setTimeout(() => {
       if (isCalculatingRef.current) return  // don't interfere with an in-progress calculation
-      setMacroShapeGzB64(null)
+      // setMacroShapeGzB64(null)
       pendingMacroCountRef.current += 2
       socket.calculate({
         filename: uploadedFile?.name ?? 'surface.igs',
@@ -280,47 +311,61 @@ export function ToolPage() {
           p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
           extrudeLength,
         },
+        tolerance: igsConversionTolerance
       })
     }, 500)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extrudeLength])
-
-  /* ── Re-convert when tolerance changes (after a file is already loaded) ── */
-  React.useEffect(() => {
-    if (!originalIgsFile) return
-    let cancelled = false
-    convertIgsFile(originalIgsFile, igsConversionTolerance)
-      .then(({ stlFile, igsB64 }) => {
-        if (cancelled) return
-        setUploadedFile(stlFile)
-        setUploadedIgsB64(igsB64)
-      })
-      .catch(() => {/* ignore re-conversion failures silently */})
-    if (originalIgsFile2) {
-      convertIgsFile(originalIgsFile2, igsConversionTolerance)
-        .then(({ stlFile, igsB64 }) => {
-          if (cancelled) return
-          setUploadedFile2(stlFile)
-          setUploadedIgsB64_2(igsB64)
-        })
-        .catch(() => {})
-    }
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [igsConversionTolerance])
-
+  }, [extrudeLength, igsConversionTolerance])
+  
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
     setTileSliderValues(values)
   }, [])
+  
+  /* ── Tessellation tolerance commit → re-convert surfaces + recalc tile, no Effect needed:
+     this only ever fires from the Tolerance slider's onValueCommit (LatticeMenu.tsx),
+     so the work belongs in the handler, not in an Effect reacting to the resulting state.
+     The surface re-conversion (HTTP, hits the DLL's IGS→STL path) and the tile
+     recalculation (socket, hits the DLL's tile path) must not run concurrently —
+     the DLL isn't thread-safe, so overlapping calls corrupt each other's output.
+     Wait for the conversions to fully settle before firing calculateTile. ── */
+  const handleToleranceChange = React.useCallback((v: number) => {
+    setIgsConversionTolerance(v)
+    const conversions: Promise<void>[] = []
+    if (originalIgsFile) {
+      conversions.push(
+        convertIgsFile(originalIgsFile, v)
+          .then(({ stlFile, igsB64 }) => {
+            setUploadedFile(stlFile)
+            setUploadedIgsB64(igsB64)
+          })
+          .catch(() => {/* ignore re-conversion failures silently */})
+      )
+    }
+    if (originalIgsFile2) {
+      conversions.push(
+        convertIgsFile(originalIgsFile2, v)
+          .then(({ stlFile, igsB64 }) => {
+            setUploadedFile2(stlFile)
+            setUploadedIgsB64_2(igsB64)
+          })
+          .catch(() => {})
+      )
+    }
+    const padded: [number, number, number] = [tileSliderValues[0] ?? 0, tileSliderValues[1] ?? 0, tileSliderValues[2] ?? 0]
+    Promise.all(conversions).then(() => {
+      socket.calculateTile({ type: tileType, values: padded, tolerance: v })
+    })
+  }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket])
 
   /* ── Tile param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
-    socket.calculateTile({ type: tileType, values: padded })
-  }, [socket, tileType])
+    socket.calculateTile({ type: tileType, 
+      values: padded, tolerance: igsConversionTolerance })
+  }, [socket, tileType, igsConversionTolerance])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
     pendingResetKey.current = type
@@ -328,8 +373,9 @@ export function ToolPage() {
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type, values: padded })
-  }, [socket])
+    socket.calculateTile({ type, values: padded,
+      tolerance: igsConversionTolerance })
+  }, [socket, igsConversionTolerance])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     pendingMacroCountRef.current = 0
@@ -343,6 +389,7 @@ export function ToolPage() {
     setResultGzB64(null)
     setDownloadToken(null)
     setMacroShapeGzB64(null)
+    setDisplayedLayers([])
     setCalcMode(mode)
   }, [])
 
@@ -366,7 +413,7 @@ export function ToolPage() {
           setUploadedIgsB64(r1.igsB64)
           setUploadedFile2(r2.stlFile)
           setUploadedIgsB64_2(r2.igsB64)
-        } catch { setErrorMsg('Failed to convert IGS file') }
+        } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
       } else {
         const file = files[0]
         if (!uploadedFile) {
@@ -376,14 +423,14 @@ export function ToolPage() {
             setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
-          } catch { setErrorMsg('Failed to convert IGS file') }
+          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
         } else if (!uploadedFile2) {
           try {
             const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
             setOriginalIgsFile2(file)
             setUploadedFile2(stlFile)
             setUploadedIgsB64_2(igsB64)
-          } catch { setErrorMsg('Failed to convert IGS file') }
+          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
         } else {
           // Both already loaded — replace the first file
           setViewerResetKey('file-' + Date.now())
@@ -392,7 +439,7 @@ export function ToolPage() {
             setOriginalIgsFile(file)
             setUploadedFile(stlFile)
             setUploadedIgsB64(igsB64)
-          } catch { setErrorMsg('Failed to convert IGS file') }
+          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
         }
       }
     } else {
@@ -403,7 +450,7 @@ export function ToolPage() {
         setOriginalIgsFile(file)
         setUploadedFile(stlFile)
         setUploadedIgsB64(igsB64)
-      } catch { setErrorMsg('Failed to convert IGS file') }
+      } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
     }
   }, [calcMode, uploadedFile, uploadedFile2, igsConversionTolerance])
 
@@ -464,9 +511,10 @@ export function ToolPage() {
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
       args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0, extrudeLength },
+      tolerance: igsConversionTolerance
     }
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -538,10 +586,16 @@ export function ToolPage() {
             setModelColor={setMeshColor}
             backgroundColor={backgroundColor}
             setBackgroundColor={setBackgroundColor}
+            shadingMode={shadingMode}
+            setShadingMode={setShadingMode}
+            specularGray={specularGray}
+            setSpecularGray={setSpecularGray}
+            shininess={shininess}
+            setShininess={setShininess}
             extrudeLength={extrudeLength}
             onExtrudeLengthChange={setExtrudeLength}
             tolerance={igsConversionTolerance}
-            onToleranceChange={setIgsConversionTolerance}
+            onToleranceChange={handleToleranceChange}
             />
         </div>
 
@@ -575,14 +629,18 @@ export function ToolPage() {
 
           <div style={viewerStyle}>
             <ViewerScene
-              layers={layers}
+              layers={displayedLayers}
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
               onFileDrop={handleViewerFileDrop}
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
               backgroundColor={backgroundColor}
+              shadingMode={shadingMode}
+              specularGray={specularGray}
+              shininess={shininess}
               showDropHint={showDropHint}
+              hideEmptyPlaceholder={!!uploadedFile || !!uploadedFile2}
             />
           </div>
         </div>
@@ -599,6 +657,9 @@ export function ToolPage() {
             onValidationChange={handleValidationChange}
             meshColor={meshColor}
             backgroundColor={backgroundColor}
+            shadingMode={shadingMode}
+            specularGray={specularGray}
+            shininess={shininess}
           />
         </div>
       </div>

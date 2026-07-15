@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils'
 import { Button } from './Button'
 import Popup from './Popup'
 import { Tooltip } from './Tooltip'
+import { IoInformationCircle } from "react-icons/io5";
 
 export interface ToolbarProps {
   cameraMode?: 'perspective' | 'orthographic'
@@ -35,6 +36,9 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
 
     return (
       <div ref={ref} className={cn('toolbar', className)} style={containerStyle}>
+        {/* Left spacer — balances the right-hand help column so the pill below stays centered */}
+        <div style={sideStyle} />
+
         {/* ── Pill: camera mode + export + calculate ── */}
         <div style={pillStyle}>
           {/* Camera mode toggle */}
@@ -76,6 +80,15 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
               Export Lattice
             </Button>
           )}
+        </div>
+
+        <div style={{ ...sideStyle, justifyContent: 'flex-end', alignSelf: 'flex-end' }}>
+          <div style={{...helpPillStyle, padding: '4px 8px', gap: 4, 
+            cursor: 'pointer'}} 
+               onClick={() => window.open('/help', '_blank')}>
+            Help
+            <IoInformationCircle size={40} color=''/>
+          </div>
         </div>
 
         <Popup isOpen={isExportPopupOpen} onClose={() => setIsExportPopupOpen(false)}>
@@ -144,6 +157,12 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 11,
+  width: '100%',
+}
+
+const sideStyle: React.CSSProperties = {
+  display: 'flex',
+  flex: 1,
 }
 
 const pillStyle: React.CSSProperties = {
@@ -155,6 +174,11 @@ const pillStyle: React.CSSProperties = {
   borderRadius: 12,
   padding: '0 5px',
   boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
+}
+const helpPillStyle: React.CSSProperties = {
+  ...pillStyle,
+  backgroundColor: 'var(--action-primary)',
+  color: 'var(--action-primary-text)',
 }
 
 const pillDividerStyle: React.CSSProperties = {

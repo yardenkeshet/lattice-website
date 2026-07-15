@@ -3,11 +3,12 @@ import { CROSS, CROSS_DIAGONAL, DIAGONAL, EXTRUSION, REVOLUTION, RULING, type Ti
 
 interface CalcModeDef { label: string, requiredFilesCount: number} 
 export const CALC_MODE_DEFS: Record<string, CalcModeDef> = {
-    [EXTRUSION]: { label: 'Extrusion', requiredFilesCount: 1 },
+    [EXTRUSION]: { label: 'Extrusion', requiredFilesCount: 1, },
     [REVOLUTION]: { label: 'Revolution', requiredFilesCount: 1 },
     [RULING]: { label: 'Ruling', requiredFilesCount: 2 },
 }
 
+export const MAX_EXTRUSION_LENGTH = 100;
 export type CalcMode = keyof typeof CALC_MODE_DEFS
 
 import crossImg from './assets/TileTypes/cross.png'
@@ -27,7 +28,7 @@ export const TILE_DEFS: Record<string, TileDef> = {
         label: 'Diagonal',
         imageUrl: diagonalImg,
         sliders: [
-            { label: 'Center Size', min: 0.01, max: 0.5, defaultValue: 0.25, step: 0.01 },
+            { label: 'Center Size', min: 0.01, max: 0.49, defaultValue: 0.25, step: 0.01 },
             { label: 'End-Arm Size', min: 0.01, max: 0.5, defaultValue: 0.25, step: 0.01 },
             { label: 'Smoothing of Arms', min: 0.0, max: 1.0, defaultValue: 0.3, step: 0.01 },
         ],
@@ -36,7 +37,7 @@ export const TILE_DEFS: Record<string, TileDef> = {
         label: 'Cross Diagonal',
         imageUrl: crossDiagonalImg,
         sliders: [
-            { label: 'Cross Radius', min: 0.01, max: 0.5, defaultValue: 0.2, step: 0.01 },
+            { label: 'Cross Radius', min: 0.01, max: 0.4, defaultValue: 0.2, step: 0.01 },
             { label: 'Diagonal Relative Radius', min: 0.01, max: 2.0, defaultValue: 0.5, step: 0.01 },
         ],
     },
