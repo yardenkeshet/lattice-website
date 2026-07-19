@@ -28,8 +28,10 @@ clean:
 #
 # Create one big dll
 #
-MSDLL$(IRIT_LIB_PF).dll:  interface.$(IRIT_OBJ_PF)
+MSDLL$(IRIT_LIB_PF).dll:  interface.$(IRIT_OBJ_PF) \
+			  ..\MachineID\machine_lock.$(IRIT_OBJ_PF)
 	-$(IRITDLL) /dll /def:MSDLL$(IRIT_LIB_PF).def \
 		/out:MSDLL$(IRIT_LIB_PF).dll interface.$(IRIT_OBJ_PF) \
+		..\MachineID\machine_lock.$(IRIT_OBJ_PF) \
 		$(IRIT_LIBS) $(IRIT_MORE_LIBS) $(W32GUIMTOGLLIBS)
 
