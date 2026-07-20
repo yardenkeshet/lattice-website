@@ -158,11 +158,6 @@ MIN_POLY_TOLERANCE     = 2
 MAX_POLY_TOLERANCE     = 200
 DEFAULT_POLY_TOLERANCE = 50
 
-# Guards "set the (process-global) poly tolerance, then invoke the
-# STL-producing DLL call that depends on it" pairs, so a concurrent request
-# from another session can't change the tolerance in between.
-_dll_call_lock = threading.Lock()
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Direct DLL wrapper helpers
@@ -530,10 +525,9 @@ def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
 
     # Actual calculation
     tol = _validate_tolerance(tolerance)
-    with _dll_call_lock:
-        dll_error = _dll_set_poly_tolerance(tol)
-        if not dll_error:
-            dll_error = _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
+    dll_error = _dll_set_poly_tolerance(tol)
+    if not dll_error:
+        dll_error = _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
 
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
@@ -792,7 +786,7 @@ def handle_calculate(data):
     t_dll_start = time.time()
     try:
         logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
-        with temp_igs_file(igs_bytes) as igs_path, _dll_call_lock:
+        with temp_igs_file(igs_bytes) as igs_path:
             tol_error = _dll_set_poly_tolerance(tolerance)
             if tol_error:
                 raise RuntimeError(f'Failed to set tessellation tolerance: {tol_error}')
@@ -907,10 +901,9 @@ def handle_convert_igs_to_stl():
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            with _dll_call_lock:
-                err = _dll_set_poly_tolerance(tolerance)
-                if not err:
-                    err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'))
+            err = _dll_set_poly_tolerance(tolerance)
+            if not err:
+                err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'))
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")
