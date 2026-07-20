@@ -23,6 +23,7 @@ export interface CalculatePayload {
   /** performance.now() value captured just before emit, for round-trip timing */
   client_ts: number;
   args: CalculateArgs;
+  /** Tessellation fineness for MSDLLSetPolyTolerance. Integer, [2, 200] — higher is finer. */
   tolerance: number;
 }
 
@@ -32,6 +33,7 @@ export interface CalculateTilePayload {
   type: TileType;
   /** [p1, p2, p3] — tile shape parameters */
   values: [number, number, number];
+  /** Tessellation fineness for MSDLLSetPolyTolerance. Integer, [2, 200] — higher is finer. */
   tolerance: number;
 }
 

@@ -24,6 +24,7 @@ import {
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  DEFAULT_TESSELLATION_TOLERANCE,
   type ShadingMode,
 } from '../lib/parameters'
 import { type CalcMode, type TileType } from '../calculation_params'
@@ -37,7 +38,7 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  * can resend them at Calculate time — the backend no longer persists
  * uploaded files between requests.
  */
-async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
+async function convertIgsFile(file: File, tolerance: number = DEFAULT_TESSELLATION_TOLERANCE): Promise<{ stlFile: File; igsB64: string }> {
   const [stlB64, igsB64, ...rest] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
   console.log("rest:", rest)
   const binary = atob(stlB64)
@@ -107,7 +108,7 @@ export function ToolPage() {
   const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
 
   /* ── Tessellation tolerance + original IGS file references for re-conversion ── */
-  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(0.0)
+  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(DEFAULT_TESSELLATION_TOLERANCE)
   // Keep a reference to the original File objects so tolerance changes can re-convert
   const [originalIgsFile,  setOriginalIgsFile]  = React.useState<File | null>(null)
   const [originalIgsFile2, setOriginalIgsFile2] = React.useState<File | null>(null)

@@ -128,7 +128,10 @@ _dll.MSDLLMSFromRevolution.argtypes = [
 ]
 
 _dll.MSDLLIGES2STL.restype  = c_char_p
-_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_double]
+_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p]
+
+_dll.MSDLLSetPolyTolerance.restype  = c_char_p
+_dll.MSDLLSetPolyTolerance.argtypes = [c_int]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -149,6 +152,17 @@ TILE_TYPE_MAP = {
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
 
+# MSDLLSetPolyTolerance's valid range and the fallback used when a request's
+# tolerance is missing or out of range.
+MIN_POLY_TOLERANCE     = 2
+MAX_POLY_TOLERANCE     = 200
+DEFAULT_POLY_TOLERANCE = 50
+
+# Guards "set the (process-global) poly tolerance, then invoke the
+# STL-producing DLL call that depends on it" pairs, so a concurrent request
+# from another session can't change the tolerance in between.
+_dll_call_lock = threading.Lock()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Direct DLL wrapper helpers
@@ -164,8 +178,25 @@ def _call(fn, *args):
     return None
 
 
-def _dll_get_tile(tile_type, tile_params, graded, tolerance, out_stl_file: bytes):
+def _dll_get_tile(tile_type, tile_params, graded, out_stl_file: bytes):
     return _call(_dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
+
+
+def _dll_set_poly_tolerance(tolerance: int):
+    return _call(_dll.MSDLLSetPolyTolerance, c_int(tolerance))
+
+
+def _validate_tolerance(value, default=DEFAULT_POLY_TOLERANCE) -> int:
+    """Coerce to an int and clamp to MSDLLSetPolyTolerance's valid range,
+    falling back to `default` if the value is missing/invalid so older
+    clients that still send a stale/absent tolerance keep working."""
+    try:
+        tol = int(round(float(value)))
+    except (TypeError, ValueError):
+        return default
+    if tol < MIN_POLY_TOLERANCE or tol > MAX_POLY_TOLERANCE:
+        return default
+    return tol
 
 
 def _dll_from_revolution(srf_igs: bytes, num_tiles, graded, tile_type, tile_params,
@@ -188,8 +219,8 @@ def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, til
                  srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
 
 
-def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: c_double) -> str | None:
-    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file, tolerance)
+def _dll_iges2stl(igs_file: bytes, stl_file: bytes) -> str | None:
+    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file)
 
 
 
@@ -496,10 +527,14 @@ def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
         return
 
     stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
-    
+
     # Actual calculation
-    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
-    
+    tol = _validate_tolerance(tolerance)
+    with _dll_call_lock:
+        dll_error = _dll_set_poly_tolerance(tol)
+        if not dll_error:
+            dll_error = _dll_get_tile(tile_type_int, tile_params, graded, stl_tile_path.encode('utf-8'))
+
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
         return
@@ -534,7 +569,7 @@ def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
             f"[TILE] {tile_type_str}"
             f"  p=({tile_params[0]:.2f},{tile_params[1]:.2f},{tile_params[2]:.2f})"
             f"  g=({graded[0]:.2f},{graded[1]:.2f})"
-            f"  t=({tolerance:.2f})"
+            f"  t=({tol})"
             f"  {timings['overall_ms']:.0f}ms",
             extra=_log_extra(sid),
         )
@@ -704,6 +739,8 @@ def handle_calculate(data):
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
+    tolerance = _validate_tolerance(data.get('tolerance'))
+
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
     logger.info(
         f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
@@ -755,7 +792,11 @@ def handle_calculate(data):
     t_dll_start = time.time()
     try:
         logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
-        with temp_igs_file(igs_bytes) as igs_path:
+        with temp_igs_file(igs_bytes) as igs_path, _dll_call_lock:
+            tol_error = _dll_set_poly_tolerance(tolerance)
+            if tol_error:
+                raise RuntimeError(f'Failed to set tessellation tolerance: {tol_error}')
+
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
                     stl_content, out_stl_name, out_igs_name = do_Ruling(
@@ -860,15 +901,16 @@ def handle_convert_igs_to_stl():
         return jsonify({'error': 'No file provided'}), 400
 
     igs_bytes = request.files['file'].read()
-    tolerance = float(request.form.get('tolerance', 0.0))
+    tolerance = _validate_tolerance(request.form.get('tolerance'))
 
     try:
         with temp_igs_file(igs_bytes) as igs_path:
             stl_path = igs_path[:-4] + '_preview.stl'
             t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), 
-                                stl_path.encode('ascii'), 
-                                c_double(tolerance))
+            with _dll_call_lock:
+                err = _dll_set_poly_tolerance(tolerance)
+                if not err:
+                    err = _dll_iges2stl(igs_path.encode('ascii'), stl_path.encode('ascii'))
             t_igs_ms = round((time.time() - t_igs_start) * 1000)
             if err:
                 logger.warning(f"[IGS2STL] DLL warning: {err}")

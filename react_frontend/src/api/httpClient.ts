@@ -1,4 +1,5 @@
 import type { CalculateArgs } from './types';
+import { DEFAULT_TESSELLATION_TOLERANCE } from '../lib/parameters';
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 
@@ -8,7 +9,7 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
  *
  * Expected server response: JSON { stl_b64: string }
  */
-export async function convertIgsToStl(file: File, tolerance: number = 0.0): Promise<string> {
+export async function convertIgsToStl(file: File, tolerance: number = DEFAULT_TESSELLATION_TOLERANCE): Promise<string> {
   const form = new FormData();
   form.append('file', file);
   form.append('tolerance', String(tolerance));

@@ -55,6 +55,7 @@ IRIT_PNG = c:\c\libpng\lpng126	# libpng - IRIT_PNG image format (needs gzip)
 IRIT_JPG = c:\c\libjpeg\jpeg-9a	# libjpeg - IRIT_JPG image format (needs)
 #IRIT_3MF = c:\c\lib3mf          # lib3mf - handling the 3mf 3D printing format
 IRIT_XML = c:\c\LibRoXML\libroxml-2.2.1	# libroxml - IRIT_XML XML r/w format
+IRIT_EZXML = c:\c\ezxml		# ezxml - XML r/w format
 IRIT_GZIP = c:\c\zlib		# IRIT_GZIP compression library
 #IRIT_MAGELLAN = c:\c\magellan	# IRIT_MAGELLAN 3D mouse support
 #IRIT_OGL_CG = C:\Program Files\NVIDIA Corporation\Cg
@@ -82,6 +83,7 @@ IRIT_SW_DBG = c:\c\StackWalker   # Debug stack tracing abilities
 
 !IF "$(COMPILER)" == "VS2012"
 IRIT_COMPILER_LIB = windowsVC2012
+IRIT_EZXML = 
 !IF "$(MACHINE)" == "x64"
 # Bug in headers of the make forces wrong -subsystem.  Overwrite here:
 conflags = /machine:x64 /incremental:no /nologo
@@ -111,6 +113,7 @@ guiflags = /incremental:no /nologo
 
 !IF "$(COMPILER)" == "VS2019"
 IRIT_COMPILER_LIB = windowsVC2019
+IRIT_EZXML = 
 !IF "$(MACHINE)" == "x64"
 # Bug in headers of the make forces wrong -subsystem.  Overwrite here:
 conflags = /machine:x64 /incremental:no /nologo
@@ -125,11 +128,21 @@ guiflags = /incremental:no /nologo
 
 !IF "$(COMPILER)" == "VS2022"
 IRIT_COMPILER_LIB = windowsVC2022
-IRIT_URT =
-IRIT_PNG =
-IRIT_JPG =
-IRIT_XML =
-IRIT_GZIP =
+!IF "$(MACHINE)" == "x64"
+# Bug in headers of the make forces wrong -subsystem.  Overwrite here:
+conflags = /machine:x64 /incremental:no /nologo
+guiflags = /machine:x64 /incremental:no /nologo
+!ELSE
+IRIT_FFMPEG = c:\c\FFMpeg\FFMpeg # FFMPEG Audio/Video decoding library
+# Bug in headers of the make forces wrong -subsystem.  Overwrite here:
+conflags = /incremental:no /nologo
+guiflags = /incremental:no /nologo
+!ENDIF
+!ENDIF
+
+!IF "$(COMPILER)" == "VS2026"
+IRIT_COMPILER_LIB = windowsVC2026
+IRIT_EZXML = 
 !IF "$(MACHINE)" == "x64"
 # Bug in headers of the make forces wrong -subsystem.  Overwrite here:
 conflags = /machine:x64 /incremental:no /nologo
@@ -265,6 +278,19 @@ IRIT_XML_FLAGS = -DIRIT_HAVE_XML_LIB
 !ENDIF
 
 #
+# Support for IRIT_EZXML read/write using the ezxml toolkit library.
+# You can ftp it from https://ezxml.sourceforge.net
+#
+!IF "$(IRIT_EZXML)" != ""
+IRIT_EZXML_INC = -I$(IRIT_EZXML)
+IRIT_EZXML_LIB = $(IRIT_EZXML)\$(COMPILER)\libEZXML$(DEBUG_PREFIX)$(IRIT_64_PF).lib
+IRIT_EZXML_FLAGS = -DIRIT_HAVE_SVG_LIB
+!MESSAGE Irit Makefile: IRIT_EZXML read/write is supported
+!ELSE
+!MESSAGE Irit Makefile: IRIT_EZXML read/write is NOT supported
+!ENDIF
+
+#
 # Support for IRIT_GZIP image read/write using the gzip toolkit library.
 # You can ftp it from http://www.gzip.org/zlib/
 #
@@ -370,7 +396,7 @@ IRITMANIFEST = mt
 # optionally replace -MD with -MT
 #
 
-CFLAGS = -Ox $(LTCG_CL) -MD $(DFLAGS) $(IRIT_URT_INC) $(IRIT_GIF_INC) $(IRIT_PNG_INC) $(IRIT_JPG_INC) $(IRIT_3MF_INC) $(IRIT_FFMPEG_INC) $(IRIT_XML_INC) $(IRIT_MAGELLAN_INC) $(IRIT_GZIP_INC) $(IRIT_OGL_CG_INC) $(IRIT_OGL_GLUT_INC) $(IRIT_OGL_GLEW_INC) -DNDEBUG
+CFLAGS = -Ox $(LTCG_CL) -MD $(DFLAGS) $(IRIT_URT_INC) $(IRIT_GIF_INC) $(IRIT_PNG_INC) $(IRIT_JPG_INC) $(IRIT_3MF_INC) $(IRIT_FFMPEG_INC) $(IRIT_XML_INC) $(IRIT_EZXML_INC) $(IRIT_MAGELLAN_INC) $(IRIT_GZIP_INC) $(IRIT_OGL_CG_INC) $(IRIT_OGL_GLUT_INC) $(IRIT_OGL_GLEW_INC) -DNDEBUG
 
 # Link time code generation - very slow linking, but much faster code.
 LTCG_CL = -GL
@@ -399,7 +425,7 @@ IRIT_EXE_PF = $(IRIT_64_PF)
 CFLAGS_MORE = -Oy- -Ob0  # For Dr memory - no inline expansion nor frame ptrs
 CFLAGS_MORE = -RTC1      # For regular Visual Studio
 
-CFLAGS = -Zi -Od -MDd $(CFLAGS_MORE) $(DFLAGS) $(IRIT_URT_INC) $(IRIT_GIF_INC) $(IRIT_PNG_INC) $(IRIT_JPG_INC) $(IRIT_3MF_INC) $(IRIT_FFMPEG_INC) $(IRIT_XML_INC) $(IRIT_MAGELLAN_INC) $(IRIT_GZIP_INC) $(IRIT_OGL_CG_INC) $(IRIT_OGL_GLUT_INC) $(IRIT_OGL_GLEW_INC) $(IRIT_SW_DBG_INC) $(IRIT_SW_DBG_FLAGS) -DDEBUG_IRIT_MALLOC -DDEBUG -D_DEBUG -D_CRTDBG_MAP_ALLOC
+CFLAGS = -Zi -Od -MDd $(CFLAGS_MORE) $(DFLAGS) $(IRIT_URT_INC) $(IRIT_GIF_INC) $(IRIT_PNG_INC) $(IRIT_JPG_INC) $(IRIT_3MF_INC) $(IRIT_FFMPEG_INC) $(IRIT_XML_INC) $(IRIT_EZXML_INC) $(IRIT_MAGELLAN_INC) $(IRIT_GZIP_INC) $(IRIT_OGL_CG_INC) $(IRIT_OGL_GLUT_INC) $(IRIT_OGL_GLEW_INC) $(IRIT_SW_DBG_INC) $(IRIT_SW_DBG_FLAGS) -DDEBUG_IRIT_MALLOC -DDEBUG -D_DEBUG -D_CRTDBG_MAP_ALLOC
 
 LTCG_CL =
 LTCG_LNK =
@@ -433,10 +459,10 @@ GRAPDRVS = nuldrvs$(IRIT_EXE_PF).exe wntdrvs$(IRIT_EXE_PF).exe \
 # Default rule for compilation.
 #
 .c.$(IRIT_OBJ_PF):
-	$(IRITCC) $(IRIT_URT_FLAGS) $(IRIT_GIF_FLAGS) $(IRIT_PNG_FLAGS) $(IRIT_JPG_FLAGS) $(IRIT_3MF_FLAGS) $(IRIT_FFMPEG_FLAGS) $(IRIT_XML_FLAGS) $(IRIT_MAGELLAN_FLAGS) $(IRIT_GZIP_FLAGS) $(IRIT_OGL_CG_FLAGS) $(IRIT_OGL_GLUT_FLAGS) $(IRIT_OGL_GLEW_FLAGS) $(IRIT_MORE_FLAGS) $(CFLAGS) -I. -I$(IRIT_INC_DIR) -c -Fo$*.$(IRIT_OBJ_PF) $<
+	$(IRITCC) $(IRIT_URT_FLAGS) $(IRIT_GIF_FLAGS) $(IRIT_PNG_FLAGS) $(IRIT_JPG_FLAGS) $(IRIT_3MF_FLAGS) $(IRIT_FFMPEG_FLAGS) $(IRIT_XML_FLAGS) $(IRIT_EZXML_FLAGS) $(IRIT_MAGELLAN_FLAGS) $(IRIT_GZIP_FLAGS) $(IRIT_OGL_CG_FLAGS) $(IRIT_OGL_GLUT_FLAGS) $(IRIT_OGL_GLEW_FLAGS) $(IRIT_MORE_FLAGS) $(CFLAGS) -I. -I$(IRIT_INC_DIR) -c -Fo$*.$(IRIT_OBJ_PF) $<
 
 .cpp.$(IRIT_OBJ_PF):
-	$(IRITCC) $(IRIT_URT_FLAGS) $(IRIT_GIF_FLAGS) $(IRIT_PNG_FLAGS) $(IRIT_JPG_FLAGS) $(IRIT_3MF_FLAGS) $(IRIT_FFMPEG_FLAGS) $(IRIT_XML_FLAGS) $(IRIT_MAGELLAN_FLAGS) $(IRIT_GZIP_FLAGS) $(IRIT_OGL_CG_FLAGS) $(IRIT_OGL_GLUT_FLAGS) $(IRIT_OGL_GLEW_FLAGS) $(IRIT_MORE_FLAGS) $(CFLAGS) -I. -I$(IRIT_INC_DIR) -c -Fo$*.$(IRIT_OBJ_PF) $<
+	$(IRITCC) $(IRIT_URT_FLAGS) $(IRIT_GIF_FLAGS) $(IRIT_PNG_FLAGS) $(IRIT_JPG_FLAGS) $(IRIT_3MF_FLAGS) $(IRIT_FFMPEG_FLAGS) $(IRIT_XML_FLAGS) $(IRIT_EZXML_FLAGS) $(IRIT_MAGELLAN_FLAGS) $(IRIT_GZIP_FLAGS) $(IRIT_OGL_CG_FLAGS) $(IRIT_OGL_GLUT_FLAGS) $(IRIT_OGL_GLEW_FLAGS) $(IRIT_MORE_FLAGS) $(CFLAGS) -I. -I$(IRIT_INC_DIR) -c -Fo$*.$(IRIT_OBJ_PF) $<
 
 
 BOOL_LIB = IritBool$(IRIT_LIB_PF).lib
@@ -475,16 +501,17 @@ W32GUIMTOGLLIBS = $(W32GUISHARED) $(W32OPENGLLIBS) $(guilibsmt) $(IRIT_LIBCMT)
 # For using regular libraries.
 #
 IRIT_CIRCLINK = 
-IRIT_LIBS = -libpath:$(IRIT_LIB_DIR) \
+IRIT_LIBS = -libpath:$(IRIT_LIB_DIR) $(IRIT_CIRCLINK) \
 	$(EXT_LIB) $(GRAP_LIB) $(USER_LIB) $(RNDR_LIB) \
 	$(BOOL_LIB) $(PRSR_LIB) $(VMDL_LIB) $(MDL_LIB) $(MVAR_LIB) \
 	$(TRIM_LIB) $(TRIV_LIB) $(TRNG_LIB) $(SYMB_LIB) \
 	$(CAGD_LIB) $(GEOM_LIB) $(MISC_LIB) $(XTRA_LIB) \
 	$(IRIT_URT_LIB) $(IRIT_GIF_LIB) $(IRIT_PNG_LIB) \
 	$(IRIT_JPG_LIB) $(IRIT_3MF_LIB) $(IRIT_FFMPEG_LIBS) \
-	$(IRIT_XML_LIB) $(IRIT_MAGELLAN_LIB) $(IRIT_GZIP_LIB) \
-	$(IRIT_OGL_CG_LIB) $(IRIT_OGL_GLUT_LIB) \
+	$(IRIT_XML_LIB) $(IRIT_EZXML_LIB) $(IRIT_MAGELLAN_LIB) \
+	$(IRIT_GZIP_LIB) $(IRIT_OGL_CG_LIB) $(IRIT_OGL_GLUT_LIB) \
 	$(IRIT_SW_DBG_LIB)
+DO_IRIT_LIB = circlink_dir
 
 #
 # For using Dynamically Linked Library
@@ -493,7 +520,7 @@ IRIT_LIBS = -libpath:$(IRIT_LIB_DIR) \
 #	$(IRIT_GIF_LIB) $(IRIT_PNG_LIB) $(IRIT_JPG_LIB) $(IRIT_3MF_LIB) \
 #	$(IRIT_FFMPEG_LIBS) $(IRIT_MAGELLAN_LIB) $(IRIT_GZIP_LIB) 
 #	$(IRIT_OGL_CG_LIB) $(IRIT_OGL_GLUT_LIB) $(IRIT_OGL_GLEW_LIB) \
-#	$(IRIT_XML_LIB) $(IRIT_SW_DBG_LIB)
+#	$(IRIT_XML_LIB) $(IRIT_EZXML_LIB) $(IRIT_SW_DBG_LIB)
 # DO_IRIT_LIB = irit$(IRIT_LIB_PF).dll
 
 #############################################################################

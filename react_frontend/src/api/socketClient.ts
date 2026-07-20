@@ -26,6 +26,17 @@ interface RawError {
   message?: string;
 }
 
+// ─── Tolerance clamping ───────────────────────────────────────────────────────
+// MSDLLSetPolyTolerance requires an integer in [2, 200]; clamp here so the
+// contract holds regardless of what UI state produced the value.
+
+const MIN_TOLERANCE = 2;
+const MAX_TOLERANCE = 200;
+
+function clampTolerance(value: number): number {
+  return Math.min(MAX_TOLERANCE, Math.max(MIN_TOLERANCE, Math.round(value)));
+}
+
 // ─── Public callback types ────────────────────────────────────────────────────
 
 type ResultHandler = (payload: ResultPayload) => void;
@@ -57,11 +68,13 @@ export class LatticeSocketClient {
   // ── Client → Server ───────────────────────────────────────────────────────
 
   calculate(payload: CalculatePayload): void {
-    this.socket.emit('calculate', payload);
+    const tolerance = clampTolerance(payload.tolerance);
+    this.socket.emit('calculate', { ...payload, tolerance });
   }
 
   calculateTile(payload: CalculateTilePayload): void {
-    this.socket.emit('calculate_tile', payload);
+    const tolerance = clampTolerance(payload.tolerance);
+    this.socket.emit('calculate_tile', { ...payload, tolerance });
   }
 
   // ── Server → Client ───────────────────────────────────────────────────────

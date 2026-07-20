@@ -11,6 +11,7 @@ import {
   DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR,
   NORMAL, GOURAUD, PHONG,
   DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  TESSELLATION_TOLERANCE_MIN, TESSELLATION_TOLERANCE_MAX,
   type ShadingMode,
 } from '../../lib/parameters'
 import { Tooltip } from './Tooltip'
@@ -345,16 +346,16 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               Reset Display Settings
             </Button>
             <Divider />
-            <Tooltip content="Controls the visual quality of the surface preview. Lower values produce a finer, more accurate tessellation. This affects only the display — the macro shape and lattice are always computed directly from the raw IGES data.">
+            <Tooltip content="Controls tessellation fineness. Higher values produce a finer, more accurate mesh — both in the surface preview and in the computed lattice/macro shape.">
               <div style={sliderRowStyle}>
                 <Slider
                   label="Tessellation Tolerance"
-                  min={0}
-                  max={1}
-                  step={0.05}
+                  min={TESSELLATION_TOLERANCE_MIN}
+                  max={TESSELLATION_TOLERANCE_MAX}
+                  step={1}
                   value={[localTolerance]}
                   showValue
-                  valuePrecision={2}
+                  valuePrecision={0}
                   fontSize={12}
                   onValueChange={([v]) => setLocalTolerance(v)}
                   onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}

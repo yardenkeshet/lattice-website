@@ -50,7 +50,7 @@ describe('LatticeSocketClient', () => {
       surface_b64: '',
       client_ts: 1000,
       args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3, calcMode: EXTRUSION },
-      tolerance: 0
+      tolerance: 50
     }
     client.calculate(payload)
     expect(mockEmit).toHaveBeenCalledWith('calculate', payload)
@@ -58,7 +58,7 @@ describe('LatticeSocketClient', () => {
 
   // 2. calculateTile() emits the correct event name and payload
   it('emits "calculate_tile" with the correct payload', () => {
-    const payload: CalculateTilePayload = { type: 'diagonal', values: [0.25, 0.25, 0.5], tolerance: 0}
+    const payload: CalculateTilePayload = { type: 'diagonal', values: [0.25, 0.25, 0.5], tolerance: 50}
     client.calculateTile(payload)
     expect(mockEmit).toHaveBeenCalledWith('calculate_tile', payload)
   })

@@ -15,7 +15,7 @@ const STEPS: HelpStep[] = [
   },
   {
     title: '2. Upload your surface file(s)',
-    body: 'Click "Load surface as IGES file" (or drag a .igs file onto the 3D viewer) to add your surface. Extrusion and Revolution need one file; Ruling needs two. Uploaded surfaces are tessellated for preview only — open "Viewer Settings" to adjust the Tessellation Tolerance if the preview looks too coarse or too slow; the actual lattice is always computed from the raw IGES data.',
+    body: 'Click "Load surface as IGES file" (or drag a .igs file onto the 3D viewer) to add your surface. Extrusion and Revolution need one file; Ruling needs two. Open "Viewer Settings" to adjust the Tessellation Tolerance (2–200) if the preview or the computed lattice looks too coarse or too slow — higher values produce a finer mesh.',
   },
   {
     title: '3. Set the lattice parameters',

@@ -36,6 +36,11 @@ export const DEFAULT_SHADING_MODE: ShadingMode = PHONG
 export const DEFAULT_SPECULAR_GRAY = 17
 export const DEFAULT_SHININESS = 50
 
+// Tessellation fineness passed to MSDLLSetPolyTolerance. Integer, [2, 200] — higher is finer.
+export const TESSELLATION_TOLERANCE_MIN = 2
+export const TESSELLATION_TOLERANCE_MAX = 200
+export const DEFAULT_TESSELLATION_TOLERANCE = 50
+
 //Tile types and parameters:
 
 export const DEFAULT_TILE_TYPE: TileType = DIAGONAL
