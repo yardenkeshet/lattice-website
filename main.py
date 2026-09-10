@@ -924,6 +924,7 @@ queue_manager.start()
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
+    global _current_calc_sid
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
@@ -932,7 +933,19 @@ def handle_calculate_tile(data):
         graded  = (c_double * 2)(graded1, graded2)
         tolerance = float(data.get('tolerance', 0.0))
 
-        calculate_tile(tile_params, graded, tile_type, tolerance, request.sid)
+        if not queue_manager.try_acquire_dll():
+            # A full calculation (or another tile call) currently holds the
+            # DLL slot — skip silently rather than queue or block; the next
+            # scrub tick, or the in-flight calculation finishing, will
+            # produce a fresh preview normally.
+            return
+        sid = request.sid
+        _current_calc_sid = sid
+        try:
+            calculate_tile(tile_params, graded, tile_type, tolerance, sid)
+        finally:
+            _current_calc_sid = None
+            queue_manager.release_dll()
     except Exception as exc:
         logger.exception(f"[TILE] bad request: {exc}", extra={'sid': request.sid})
         emit('error', {'msg': f'Bad tile request: {exc}'})
