@@ -1,7 +1,21 @@
 import base64
+import os
 import time
 
 import main as main_module
+
+
+def _wait_until(predicate, timeout=5.0, interval=0.01):
+    """Poll `predicate` until it's truthy or `timeout` elapses. Mirrors
+    tests/test_calc_queue.py's helper of the same name — duplicated here
+    rather than imported since this repo has no shared test-utils module
+    yet and it's a few lines."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
 
 
 def _calc_payload():
@@ -45,9 +59,16 @@ def test_second_client_waits_then_calculates(monkeypatch):
     time.sleep(0.05)  # let the worker dequeue and start c1's (0.3s) fake job
     c2.emit('calculate', _calc_payload())
 
-    time.sleep(0.6)  # both jobs finish well within this window
+    # Poll for c2's 'result' event instead of sleeping a fixed duration —
+    # two 0.3s fake jobs plus a result emit and compression leaves thin
+    # margin under load with a fixed sleep (Finding 7).
+    c2_events = []
 
-    c2_events = c2.get_received()
+    def c2_got_result():
+        c2_events.extend(c2.get_received())
+        return any(e['name'] == 'result' for e in c2_events)
+
+    assert _wait_until(c2_got_result, timeout=5.0)
     names_in_order = [e['name'] for e in c2_events]
 
     waiting = next(e for e in c2_events if e['name'] == 'queue_status' and e['args'][0]['state'] == 'waiting')
@@ -57,6 +78,47 @@ def test_second_client_waits_then_calculates(monkeypatch):
     assert waiting['args'][0]['position'] == 1
     assert names_in_order.index(waiting['name']) < c2_events.index(calculating) < c2_events.index(result)
     assert len(calls) == 2  # c1's job ran, then c2's
+
+
+def test_disconnect_during_compression_discards_result(monkeypatch):
+    """Finding 4: a client who disconnects *during* compression (not just
+    before the DLL call) must not leak a DOWNLOAD_CACHE entry or a
+    last_results/<token>/ folder — nothing will ever redeem that token."""
+    _install_fake_revolution(monkeypatch, delay=0.02)
+
+    before_sids = set(main_module.connected_clients.keys())
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    new_sid = next(iter(set(main_module.connected_clients.keys()) - before_sids))
+
+    download_cache_before = set(main_module.DOWNLOAD_CACHE.keys())
+    results_dir = os.path.join(os.getcwd(), main_module.LAST_RESULTS_DIR)
+    dirs_before = set(os.listdir(results_dir)) if os.path.isdir(results_dir) else set()
+
+    orig_compress = main_module.compress_text_to_b64_gz
+
+    def fake_compress(text):
+        # Simulate the client disconnecting mid-compression: on_disconnect
+        # already ran (it only knows about the *previous* token, per the
+        # spec note) and removed this sid from connected_clients.
+        main_module.connected_clients.pop(new_sid, None)
+        return orig_compress(text)
+
+    monkeypatch.setattr(main_module, 'compress_text_to_b64_gz', fake_compress)
+
+    c1.emit('calculate', _calc_payload())
+
+    # Give the worker time to run the (fast, fake) job, hit compression
+    # (which triggers our simulated mid-compression disconnect), and either
+    # emit a result or correctly discard it. Poll rather than sleep fixed.
+    assert _wait_until(lambda: new_sid not in main_module.connected_clients, timeout=5.0)
+    time.sleep(0.2)  # let _run_calculate_job finish its post-compression checks
+
+    received = c1.get_received()
+    assert not any(e['name'] == 'result' for e in received)
+    assert set(main_module.DOWNLOAD_CACHE.keys()) == download_cache_before
+    dirs_after = set(os.listdir(results_dir)) if os.path.isdir(results_dir) else set()
+    assert dirs_after == dirs_before  # no leaked last_results/<token>/ folder
 
 
 def test_eleventh_waiting_client_is_rejected(monkeypatch):

@@ -80,6 +80,8 @@ This keeps slider scrubbing snappy while still guaranteeing the DLL is never ent
 - If the disconnecting `sid` is in `waiting`: remove it from the list and re-broadcast updated positions to the remaining waiters (their positions may have shifted).
 - If the disconnecting `sid` is the job currently being run by the worker: the DLL call **cannot be interrupted** (no safe kill mechanism via `ctypes`), so it's allowed to finish. The worker's `emit()` back to that now-gone `sid` is a harmless no-op (wrapped defensively so it can't raise). The existing `clean_session()` folder cleanup for that `sid` is deferred until the worker has actually finished with that job, rather than running immediately on disconnect and racing the worker's still-in-progress file writes.
 
+  (Implementation note, added after the whole-branch review: in practice `clean_session()` still runs immediately on disconnect, unchanged from before this feature — it was not made queue-aware. This turned out to be sufficient because `clean_session()` only ever touches the *previous* completed token's folder (`client_state[sid]['current_token']` as it stood before this job), never the new UUID folder the in-flight job is writing to — so the race this section worried about can't actually occur. `_run_calculate_job` instead re-checks `sid not in connected_clients` at two points — before compression and again right before registering the new result — and discards the job's output if the client is gone, rather than literally deferring `clean_session()`. The simpler approach was kept.)
+
 ---
 
 ## 5. Frontend

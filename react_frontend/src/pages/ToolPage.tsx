@@ -668,7 +668,10 @@ export function ToolPage() {
             </div>
           )}
 
-          {/* Queue-busy message (site too busy to accept another calculation right now) */}
+          {/* Queue-busy message (site too busy to accept another calculation right now).
+              role="status" (not "alert" like the error banner above): this is a
+              "please retry later" state, read out politely once idle, not an
+              urgent failure that should interrupt the screen reader immediately. */}
           {queueBusyMsg && (
             <div style={queueBusyStyle} role="status">
               {queueBusyMsg}
