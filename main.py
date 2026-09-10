@@ -881,6 +881,16 @@ def _run_calculate_job(job: Job) -> None:
         shutil.rmtree(out_folder, ignore_errors=True)
         return
 
+    # The client may also have disconnected *during* compression (which can
+    # take several seconds for large outputs) — re-check right before
+    # registering the download, not just before compression, or we'd leak a
+    # DOWNLOAD_CACHE entry and a last_results/<token>/ folder that nothing
+    # will ever redeem.
+    if sid not in connected_clients:
+        logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
+        shutil.rmtree(out_folder, ignore_errors=True)
+        return
+
     # Success — register the new result and retire the previous one for this session.
     DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
     old_token = client_state.get(sid, {}).get('current_token')
@@ -959,40 +969,56 @@ def handle_convert_igs_to_stl():
     igs_bytes = request.files['file'].read()
     tolerance = float(request.form.get('tolerance', 0.0))
 
+    # This route hits the same DLL as calculate/calculate_tile (on every file
+    # upload, potentially twice concurrently in ruling mode), so it must go
+    # through the queue's DLL slot too — otherwise "exactly one DLL call in
+    # flight, ever" doesn't hold. Unlike calculate_tile, a dropped request
+    # here is user-visible (the upload just fails), so we wait briefly for
+    # the slot rather than skipping silently. No SocketIO request.sid exists
+    # for a plain HTTP POST, so _current_calc_sid is deliberately left
+    # untouched — the progress callbacks' `if _current_calc_sid:` guard makes
+    # that a safe no-op.
+    if not queue_manager.acquire_dll_blocking(timeout=30.0):
+        logger.warning("[IGS2STL] DLL busy — timed out waiting for the queue slot")
+        return jsonify({'error': 'Server busy, please try again shortly'}), 503
+
     try:
-        with temp_igs_file(igs_bytes) as igs_path:
-            stl_path = igs_path[:-4] + '_preview.stl'
-            t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), 
-                                stl_path.encode('ascii'), 
-                                c_double(tolerance))
-            t_igs_ms = round((time.time() - t_igs_start) * 1000)
-            if err:
-                logger.warning(f"[IGS2STL] DLL warning: {err}")
-                return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
-            if not os.path.exists(stl_path):
-                logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
-                return jsonify({'error': err or 'IGS conversion produced no output'}), 500
+        try:
+            with temp_igs_file(igs_bytes) as igs_path:
+                stl_path = igs_path[:-4] + '_preview.stl'
+                t_igs_start = time.time()
+                err = _dll_iges2stl(igs_path.encode('ascii'),
+                                    stl_path.encode('ascii'),
+                                    c_double(tolerance))
+                t_igs_ms = round((time.time() - t_igs_start) * 1000)
+                if err:
+                    logger.warning(f"[IGS2STL] DLL warning: {err}")
+                    return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
+                if not os.path.exists(stl_path):
+                    logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
+                    return jsonify({'error': err or 'IGS conversion produced no output'}), 500
 
-            try:
-                with open(stl_path, 'rb') as f:
-                    stl_content = f.read()
-            finally:
                 try:
-                    os.remove(stl_path)
-                except OSError:
-                    logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
+                    with open(stl_path, 'rb') as f:
+                        stl_content = f.read()
+                finally:
+                    try:
+                        os.remove(stl_path)
+                    except OSError:
+                        logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
 
-        b64_str = base64.b64encode(stl_content).decode('utf-8')
-        logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
-        response = {'stl_b64': b64_str}
-        if err:
-            response['warning'] = err
-        return jsonify(response)
+            b64_str = base64.b64encode(stl_content).decode('utf-8')
+            logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
+            response = {'stl_b64': b64_str}
+            if err:
+                response['warning'] = err
+            return jsonify(response)
 
-    except Exception as exc:
-        logger.exception(f"[IGS2STL] {exc}")
-        return jsonify({'error': f'Internal server error: {exc}'}), 500
+        except Exception as exc:
+            logger.exception(f"[IGS2STL] {exc}")
+            return jsonify({'error': f'Internal server error: {exc}'}), 500
+    finally:
+        queue_manager.release_dll()
 
 
 @app.route('/log-calculation', methods=['POST'])
