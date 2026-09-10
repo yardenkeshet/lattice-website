@@ -24,6 +24,14 @@ export interface CalculatePayload {
   client_ts: number;
   args: CalculateArgs;
   tolerance: number;
+  /**
+   * True for the frontend's own automatic macro-shape-preview calls (fired
+   * on upload / calc-mode change / extrude-length debounce), as opposed to
+   * the user's explicit Calculate click. Silent requests still queue for
+   * real on the server (DLL serialization is unaffected) but never surface
+   * queue_status/queue_rejected UI. Absent/false for a real Calculate click.
+   */
+  silent?: boolean;
 }
 
 // ─── calculate_tile event ────────────────────────────────────────────────────
@@ -70,6 +78,22 @@ export interface ModelSTLResult {
 }
 
 export type ResultPayload = TileSTLResult | ModelSTLResult;
+
+// ─── queue_status / queue_rejected events (server → client) ─────────────────
+//
+// calculate can now be served immediately, wait in a bounded (max 10) queue,
+// or be rejected outright if the waiting room is full. `silent` mirrors the
+// request's own `silent` flag so the frontend can tell a background
+// macro-preview call apart from the user's own Calculate click.
+
+export type QueueStatusPayload =
+  | { state: 'waiting'; position: number; aheadCount: number; silent: boolean }
+  | { state: 'calculating'; silent: boolean };
+
+export interface QueueRejectedPayload {
+  message: string;
+  silent: boolean;
+}
 
 // ─── error event (server → client) ───────────────────────────────────────────
 //

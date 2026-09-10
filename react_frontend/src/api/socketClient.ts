@@ -8,6 +8,8 @@ import type {
   ErrorPayload,
   UpdatePayload,
   LogLine,
+  QueueStatusPayload,
+  QueueRejectedPayload,
 } from './types';
 
 // ─── Raw server-emitted shapes (before normalisation) ────────────────────────
@@ -107,6 +109,16 @@ export class LatticeSocketClient {
   onLogError(handler: LogHandler): () => void {
     this.socket.on('log_error', handler);
     return () => this.socket.off('log_error', handler);
+  }
+
+  onQueueStatus(handler: (payload: QueueStatusPayload) => void): () => void {
+    this.socket.on('queue_status', handler);
+    return () => this.socket.off('queue_status', handler);
+  }
+
+  onQueueRejected(handler: (payload: QueueRejectedPayload) => void): () => void {
+    this.socket.on('queue_rejected', handler);
+    return () => this.socket.off('queue_rejected', handler);
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────

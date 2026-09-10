@@ -168,4 +168,57 @@ describe('LatticeSocketClient', () => {
     unsub()
     expect(mockOff).toHaveBeenCalledWith('disconnect', handler)
   })
+
+  describe('onQueueStatus()', () => {
+    it('delivers a waiting status payload', () => {
+      const handler = vi.fn()
+      client.onQueueStatus(handler)
+      getHandler('queue_status')({ state: 'waiting', position: 3, aheadCount: 2, silent: false })
+      expect(handler).toHaveBeenCalledWith({ state: 'waiting', position: 3, aheadCount: 2, silent: false })
+    })
+
+    it('delivers a calculating status payload', () => {
+      const handler = vi.fn()
+      client.onQueueStatus(handler)
+      getHandler('queue_status')({ state: 'calculating', silent: true })
+      expect(handler).toHaveBeenCalledWith({ state: 'calculating', silent: true })
+    })
+
+    it('returns an unsubscribe function', () => {
+      const handler = vi.fn()
+      const unsub = client.onQueueStatus(handler)
+      unsub()
+      expect(mockOff).toHaveBeenCalledWith('queue_status', handler)
+    })
+  })
+
+  describe('onQueueRejected()', () => {
+    it('delivers the rejection payload', () => {
+      const handler = vi.fn()
+      client.onQueueRejected(handler)
+      const payload = { message: 'Site is too busy right now. Please wait a few minutes and try again.', silent: false }
+      getHandler('queue_rejected')(payload)
+      expect(handler).toHaveBeenCalledWith(payload)
+    })
+
+    it('returns an unsubscribe function', () => {
+      const handler = vi.fn()
+      const unsub = client.onQueueRejected(handler)
+      unsub()
+      expect(mockOff).toHaveBeenCalledWith('queue_rejected', handler)
+    })
+  })
+
+  it('calculate() passes a silent flag through when provided', () => {
+    const payload: CalculatePayload = {
+      filename: 'part.stl',
+      surface_b64: '',
+      client_ts: 1000,
+      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1: 0.5, p2: 0.4, p3: 0.3, calcMode: EXTRUSION },
+      tolerance: 0,
+      silent: true,
+    }
+    client.calculate(payload)
+    expect(mockEmit).toHaveBeenCalledWith('calculate', payload)
+  })
 })
