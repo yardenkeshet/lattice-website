@@ -3,7 +3,10 @@ import { Canvas, useThree, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
-import { perspectiveFitDistance, orthographicFitZoom } from '../lib/cameraFit'
+import {
+  perspectiveFitDistance, orthographicFitZoom,
+  orthoZoomForPerspectiveDistance, perspectiveDistanceForOrthoZoom,
+} from '../lib/cameraFit'
 import { ShadedMaterial } from './ShadedMaterial'
 import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
 
@@ -13,6 +16,38 @@ export interface MeshLayer {
   blobUrl: string
   /** Defaults to 1.0 (fully opaque). Values < 1 enable transparency automatically. */
   opacity?: number
+}
+
+/** Vertical FOV (degrees) used by the perspective camera — kept as a named
+ *  constant since it's also needed by the perspective↔orthographic zoom
+ *  conversion in CameraToggleRestore, not just the Canvas's `camera` prop. */
+const PERSPECTIVE_FOV_DEG = 45
+
+/**
+ * A snapshot of the live camera's transform, captured just before a
+ * perspective↔orthographic toggle (which remounts the Canvas) so the new
+ * camera can be initialized to match instead of resetting to the default fit.
+ * `distance`/`zoom`/`frustumHalfH` are mode-specific: only the pair matching
+ * `mode` is populated, since that's what the conversion math needs.
+ */
+export interface CameraSnapshot {
+  mode: 'perspective' | 'orthographic'
+  /** Camera position, world space. */
+  position: THREE.Vector3
+  /** OrbitControls' look-at pivot, world space. */
+  target: THREE.Vector3
+  /** Distance from position to target. Present when mode === 'perspective'. */
+  distance?: number
+  /** camera.zoom. Present when mode === 'orthographic'. */
+  zoom?: number
+  /** camera.top at zoom = 1. Present when mode === 'orthographic'. */
+  frustumHalfH?: number
+}
+
+export interface ViewerSceneHandle {
+  /** Reads the live camera/controls transform right now, or null if the
+   *  canvas hasn't mounted a camera/controls pair yet. */
+  getCameraSnapshot: () => CameraSnapshot | null
 }
 
 export interface ViewerSceneProps {
@@ -48,6 +83,11 @@ export interface ViewerSceneProps {
    *  even if `layers` is empty — used while a file is uploaded but its
    *  display is intentionally frozen pending a macro-shape recalculation. */
   hideEmptyPlaceholder?: boolean
+  /** A camera snapshot captured (via the ref handle) just before a
+   *  perspective↔orthographic toggle. Applied once, to the freshly remounted
+   *  camera, so the toggle preserves position/rotation/zoom instead of
+   *  resetting to the default fit. `null`/omitted on every other mount. */
+  pendingCameraSnapshot?: CameraSnapshot | null
 }
 
 const ACCEPTED_EXTS = new Set(['.igs'])
@@ -84,12 +124,34 @@ function ViewerSceneFn({
   specularGray = DEFAULT_SPECULAR_GRAY,
   shininess = DEFAULT_SHININESS,
   hideEmptyPlaceholder = false,
-}: ViewerSceneProps) {
+  pendingCameraSnapshot = null,
+}: ViewerSceneProps, ref: React.Ref<ViewerSceneHandle>) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
   // Dynamic camera bases — updated when auto-fit fires.
   const [baseZ,         setBaseZ]         = React.useState(5)
   const [baseOrthoZoom, setBaseOrthoZoom] = React.useState(1)
+
+  // Live camera/controls, tracked by CameraStateTracker (inside the Canvas)
+  // so getCameraSnapshot() can read them imperatively — a toggle click needs
+  // the CURRENT transform synchronously, before the Canvas remounts.
+  const liveCameraRef   = React.useRef<THREE.Camera | null>(null)
+  const liveControlsRef = React.useRef<{ target: THREE.Vector3 } | null>(null)
+
+  React.useImperativeHandle(ref, () => ({
+    getCameraSnapshot: (): CameraSnapshot | null => {
+      const camera   = liveCameraRef.current
+      const controls = liveControlsRef.current
+      if (!camera || !controls) return null
+      const position = camera.position.clone()
+      const target   = controls.target.clone()
+      if (cameraMode === 'orthographic') {
+        const orthoCam = camera as THREE.OrthographicCamera
+        return { mode: 'orthographic', position, target, zoom: orthoCam.zoom, frustumHalfH: orthoCam.top }
+      }
+      return { mode: 'perspective', position, target, distance: position.distanceTo(target) }
+    },
+  }), [cameraMode])
 
   // Ref so the wheel handler always reads the latest zoom without a stale closure.
   const zoomRef = React.useRef(zoom)
@@ -213,13 +275,18 @@ function ViewerSceneFn({
         style={{ width: '100%', height: '100%' }}
         camera={
           cameraMode === 'perspective'
-            ? { position: [0, 0, 5], fov: 45 }
+            ? { position: [0, 0, 5], fov: PERSPECTIVE_FOV_DEG }
             : undefined
         }
         orthographic={cameraMode === 'orthographic'}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
         onCreated={(state) => { canvasElRef.current = state.gl.domElement }}
       >
+        {/* Tracks the live camera/controls into refs so getCameraSnapshot()
+            (called imperatively, outside React's render cycle) always reads
+            the current transform. */}
+        <CameraStateTracker cameraRef={liveCameraRef} controlsRef={liveControlsRef} />
+
         <color attach="background" args={[backgroundColor]}/>
         <ambientLight intensity={0.4} />
         <directionalLight color={0xfff5e0} position={[5, 8, 6]} intensity={1.2} />
@@ -246,12 +313,20 @@ function ViewerSceneFn({
           return filtered.map((layer, i) => {
             const isMacroLayer = isMultiLayer && i === filtered.length - 1
             const isFitLayer   = isMacroLayer || (!isMultiLayer && i === 0)
+            // Suppress the auto-fit entirely on a toggle-triggered remount
+            // (pendingCameraSnapshot set) rather than letting it run and
+            // relying on CameraToggleRestore to override it afterward — its
+            // onFitDistance/onFitOrthoZoom callbacks would otherwise update
+            // baseZ/baseOrthoZoom state, triggering a second render in which
+            // CameraZoom re-fires and corrupts an orbited camera (see
+            // CameraToggleRestore's comment).
+            const fitKey = isFitLayer && !pendingCameraSnapshot ? cameraResetKey : undefined
             return (
               <STLErrorBoundary key={layer.blobUrl}>
                 <React.Suspense fallback={null}>
                   <STLMesh
                     url={layer.blobUrl}
-                    fitKey={isFitLayer ? cameraResetKey : undefined}
+                    fitKey={fitKey}
                     onFitDistance={isFitLayer ? handleFitDistance : undefined}
                     onFitOrthoZoom={isFitLayer ? handleFitOrthoZoom : undefined}
                     meshColor={meshColor}
@@ -269,11 +344,103 @@ function ViewerSceneFn({
         })()}
 
         <OrbitControls makeDefault enablePan enableZoom={true} />
+
+        {/* Last child so its layout effect runs after OrbitControls has
+            registered itself, giving the restored position/target/zoom
+            final say. STLMesh's own auto-fit is suppressed for this mount
+            (see fitKey below) rather than merely out-ordered — letting it
+            run and reapplying afterward isn't enough, since its onFitDistance/
+            onFitOrthoZoom callbacks update baseZ/baseOrthoZoom state, which
+            triggers a second render where CameraZoom re-fires and stomps
+            just the z/zoom component of an orbited camera, corrupting it. */}
+        <CameraToggleRestore
+          snapshot={pendingCameraSnapshot}
+          mode={cameraMode}
+        />
       </Canvas>
     </div>
   )
 }
 
+
+/* ─── Live camera/controls tracker ───
+   Mirrors R3F's default camera + drei's OrbitControls into refs owned by the
+   parent (outside the Canvas), so ViewerScene's imperative handle can read
+   the current transform synchronously from an event handler. */
+
+function CameraStateTracker({
+  cameraRef,
+  controlsRef,
+}: {
+  cameraRef: React.MutableRefObject<THREE.Camera | null>
+  controlsRef: React.MutableRefObject<{ target: THREE.Vector3 } | null>
+}) {
+  const camera   = useThree(s => s.camera)
+  const controls = useThree(s => s.controls)
+
+  React.useEffect(() => { cameraRef.current = camera }, [camera, cameraRef])
+  React.useEffect(() => {
+    controlsRef.current = (controls as unknown as { target: THREE.Vector3 } | null) ?? null
+  }, [controls, controlsRef])
+
+  return null
+}
+
+/* ─── Camera toggle restore ───
+   Applies a CameraSnapshot (captured from the *other* mode, just before the
+   Canvas remounted) to the freshly created camera + controls, converting
+   zoom between projections so the model's apparent size doesn't jump.
+   Position/target copy across directly — only zoom needs the conversion,
+   since perspective and orthographic express it differently. */
+
+function CameraToggleRestore({
+  snapshot,
+  mode,
+}: {
+  snapshot: CameraSnapshot | null
+  mode: 'perspective' | 'orthographic'
+}) {
+  const camera     = useThree(s => s.camera)
+  const controls   = useThree(s => s.controls) as { target: THREE.Vector3; update: () => void } | null
+  const invalidate = useThree(s => s.invalidate)
+  const appliedRef = React.useRef(false)
+
+  React.useLayoutEffect(() => {
+    if (appliedRef.current || !snapshot || !controls) return
+    appliedRef.current = true
+
+    controls.target.copy(snapshot.target)
+
+    if (mode === 'orthographic') {
+      const orthoCam = camera as THREE.OrthographicCamera
+      orthoCam.position.copy(snapshot.position)
+      const newZoom = snapshot.mode === 'perspective'
+        ? orthoZoomForPerspectiveDistance(snapshot.distance!, PERSPECTIVE_FOV_DEG, orthoCam.top)
+        : snapshot.zoom!
+      if (newZoom > 0) orthoCam.zoom = newZoom
+      orthoCam.lookAt(snapshot.target)
+      orthoCam.updateProjectionMatrix()
+    } else {
+      const perspCam = camera as THREE.PerspectiveCamera
+      if (snapshot.mode === 'orthographic') {
+        const direction = snapshot.position.clone().sub(snapshot.target).normalize()
+        const newDistance = perspectiveDistanceForOrthoZoom(snapshot.zoom!, snapshot.frustumHalfH!, PERSPECTIVE_FOV_DEG)
+        perspCam.position.copy(snapshot.target)
+        perspCam.position.addScaledVector(direction, newDistance > 0 ? newDistance : snapshot.position.distanceTo(snapshot.target))
+      } else {
+        perspCam.position.copy(snapshot.position)
+      }
+      perspCam.zoom = 1
+      perspCam.lookAt(snapshot.target)
+      perspCam.updateProjectionMatrix()
+    }
+
+    controls.update()
+    invalidate()
+  }, [snapshot, mode, camera, controls, invalidate])
+
+  return null
+}
 
 /* ─── Camera zoom controller ─── */
 
@@ -515,5 +682,5 @@ const dropHintBarStyle: React.CSSProperties = {
   pointerEvents: 'none',
 }
 
-export const ViewerScene = React.memo(ViewerSceneFn)
+export const ViewerScene = React.memo(React.forwardRef(ViewerSceneFn))
 ViewerScene.displayName = 'ViewerScene'

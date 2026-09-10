@@ -3,6 +3,8 @@ import {
   FILL_FRACTION,
   perspectiveFitDistance,
   orthographicFitZoom,
+  perspectiveDistanceForOrthoZoom,
+  orthoZoomForPerspectiveDistance,
 } from '../cameraFit'
 
 describe('perspectiveFitDistance', () => {
@@ -95,5 +97,51 @@ describe('orthographicFitZoom', () => {
 
   it('returns 0 for degenerate inputs (r = 0)', () => {
     expect(orthographicFitZoom(0, 10, 10)).toBe(0)
+  })
+})
+
+/* ─── Perspective ↔ orthographic zoom-equivalence conversion ───
+   Used when toggling camera projection so the model's apparent on-screen
+   size doesn't jump: both directions solve for the same "visible half-height
+   at the target", just expressed in the other projection's terms. */
+
+describe('orthoZoomForPerspectiveDistance / perspectiveDistanceForOrthoZoom', () => {
+  it('round-trips: converting distance→zoom→distance returns the original distance', () => {
+    const distance = 8, fovDeg = 45, frustumHalfH = 6
+    const zoom = orthoZoomForPerspectiveDistance(distance, fovDeg, frustumHalfH)
+    const roundTripped = perspectiveDistanceForOrthoZoom(zoom, frustumHalfH, fovDeg)
+    expect(roundTripped).toBeCloseTo(distance, 5)
+  })
+
+  it('round-trips: converting zoom→distance→zoom returns the original zoom', () => {
+    const zoom = 1.5, frustumHalfH = 6, fovDeg = 45
+    const distance = perspectiveDistanceForOrthoZoom(zoom, frustumHalfH, fovDeg)
+    const roundTripped = orthoZoomForPerspectiveDistance(distance, fovDeg, frustumHalfH)
+    expect(roundTripped).toBeCloseTo(zoom, 5)
+  })
+
+  it('orthoZoomForPerspectiveDistance: farther perspective camera → smaller ortho zoom (zoomed out)', () => {
+    const near = orthoZoomForPerspectiveDistance(4, 45, 6)
+    const far  = orthoZoomForPerspectiveDistance(8, 45, 6)
+    expect(far).toBeLessThan(near)
+  })
+
+  it('perspectiveDistanceForOrthoZoom: larger ortho zoom (zoomed in) → shorter perspective distance', () => {
+    const zoomedIn  = perspectiveDistanceForOrthoZoom(2, 6, 45)
+    const zoomedOut = perspectiveDistanceForOrthoZoom(1, 6, 45)
+    expect(zoomedIn).toBeLessThan(zoomedOut)
+  })
+
+  it('a wider fov needs less distance to match the same ortho zoom', () => {
+    const narrow = perspectiveDistanceForOrthoZoom(1, 6, 30)
+    const wide   = perspectiveDistanceForOrthoZoom(1, 6, 90)
+    expect(wide).toBeLessThan(narrow)
+  })
+
+  it('returns 0 for degenerate inputs', () => {
+    expect(orthoZoomForPerspectiveDistance(0, 45, 6)).toBe(0)
+    expect(orthoZoomForPerspectiveDistance(4, 45, 0)).toBe(0)
+    expect(perspectiveDistanceForOrthoZoom(0, 6, 45)).toBe(0)
+    expect(perspectiveDistanceForOrthoZoom(1, 0, 45)).toBe(0)
   })
 })
