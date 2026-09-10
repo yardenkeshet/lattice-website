@@ -12,7 +12,7 @@ import { getLatticeSocket } from '../api/socketClient'
 import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
-import { calcLabelForUpdate } from '../lib/progressDisplay'
+import { calcLabelForUpdate, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
@@ -110,6 +110,7 @@ export function ToolPage() {
   const [isCalculating, setIsCalculating] = React.useState(false)
   const [calcLabel, setCalcLabel]         = React.useState('Calculating…')
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
+  const [queueBusyMsg, setQueueBusyMsg]   = React.useState<string | null>(null)
 
   const handleCameraModeChange = React.useCallback((mode: 'perspective' | 'orthographic') => {
     setErrorMsg(null)
@@ -263,7 +264,24 @@ export function ToolPage() {
     const unsubUpdate = socket.onUpdate(upd => {
       flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
     })
-    return () => { unsubResult(); unsubError(); unsubUpdate() }
+    const unsubQueueStatus = socket.onQueueStatus(status => {
+      if (status.silent) return  // background macro-preview call — never surfaced
+      setCalcLabel(calcLabelForQueueStatus(status))
+    })
+    const unsubQueueRejected = socket.onQueueRejected(rejection => {
+      if (rejection.silent) {
+        // A background macro-preview call was bounced; it will never
+        // produce a result, so release the counter the same way a normal
+        // response would.
+        if (pendingMacroCountRef.current > 0) pendingMacroCountRef.current -= 1
+        return
+      }
+      pendingMacroCountRef.current = 0
+      setIsCalculating(false)
+      setCalcLabel('Calculating…')
+      setQueueBusyMsg(rejection.message)
+    })
+    return () => { unsubResult(); unsubError(); unsubUpdate(); unsubQueueStatus(); unsubQueueRejected() }
   }, [socket])
 
   /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
@@ -300,7 +318,8 @@ export function ToolPage() {
         p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
         extrudeLength,
       },
-      tolerance: igsConversionTolerance
+      tolerance: igsConversionTolerance,
+      silent: true,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // extrudeLength intentionally omitted: a separate debounced effect handles it.
@@ -326,7 +345,8 @@ export function ToolPage() {
           p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
           extrudeLength,
         },
-        tolerance: igsConversionTolerance
+        tolerance: igsConversionTolerance,
+        silent: true,
       })
     }, 500)
     return () => clearTimeout(timer)
@@ -494,6 +514,7 @@ export function ToolPage() {
   /* ── Calculate ── */
   const handleCalculate = React.useCallback(() => {
     setErrorMsg(null)
+    setQueueBusyMsg(null)
     pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
@@ -532,7 +553,7 @@ export function ToolPage() {
       tolerance: igsConversionTolerance
     }
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket, setErrorMsg])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket, setErrorMsg, setQueueBusyMsg])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
@@ -643,6 +664,19 @@ export function ToolPage() {
                 aria-label="Dismiss error"
                 onClick={() => setErrorMsg(null)}
                 style={errorDismissStyle}
+              >✕</button>
+            </div>
+          )}
+
+          {/* Queue-busy message (site too busy to accept another calculation right now) */}
+          {queueBusyMsg && (
+            <div style={queueBusyStyle} role="status">
+              {queueBusyMsg}
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => setQueueBusyMsg(null)}
+                style={queueBusyDismissStyle}
               >✕</button>
             </div>
           )}
@@ -761,6 +795,28 @@ const errorDismissStyle: React.CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   color: 'var(--text-error)',
+  fontSize: 12,
+  padding: 0,
+}
+
+const queueBusyStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  padding: '8px 12px',
+  backgroundColor: 'var(--status-warning-bg)',
+  borderRadius: 'var(--radius-card)',
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--text-size-sm)',
+  color: 'var(--text-base)',
+}
+
+const queueBusyDismissStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-base)',
   fontSize: 12,
   padding: 0,
 }

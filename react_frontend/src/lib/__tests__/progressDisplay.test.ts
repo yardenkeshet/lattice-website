@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcLabelForUpdate, DLL_PROGRESS_CAP } from '../progressDisplay'
+import { calcLabelForUpdate, calcLabelForQueueStatus, DLL_PROGRESS_CAP } from '../progressDisplay'
 
 describe('calcLabelForUpdate', () => {
   it('passes progress_start message through unchanged', () => {
@@ -32,5 +32,16 @@ describe('calcLabelForUpdate', () => {
   it('DLL_PROGRESS_CAP is below 100 so progress_update never itself claims done', () => {
     expect(DLL_PROGRESS_CAP).toBeLessThan(100)
     expect(DLL_PROGRESS_CAP).toBeGreaterThan(0)
+  })
+})
+
+describe('calcLabelForQueueStatus', () => {
+  it('shows the position while waiting', () => {
+    expect(calcLabelForQueueStatus({ state: 'waiting', position: 4, aheadCount: 3, silent: false }))
+      .toBe("Site is busy — you're #4 in line")
+  })
+
+  it('falls back to the default calculating label once running', () => {
+    expect(calcLabelForQueueStatus({ state: 'calculating', silent: false })).toBe('Calculating…')
   })
 })
