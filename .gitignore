@@ -27,3 +27,4 @@ react_frontend/.storybook-static/
 .claude/settings.local.json
 .DS_Store
 Thumbs.db
+.firecrawl/
