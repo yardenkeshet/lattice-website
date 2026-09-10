@@ -71,7 +71,7 @@ def test_rejects_once_waiting_room_is_full():
     manager.start()
 
     assert manager.enqueue('running', {}) is True
-    assert _wait_until(lambda: True, timeout=0.05)  # let it be dequeued
+    time.sleep(0.05)  # let it be dequeued
 
     for i in range(MAX_WAITING):
         assert manager.enqueue(f'waiter-{i}', {}) is True
@@ -96,7 +96,7 @@ def test_positions_recompute_as_the_front_is_processed():
                 if ev == 'queue_status' and s == sid and p['state'] == 'waiting']
 
     manager.enqueue('first', {})
-    assert _wait_until(lambda: True, timeout=0.05)
+    time.sleep(0.05)  # let it be dequeued
     manager.enqueue('second', {})
     manager.enqueue('third', {})
 
@@ -122,7 +122,7 @@ def test_remove_waiting_updates_positions_for_the_rest():
                 if ev == 'queue_status' and s == sid and p['state'] == 'waiting']
 
     manager.enqueue('first', {})
-    assert _wait_until(lambda: True, timeout=0.05)
+    time.sleep(0.05)  # let it be dequeued
     manager.enqueue('second', {})
     manager.enqueue('third', {})
 
@@ -194,7 +194,7 @@ def test_tile_slot_blocked_while_a_full_job_is_running():
     manager.start()
 
     manager.enqueue('full-calc', {})
-    assert _wait_until(lambda: True, timeout=0.05)
+    time.sleep(0.05)  # let it be dequeued
 
     assert manager.try_acquire_dll() is False
 

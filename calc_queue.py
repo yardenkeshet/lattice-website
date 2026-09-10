@@ -41,8 +41,6 @@ class CalcQueueManager:
 
     def start(self) -> None:
         self._worker.start()
-        # Give worker thread time to initialize and start waiting for jobs
-        time.sleep(0.05)
 
     # ── calculate: enqueue / cancel ──────────────────────────────────────
 
