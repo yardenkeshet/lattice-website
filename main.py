@@ -588,14 +588,6 @@ def handle_calculate(data):
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
 
-    # Early return for dropped silent requests (before logging): if silent and lane is busy,
-    # drop the request silently without any logging or UI event.
-    if silent and not dll_background_lane.try_acquire():
-        # Background lane busy — drop this preview. A newer trigger
-        # (or the next debounce tick) supersedes it; never queues,
-        # never surfaces any UI, never touches dll_main.
-        return
-
     logger.info(
         f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
         extra=_log_extra(sid),
@@ -645,7 +637,11 @@ def handle_calculate(data):
     }
 
     if silent:
-        # Lane is already acquired (checked above), so spawn the silent calculation.
+        if not dll_background_lane.try_acquire():
+            # Background lane busy — drop this preview. A newer trigger
+            # (or the next debounce tick) supersedes it; never queues,
+            # never surfaces any UI, never touches dll_main.
+            return
         threading.Thread(
             target=_run_silent_calculate, args=(sid, payload),
             daemon=True, name=f'calc-silent-{sid}',

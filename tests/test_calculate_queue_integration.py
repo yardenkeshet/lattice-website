@@ -245,7 +245,41 @@ def test_silent_calculate_is_dropped_when_the_background_lane_is_busy(monkeypatc
         c1.emit('calculate', payload)
         time.sleep(0.1)
         received = c1.get_received()
-        # Dropped silently — no error, no result, no queue event.
-        assert received == []
+        # Dropped silently — no error, no result, no queue event (logs are OK).
+        assert not any(m['name'] == 'error' for m in received)
+        assert not any(m['name'] == 'queue_status' for m in received)
+        assert not any(m['name'] == 'queue_rejected' for m in received)
+        assert not any(m['name'] == 'result' for m in received)
     finally:
         main_module.dll_background_lane.release()
+
+
+def test_silent_calculate_with_invalid_field_does_not_leak_background_lane(monkeypatch):
+    """Regression test: a silent calculate with invalid data (e.g. bad tileType)
+    must fail validation and return an error, WITHOUT acquiring and leaking the
+    background lane. The lane must still be free afterward."""
+    _install_fake_revolution(monkeypatch, delay=0.1)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    # Drain the receive buffer from client connection
+    time.sleep(0.1)
+    while c1.get_received():
+        pass
+
+    # Send a silent calculate with an invalid tileType
+    payload = _calc_payload()
+    payload['silent'] = True
+    payload['args']['tileType'] = 'invalid_tile_type'  # This will fail validation
+
+    c1.emit('calculate', payload)
+    time.sleep(0.1)
+
+    received = c1.get_received()
+    # Must receive an error event (validation failure)
+    assert any(m['name'] == 'error' for m in received), "Expected error event for invalid tileType"
+
+    # The critical check: the background lane should NOT be held
+    # If the lane was acquired but not released due to validation failure, this will fail
+    assert main_module.dll_background_lane.try_acquire() is True, \
+        "Background lane is held/leaked! Validation failure must not acquire the lane."
+    main_module.dll_background_lane.release()
