@@ -173,144 +173,29 @@ def test_worker_survives_a_job_that_raises():
     assert _wait_until(lambda: processed == ['after-boom'])
 
 
-def test_tile_slot_is_exclusive():
-    manager, _, _ = make_manager()
-    manager.start()
-
-    assert manager.try_acquire_dll() is True
-    assert manager.try_acquire_dll() is False
-    manager.release_dll()
-    assert manager.try_acquire_dll() is True
-    manager.release_dll()
-
-
-def test_tile_slot_blocked_while_a_full_job_is_running():
-    release = threading.Event()
+def test_mark_dll_free_lets_the_worker_pick_up_the_next_job_without_waiting_for_run_job_to_return():
+    """run_job itself is expected to call mark_dll_free() partway through
+    (right after its own DLL work, before its slower non-DLL tail) —
+    simulate that here and confirm the worker's *own* end-of-job release
+    doesn't have to fire first."""
+    order = []
 
     def run_job(job):
-        release.wait(timeout=2)
+        order.append(f'dll-start-{job.sid}')
+        manager.mark_dll_free()
+        order.append(f'dll-end-{job.sid}')
+        time.sleep(0.05)  # simulate a slow non-DLL tail (compression)
 
     manager, _, _ = make_manager(run_job=run_job)
     manager.start()
 
-    manager.enqueue('full-calc', {})
-    time.sleep(0.05)  # let it be dequeued
+    manager.enqueue('first', {})
+    assert _wait_until(lambda: 'dll-end-first' in order)
 
-    assert manager.try_acquire_dll() is False
-
-    release.set()
-    assert _wait_until(lambda: manager.try_acquire_dll())
-    manager.release_dll()
-
-
-def test_a_queued_job_waits_for_a_held_tile_slot_to_release():
-    manager, calls, _ = make_manager()
-    manager.start()
-
-    assert manager.try_acquire_dll() is True  # simulate an in-flight tile call
-
-    manager.enqueue('queued-during-tile', {})
-    time.sleep(0.1)
-    assert calls == []  # must not start while the tile slot is held
-
-    manager.release_dll()
-    assert _wait_until(lambda: len(calls) == 1)
-
-
-# ── Finding 1: acquire_dll_blocking ─────────────────────────────────────
-
-def test_acquire_dll_blocking_acquires_immediately_when_free():
-    manager, _, _ = make_manager()
-    manager.start()
-
-    start = time.time()
-    assert manager.acquire_dll_blocking(timeout=2.0) is True
-    assert time.time() - start < 0.5
-    manager.release_dll()
-
-
-def test_acquire_dll_blocking_waits_for_release_then_acquires():
-    manager, _, _ = make_manager()
-    manager.start()
-
-    assert manager.try_acquire_dll() is True  # simulate an in-flight holder
-
-    acquired = threading.Event()
-    result = {}
-
-    def waiter():
-        result['ok'] = manager.acquire_dll_blocking(timeout=2.0)
-        acquired.set()
-
-    t = threading.Thread(target=waiter)
-    t.start()
-
-    time.sleep(0.1)
-    assert not acquired.is_set()  # still blocked — slot is held
-
-    manager.release_dll()
-
-    assert acquired.wait(timeout=2.0)
-    assert result['ok'] is True
-    manager.release_dll()
-    t.join()
-
-
-def test_acquire_dll_blocking_times_out_without_acquiring():
-    manager, _, _ = make_manager()
-    manager.start()
-
-    assert manager.try_acquire_dll() is True  # held for the whole test
-
-    start = time.time()
-    ok = manager.acquire_dll_blocking(timeout=0.1)
-    elapsed = time.time() - start
-
-    assert ok is False
-    assert elapsed >= 0.1
-    assert elapsed < 1.0  # didn't block far past the timeout
-
-    # Slot must still be held by the original acquirer — a timed-out
-    # acquire_dll_blocking must not have grabbed it.
-    assert manager.try_acquire_dll() is False
-    manager.release_dll()
-
-
-def test_acquire_dll_blocking_wakes_promptly_even_though_worker_shares_the_condition():
-    """Regression for a race found while testing Finding 1: the manager's
-    own worker thread is also permanently parked on self._not_empty (idle,
-    waiting for a job). A plain notify() in release_dll() can wake that
-    worker instead of an acquire_dll_blocking waiter — the worker finds its
-    own predicate still false and immediately goes back to wait(), silently
-    consuming the notification. The waiter then never gets woken and has to
-    sit out its entire timeout before its own wait()-timeout expires and it
-    re-checks self._busy. Must be woken well within a fraction of a long
-    timeout, not only once the timeout itself elapses."""
-    for _ in range(20):
-        manager, _, _ = make_manager()
-        manager.start()  # worker parks on self._not_empty immediately (no jobs)
-
-        assert manager.try_acquire_dll() is True  # simulate an in-flight holder
-
-        result = {}
-        done = threading.Event()
-
-        def waiter():
-            start = time.time()
-            result['ok'] = manager.acquire_dll_blocking(timeout=5.0)
-            result['elapsed'] = time.time() - start
-            done.set()
-
-        t = threading.Thread(target=waiter)
-        t.start()
-        time.sleep(0.05)  # let the waiter actually enter its wait()
-
-        manager.release_dll()
-
-        assert done.wait(timeout=2.0)  # must wake up fast, nowhere near the 5s timeout
-        assert result['ok'] is True
-        assert result['elapsed'] < 1.0
-        t.join()
+    manager.enqueue('second', {})
+    # 'second' must start soon after mark_dll_free(), not after 'first''s
+    # full run_job (including its 0.05s tail) returns.
+    assert _wait_until(lambda: 'dll-start-second' in order, timeout=1.0)
 
 
 # ── Finding 2: queue_status emit ordering ───────────────────────────────

@@ -76,46 +76,19 @@ class CalcQueueManager:
         if changed:
             self._broadcast_positions()
 
-    # ── calculate_tile: non-blocking best-effort access ─────────────────
+    # ── DLL-slot release (called by run_job right after its own DLL work) ──
 
-    def try_acquire_dll(self) -> bool:
-        """Non-blocking: True (and holds the slot) if free, False if busy."""
-        with self._lock:
-            if self._busy:
-                return False
-            self._busy = True
-            return True
-
-    def release_dll(self) -> None:
+    def mark_dll_free(self) -> None:
+        """Called by run_job as soon as its own DLL call is done (success
+        or failure), before it goes on to do non-DLL work (compression,
+        emit). With no dedicated worker thread waiting on this signal
+        anymore (see dll_lane.BackgroundDllLane for that concern), this
+        exists purely so run_job's own timing is explicit and testable —
+        the worker loop's own end-of-job release below is an idempotent
+        safety net, not the only thing gating the next job."""
         with self._lock:
             self._busy = False
-            # notify_all, not notify: self._not_empty now has two distinct
-            # kinds of waiters with different predicates — the worker loop
-            # (waiting for `self._waiting` non-empty AND not busy) and any
-            # acquire_dll_blocking callers (waiting only for not busy). A
-            # plain notify() can wake the wrong one; that thread finds its
-            # own predicate still false, goes right back to wait(), and the
-            # *other* waiter never gets woken — silently eating the whole
-            # timeout instead of resuming promptly. notify_all lets every
-            # waiter re-check its own predicate.
             self._not_empty.notify_all()
-
-    def acquire_dll_blocking(self, timeout: float) -> bool:
-        """Blocking variant of try_acquire_dll: waits up to `timeout` seconds
-        for the DLL slot to free up, then holds it. Returns False (without
-        acquiring) if the timeout elapses first. For callers whose failure
-        is user-visible (e.g. an HTTP request) where try_acquire_dll's
-        silent skip would be the wrong behavior — here we want to wait a
-        bounded amount rather than fail instantly."""
-        with self._not_empty:
-            deadline = time.time() + timeout
-            while self._busy:
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    return False
-                self._not_empty.wait(timeout=remaining)
-            self._busy = True
-            return True
 
     # ── worker thread ─────────────────────────────────────────────────
 
