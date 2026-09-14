@@ -2,6 +2,8 @@ import base64
 import os
 import time
 
+import pytest
+
 import main as main_module
 
 
@@ -252,6 +254,31 @@ def test_silent_calculate_is_dropped_when_the_background_lane_is_busy(monkeypatc
         assert not any(m['name'] == 'result' for m in received)
     finally:
         main_module.dll_background_lane.release()
+
+
+def test_silent_calculate_releases_lane_when_dll_phase_raises(monkeypatch):
+    """Regression for the final-review Finding 1 fix: if
+    _run_calculate_dll_phase raises before it reaches its own try/except
+    (e.g. a prologue failure — bad payload unpacking, os.makedirs failing
+    on a read-only filesystem, ...), _run_silent_calculate must still
+    release dll_background_lane via try/finally, not leak it forever."""
+    def _raise(dll_instance, payload, sid):
+        raise RuntimeError("simulated prologue failure")
+
+    monkeypatch.setattr(main_module, '_run_calculate_dll_phase', _raise)
+
+    sid = 'fake-sid-for-lane-release-test'
+    payload = _calc_payload()
+
+    assert main_module.dll_background_lane.try_acquire() is True  # mirrors handle_calculate's own acquire
+    with pytest.raises(RuntimeError):
+        main_module._run_silent_calculate(sid, payload)
+
+    # The critical check: the lane must be free again immediately — not
+    # leaked because the exception propagated past an unguarded release.
+    assert main_module.dll_background_lane.try_acquire() is True, \
+        "Background lane is held/leaked! _run_calculate_dll_phase raising must not leak the lane."
+    main_module.dll_background_lane.release()
 
 
 def test_silent_calculate_with_invalid_field_does_not_leak_background_lane(monkeypatch):

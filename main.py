@@ -93,10 +93,20 @@ except OSError as _exc:
         f"Original error: {_exc}"
     ) from _exc
 
-_background_dll_path = prepare_background_dll_copy(
-    MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH,
-    dest_dir=os.path.join(os.getcwd(), 'tmp', 'dll_background_instance'),
-)
+_BACKGROUND_DLL_DEST_DIR = os.path.join(os.getcwd(), 'tmp', 'dll_background_instance')
+try:
+    _background_dll_path = prepare_background_dll_copy(
+        MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH,
+        dest_dir=_BACKGROUND_DLL_DEST_DIR,
+    )
+except OSError as _exc:
+    raise OSError(
+        f"Failed to prepare the background DLL copy at '{_BACKGROUND_DLL_DEST_DIR}'. "
+        f"This can happen if another instance of this server is already "
+        f"running and still has that file open — check for a leftover "
+        f"python main.py process and stop it, then retry. "
+        f"Original error: {_exc}"
+    ) from _exc
 dll_background = DllInstance(_background_dll_path, emit=_emit_queue_event)
 assert_distinct_dll_instances(dll_main, dll_background)
 dll_background_lane = BackgroundDllLane()
@@ -642,10 +652,14 @@ def handle_calculate(data):
             # (or the next debounce tick) supersedes it; never queues,
             # never surfaces any UI, never touches dll_main.
             return
-        threading.Thread(
-            target=_run_silent_calculate, args=(sid, payload),
-            daemon=True, name=f'calc-silent-{sid}',
-        ).start()
+        try:
+            threading.Thread(
+                target=_run_silent_calculate, args=(sid, payload),
+                daemon=True, name=f'calc-silent-{sid}',
+            ).start()
+        except Exception as exc:
+            dll_background_lane.release()
+            logger.exception(f"[CALC] failed to start silent-calculate thread: {exc}", extra=_log_extra(sid))
         return
 
     accepted = queue_manager.enqueue(sid, payload, silent=False)
@@ -837,8 +851,10 @@ def _run_silent_calculate(sid: str, payload: dict) -> None:
     dll_background_lane (a successful try_acquire()) before calling this;
     releases it here, right after the DLL phase, before the (potentially
     slow) finish phase."""
-    dll_result = _run_calculate_dll_phase(dll_background, payload, sid)
-    dll_background_lane.release()
+    try:
+        dll_result = _run_calculate_dll_phase(dll_background, payload, sid)
+    finally:
+        dll_background_lane.release()
     if dll_result is not None:
         _finish_calculate(payload, sid, dll_result)
 
@@ -857,13 +873,13 @@ def handle_calculate_tile(data):
         graded  = (c_double * 2)(graded1, graded2)
         tolerance = float(data.get('tolerance', 0.0))
 
+        sid = request.sid
         if not dll_background_lane.try_acquire():
             # Background lane busy with someone else's silent/tile/upload
             # work — skip silently rather than queue or block; the next
             # scrub tick, or the moment the lane frees up, produces a
             # fresh preview normally. Never affected by dll_main.
             return
-        sid = request.sid
         dll_background.set_current_sid(sid)
         try:
             calculate_tile(dll_background, tile_params, graded, tile_type, tolerance, sid)
