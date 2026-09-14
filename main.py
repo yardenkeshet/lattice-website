@@ -642,19 +642,13 @@ def handle_calculate(data):
         }, room=sid)
 
 
-def _run_calculate_job(job: Job) -> None:
-    """CalcQueueManager's run_job callback for a full calculate request.
-    Runs on the queue's dedicated worker thread — never concurrently with
-    another call to this function, and never while a tile-preview call
-    holds the DLL slot. Must use explicit room=sid emits (no implicit
-    request context on this thread)."""
-    global _current_calc_sid
-
-    sid = job.sid
-    p = job.payload
-    client_ts      = p['client_ts']
+def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | None:
+    """The exclusive part of a calculate request: builds the ctypes args
+    and calls the DLL. Emits its own error and returns None on failure.
+    Callers release their own lane's DLL slot immediately after this
+    returns — nothing below this function touches the DLL."""
+    p = payload
     filename       = p['filename']
-    args           = p['args']
     calc_mode      = p['calc_mode']
     tile_type_int  = p['tile_type_int']
     nt1, nt2, nt3  = p['nt1'], p['nt2'], p['nt3']
@@ -663,9 +657,6 @@ def _run_calculate_job(job: Job) -> None:
     extrude_length = p['extrude_length']
     igs_bytes      = p['igs_bytes']
     igs_bytes2     = p['igs_bytes2']
-    t_received     = p['t_received']
-
-    t_start = time.time()
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
@@ -676,111 +667,155 @@ def _run_calculate_job(job: Job) -> None:
     os.makedirs(out_folder, exist_ok=True)
 
     t_dll_start = time.time()
-    _current_calc_sid = sid
+    dll_instance.set_current_sid(sid)
     try:
         logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
                     stl_content, out_stl_name, out_igs_name = do_Ruling(
-                        out_folder, igs_path, igs_path2,
+                        dll_instance, out_folder, igs_path, igs_path2,
                         curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     )
             elif calc_mode == CALC_MODE_EXTRUSION:
                 stl_content, out_stl_name, out_igs_name = do_extrusion(
-                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
+                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     extrude_length,
                 )
             else:
                 dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
                 stl_content, out_stl_name, out_igs_name = dispatch_fn(
-                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
+                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
                 )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
     except Exception as exc:
         logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
     finally:
-        _current_calc_sid = None
-
+        dll_instance.set_current_sid(None)
     t_dll_end = time.time()
 
     if not stl_content:
         logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
 
-    # The client may have disconnected while this job was queued/running.
-    # Nothing will ever redeem this token — discard the result rather than
-    # leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
-    if sid not in connected_clients:
-        logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    try:
-        t_comp_start = time.time()
-        compressed_b64 = compress_text_to_b64_gz(stl_content)
-        t_comp_end = time.time()
-        comp_kb = len(base64.b64decode(compressed_b64)) / 1024
-    except Exception as exc:
-        logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
-        socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    # The client may also have disconnected *during* compression (which can
-    # take several seconds for large outputs) — re-check right before
-    # registering the download, not just before compression, or we'd leak a
-    # DOWNLOAD_CACHE entry and a last_results/<token>/ folder that nothing
-    # will ever redeem.
-    if sid not in connected_clients:
-        logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    # Success — register the new result and retire the previous one for this session.
-    DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
-    old_token = client_state.get(sid, {}).get('current_token')
-    if old_token and old_token != new_token:
-        DOWNLOAD_CACHE.pop(old_token, None)
-        shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
-    if sid in client_state:
-        client_state[sid]['current_token'] = new_token
-
-    t_total = time.time() - t_start
-    timings = {
-        'client_to_server_ms': None if client_ts is None else (t_received * 1000 - client_ts),
-        'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
-        'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
-        'overall_ms':          round(t_total * 1000),
+    return {
+        'stl_content': stl_content, 'out_stl_name': out_stl_name, 'out_igs_name': out_igs_name,
+        'out_folder': out_folder, 'new_token': new_token,
+        't_dll_start': t_dll_start, 't_dll_end': t_dll_end,
     }
 
-    socketio.emit('result', {
-        'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
-        'kind':             'model_stl',
-        'stl_gz_b64':       compressed_b64,
-        'timings':          timings,
-        'args_echo':        args,
-        'filename':         filename,
-        'download_token':   new_token,
-    }, room=sid)
 
-    logger.info(
-        f"[CALC] done  {comp_kb:.0f}KB"
-        f"  overall={timings['overall_ms']}ms"
-        f"  dll={timings['time_dll_ms']}ms"
-        f"  compress={timings['time_compress_ms']}ms"
-        f"  token={new_token}",
-        extra=_log_extra(sid),
-    )
+def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
+    """The non-exclusive tail of a calculate request: disconnect checks,
+    compression, DOWNLOAD_CACHE bookkeeping, the result emit. Deliberately
+    never touches the DLL — safe to run on its own thread, in parallel
+    with the *next* DLL call on either lane. Must use explicit room=sid
+    emits (no implicit request context on a spawned thread)."""
+    try:
+        client_ts  = payload['client_ts']
+        filename   = payload['filename']
+        args       = payload['args']
+        t_received = payload['t_received']
+
+        stl_content  = dll_result['stl_content']
+        out_stl_name = dll_result['out_stl_name']
+        out_igs_name = dll_result['out_igs_name']
+        out_folder   = dll_result['out_folder']
+        new_token    = dll_result['new_token']
+        t_dll_start  = dll_result['t_dll_start']
+        t_dll_end    = dll_result['t_dll_end']
+        t_start      = t_dll_start
+
+        # The client may have disconnected while this job was queued/running.
+        # Nothing will ever redeem this token — discard the result rather
+        # than leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
+        if sid not in connected_clients:
+            logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        try:
+            t_comp_start = time.time()
+            compressed_b64 = compress_text_to_b64_gz(stl_content)
+            t_comp_end = time.time()
+            comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+        except Exception as exc:
+            logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
+            socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        # The client may also have disconnected *during* compression (which
+        # can take several seconds for large outputs) — re-check right
+        # before registering the download, not just before compression, or
+        # we'd leak a DOWNLOAD_CACHE entry and a last_results/<token>/
+        # folder that nothing will ever redeem.
+        if sid not in connected_clients:
+            logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        # Success — register the new result and retire the previous one for this session.
+        DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
+        old_token = client_state.get(sid, {}).get('current_token')
+        if old_token and old_token != new_token:
+            DOWNLOAD_CACHE.pop(old_token, None)
+            shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
+        if sid in client_state:
+            client_state[sid]['current_token'] = new_token
+
+        t_total = time.time() - t_start
+        timings = {
+            'client_to_server_ms': None if client_ts is None else (t_received * 1000 - client_ts),
+            'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
+            'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
+            'overall_ms':          round(t_total * 1000),
+        }
+
+        socketio.emit('result', {
+            'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
+            'kind':             'model_stl',
+            'stl_gz_b64':       compressed_b64,
+            'timings':          timings,
+            'args_echo':        args,
+            'filename':         filename,
+            'download_token':   new_token,
+        }, room=sid)
+
+        logger.info(
+            f"[CALC] done  {comp_kb:.0f}KB"
+            f"  overall={timings['overall_ms']}ms"
+            f"  dll={timings['time_dll_ms']}ms"
+            f"  compress={timings['time_compress_ms']}ms"
+            f"  token={new_token}",
+            extra=_log_extra(sid),
+        )
+    except Exception:
+        # This runs on its own thread — an uncaught exception here would
+        # otherwise vanish silently instead of failing the request visibly.
+        logger.exception("[CALC] _finish_calculate failed unexpectedly", extra=_log_extra(sid))
+
+
+def _run_calculate_job(job: Job) -> None:
+    """CalcQueueManager's run_job callback — Lane A (main queue). Runs on
+    the queue's dedicated worker thread — never concurrently with another
+    call to this function, and never while dll_main is otherwise in use."""
+    dll_result = _run_calculate_dll_phase(dll_main, job.payload, job.sid)
+    queue_manager.mark_dll_free()
+    if dll_result is not None:
+        threading.Thread(
+            target=_finish_calculate, args=(job.payload, job.sid, dll_result),
+            daemon=True, name=f'calc-finish-{job.sid}',
+        ).start()
 
 
 queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event)

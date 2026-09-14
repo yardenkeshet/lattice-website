@@ -38,7 +38,7 @@ def _install_fake_revolution(monkeypatch, delay=0.3):
     dict already captured the original function reference at import time."""
     calls = []
 
-    def _fake(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+    def _fake(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
         calls.append(time.time())
         time.sleep(delay)
         return "solid fake\nendsolid fake\n", "MSRevolv.stl", "MSRevolv.igs"
@@ -119,6 +119,41 @@ def test_disconnect_during_compression_discards_result(monkeypatch):
     assert set(main_module.DOWNLOAD_CACHE.keys()) == download_cache_before
     dirs_after = set(os.listdir(results_dir)) if os.path.isdir(results_dir) else set()
     assert dirs_after == dirs_before  # no leaked last_results/<token>/ folder
+
+
+def test_second_real_calculate_starts_before_first_ones_compression_finishes(monkeypatch):
+    """Regression for the busy-window shrink: the worker must free itself
+    for the next job the instant the DLL call ends, not after compression
+    + emit. Fakes a slow compress step so the effect is observable without
+    waiting on real compression timing."""
+    calls = _install_fake_revolution(monkeypatch, delay=0.05)
+
+    dll_events = []
+    orig_compress = main_module.compress_text_to_b64_gz
+
+    def slow_compress(text):
+        dll_events.append(('compress-start', time.time()))
+        time.sleep(0.3)
+        dll_events.append(('compress-end', time.time()))
+        return orig_compress(text)
+
+    monkeypatch.setattr(main_module, 'compress_text_to_b64_gz', slow_compress)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c2 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    c2.get_received()
+
+    c1.emit('calculate', _calc_payload())
+    time.sleep(0.02)  # let c1's DLL call start
+    dll_events.append(('c2-emit', time.time()))
+    c2.emit('calculate', _calc_payload())
+
+    # c2's own DLL call (the fake revolution) must be recorded well before
+    # c1's slow compression finishes — i.e. the two overlap.
+    assert _wait_until(lambda: len(calls) >= 2, timeout=2.0)
+    compress_start = next(t for (ev, t) in dll_events if ev == 'compress-start')
+    assert calls[1] < compress_start + 0.3  # c2's DLL call started during c1's compression window
 
 
 def test_eleventh_waiting_client_is_rejected(monkeypatch):
