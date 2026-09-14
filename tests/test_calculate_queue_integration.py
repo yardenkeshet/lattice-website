@@ -176,3 +176,26 @@ def test_eleventh_waiting_client_is_rejected(monkeypatch):
     assert 'queue_rejected' in rejected_names
 
     time.sleep(12 * 0.3 + 1)  # let the rest drain before the next test runs
+
+
+def test_tile_call_is_not_blocked_by_a_running_main_calculation(monkeypatch):
+    """The scenario this whole feature exists for: tile preview must not
+    freeze while an unrelated real calculation is running."""
+    _install_fake_revolution(monkeypatch, delay=0.5)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c2 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    c2.get_received()
+
+    c1.emit('calculate', _calc_payload())
+    time.sleep(0.05)  # let c1's (slow, fake) DLL call start and hold dll_main
+
+    start = time.time()
+    c2.emit('calculate_tile', {
+        'values': [0.15, 0.05, 0.0], 'type': 'cross', 'tolerance': 0.0,
+    })
+    assert _wait_until(lambda: any(
+        m['name'] == 'result' for m in c2.get_received()
+    ), timeout=0.4)
+    assert time.time() - start < 0.4  # nowhere near c1's 0.5s hold on dll_main
