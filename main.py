@@ -22,127 +22,11 @@ from ctypes import (
 )
 
 from calc_queue import CalcQueueManager, Job
+from dll_instance import DllInstance, prepare_background_dll_copy, assert_distinct_dll_instances
+from dll_lane import BackgroundDllLane
 
 from flask import Flask, render_template, send_file, jsonify, request, Response
 from flask_socketio import SocketIO, emit
-
-# ──────────────────────────────────────────────────────────────────────────────
-# DLL — load and configure signatures
-# ──────────────────────────────────────────────────────────────────────────────
-
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
-
-try:
-    _dll = ctypes.CDLL(_DLL_PATH)
-except OSError as _exc:
-    raise OSError(
-        f"Failed to load DLL at '{_DLL_PATH}'. "
-        f"Check that the file exists and all dependencies are present. "
-        f"Original error: {_exc}"
-    ) from _exc
-
-# ── Progress-report callbacks ─────────────────────────────────────────────────
-
-class IritMiscProgressReportStruct(Structure):
-    _fields_ = [
-        ("InitMsg",  c_char_p),
-        ("Progress", c_int),
-    ]
-
-_PRInfoPtr = POINTER(IritMiscProgressReportStruct)
-_ProgressCB = CFUNCTYPE(None, _PRInfoPtr)
-
-# Set by whichever code currently holds the DLL (either the queue worker's
-# _run_calculate_job, or handle_calculate_tile via try_acquire_dll) so these
-# globally-registered callbacks know which client to report progress to.
-# Safe only because CalcQueueManager guarantees exactly one DLL call is ever
-# in flight at a time.
-_current_calc_sid: str | None = None
-
-
-def _cb_init(pr):
-    try:
-        msg = pr.contents.InitMsg.decode()
-        print(f"[DLL] {msg}     ", end='', flush=True)
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_start', 'message': f'[DLL] {msg}'}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-def _cb_update(pr):
-    try:
-        progress = pr.contents.Progress
-        print(f"\b\b\b{progress:3d}", end='', flush=True)
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_update', 'progress': progress}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-def _cb_done(pr):
-    print("\b\b\b100\n", end='', flush=True)
-    try:
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_end', 'progress': 100}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-_cb_init_c   = _ProgressCB(_cb_init)
-_cb_update_c = _ProgressCB(_cb_update)
-_cb_done_c   = _ProgressCB(_cb_done)
-
-_dll.MSDLLSetProgressReportFuncs.restype  = None
-_dll.MSDLLSetProgressReportFuncs.argtypes = [_ProgressCB, _ProgressCB, _ProgressCB, c_void_p]
-_dll.MSDLLSetProgressReportFuncs(_cb_init_c, _cb_update_c, _cb_done_c, None)
-
-# ── Function signatures ───────────────────────────────────────────────────────
-
-_dll.MSDLLGetTile.restype  = c_char_p
-_dll.MSDLLGetTile.argtypes = [
-    c_int,
-    POINTER(c_double),  # Params
-    POINTER(c_double),  # Graded
-    c_char_p,           # MSSTLFile
-]
-
-_dll.MSDLLMSFromRuling.restype  = c_char_p
-_dll.MSDLLMSFromRuling.argtypes = [
-    c_char_p,
-    c_char_p,
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFilee (typo in DLL author's name)
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLMSFromExtrusion.restype  = c_char_p
-_dll.MSDLLMSFromExtrusion.argtypes = [
-    c_char_p,
-    c_double,           # ExtrudeLength
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFile
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLMSFromRevolution.restype  = c_char_p
-_dll.MSDLLMSFromRevolution.argtypes = [
-    c_char_p,
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFile
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLIGES2STL.restype  = c_char_p
-_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_double]
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tile-type constants and map
@@ -161,49 +45,6 @@ TILE_TYPE_MAP = {
     "diagonal":       MSDLL_TILE_DIAGONAL,
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Direct DLL wrapper helpers
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _call(fn, *args):
-    """Call a DLL function and return decoded error string (or None)."""
-    result = fn(*args)
-    if result:
-        decoded = result.decode("utf-8", errors="replace")
-        logger.warning(f"[DLL] {fn.__name__} returned: {decoded}")
-        return decoded
-    return None
-
-
-def _dll_get_tile(tile_type, tile_params, graded, tolerance, out_stl_file: bytes):
-    return _call(_dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
-
-
-def _dll_from_revolution(srf_igs: bytes, num_tiles, graded, tile_type, tile_params,
-                          out_igs: bytes, out_stl: bytes):
-    return _call(_dll.MSDLLMSFromRevolution,
-                 srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_from_extrusion(srf_igs: bytes, extrude_length: float, num_tiles, graded,
-                         tile_type, tile_params, out_igs: bytes, out_stl: bytes):
-    return _call(_dll.MSDLLMSFromExtrusion,
-                 srf_igs, c_double(extrude_length), num_tiles, graded,
-                 tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
-                      out_igs: bytes, out_stl: bytes):
-    logger.debug(f"[DLL] FromRuling srf1={srf1}  srf2={srf2}")
-    return _call(_dll.MSDLLMSFromRuling,
-                 srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: c_double) -> str | None:
-    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file, tolerance)
-
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -233,6 +74,32 @@ socketio = SocketIO(
     ping_interval=25,
     ping_timeout=120,
 )
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAIN_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
+MAIN_DLL_MANIFEST_PATH = MAIN_DLL_PATH + ".manifest"
+
+
+def _emit_queue_event(event: str, sid: str, payload: dict) -> None:
+    socketio.emit(event, payload, room=sid)
+
+
+try:
+    dll_main = DllInstance(MAIN_DLL_PATH, emit=_emit_queue_event)
+except OSError as _exc:
+    raise OSError(
+        f"Failed to load DLL at '{MAIN_DLL_PATH}'. "
+        f"Check that the file exists and all dependencies are present. "
+        f"Original error: {_exc}"
+    ) from _exc
+
+_background_dll_path = prepare_background_dll_copy(
+    MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH,
+    dest_dir=os.path.join(os.getcwd(), 'tmp', 'dll_background_instance'),
+)
+dll_background = DllInstance(_background_dll_path, emit=_emit_queue_event)
+assert_distinct_dll_instances(dll_main, dll_background)
+dll_background_lane = BackgroundDllLane()
 
 LOGFILE               = 'lattice.log'
 DATA_DIR              = 'client_data'
@@ -442,10 +309,10 @@ def temp_igs_file(igs_bytes: bytes):
 DOWNLOAD_CACHE = {}
 
 
-def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+def do_revolution(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRevolv.stl").encode('ascii')
-    dll_error = _dll_from_revolution(
+    dll_error = dll_instance.from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
@@ -458,10 +325,10 @@ def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, 
     return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
 
-def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
+def do_extrusion(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
-    dll_error = _dll_from_extrusion(
+    dll_error = dll_instance.from_extrusion(
         igs_path.encode('ascii'),
         extrude_length,
         num_tiles, grading_params,
@@ -476,11 +343,11 @@ def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, t
     return stl_content, "MSExtrd.stl", "MSExtrd.igs"
 
 
-def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+def do_Ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRuled.stl").encode('ascii')
 
-    dll_error = _dll_from_ruling(
+    dll_error = dll_instance.from_ruling(
         igs_path.encode('ascii'), igs_path2.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
@@ -501,19 +368,7 @@ CALC_MODE_DISPATCH = {
 VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
-def _emit_queue_event(event: str, sid: str, payload: dict) -> None:
-    socketio.emit(event, payload, room=sid)
-
-
-# queue_manager is instantiated further down, right after _run_calculate_job
-# is defined (see there for why: unlike a name referenced inside a function
-# body — which is looked up only when that function is actually called,
-# well after the whole module has finished importing — this keyword
-# argument is bound eagerly, at this statement's own execution time, so
-# _run_calculate_job must already exist as a module global here).
-
-
-def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
+def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
     if tile_type_int is None:
@@ -523,7 +378,7 @@ def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
     stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
     
     # Actual calculation
-    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
+    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
     
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
