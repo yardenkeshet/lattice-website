@@ -80,3 +80,55 @@ def _fake_progress_struct(progress: int):
     s.InitMsg = b"test"
     s.Progress = progress
     return ctypes.pointer(s)
+
+
+import pytest
+
+from dll_instance import prepare_background_dll_copy, assert_distinct_dll_instances
+
+MAIN_DLL_MANIFEST_PATH = MAIN_DLL_PATH + ".manifest"
+
+
+def test_prepare_background_dll_copy_creates_a_loadable_copy(tmp_path):
+    dest_dir = str(tmp_path / "dll_background_instance")
+
+    copied_path = prepare_background_dll_copy(MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH, dest_dir)
+
+    assert os.path.exists(copied_path)
+    assert copied_path != MAIN_DLL_PATH
+    # Must actually be loadable and independently usable.
+    instance = DllInstance(copied_path, emit=_no_emit)
+    params = (ctypes.c_double * 2)(0.15, 0.05)
+    graded = (ctypes.c_double * 2)(0.2, 1.5)
+    out_stl = str(tmp_path / "from_copy.stl").encode("ascii")
+    assert instance.get_tile(0, params, graded, 0.0, out_stl) is None
+
+
+def test_prepare_background_dll_copy_is_idempotent_across_restarts(tmp_path):
+    dest_dir = str(tmp_path / "dll_background_instance")
+
+    first = prepare_background_dll_copy(MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH, dest_dir)
+    second = prepare_background_dll_copy(MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH, dest_dir)
+
+    assert first == second
+    assert os.path.exists(first)
+
+
+def test_assert_distinct_dll_instances_passes_for_two_real_loads():
+    a = DllInstance(MAIN_DLL_PATH, emit=_no_emit)
+    b_path = prepare_background_dll_copy(
+        MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH,
+        dest_dir=os.path.join(REPO_ROOT, "tmp", "test_dll_background_instance"),
+    )
+    b = DllInstance(b_path, emit=_no_emit)
+
+    assert_distinct_dll_instances(a, b)  # must not raise
+
+
+def test_assert_distinct_dll_instances_raises_when_handles_match():
+    class _Fake:
+        def __init__(self, handle):
+            self.handle = handle
+
+    with pytest.raises(RuntimeError):
+        assert_distinct_dll_instances(_Fake(1), _Fake(1))

@@ -13,6 +13,8 @@ callback for progress reporting.
 """
 
 import ctypes
+import os
+import shutil
 from ctypes import c_void_p, c_char_p, c_int, c_double, POINTER, Structure, CFUNCTYPE
 from typing import Callable
 
@@ -126,3 +128,35 @@ class DllInstance:
 
     def iges2stl(self, igs_file: bytes, stl_file: bytes, tolerance) -> str | None:
         return _call(self._dll.MSDLLIGES2STL, igs_file, stl_file, c_double(tolerance))
+
+
+def prepare_background_dll_copy(source_dll_path: str, source_manifest_path: str, dest_dir: str) -> str:
+    """Copies the DLL (+ its .manifest) to dest_dir, overwriting any
+    previous copy there, and returns the copied DLL's path. Called once at
+    server startup so the background lane always loads a byte-identical,
+    but separately-loaded, copy of the real DLL — never committed to the
+    repo, so the two can't drift out of sync with each other."""
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_dll_path = os.path.join(dest_dir, os.path.basename(source_dll_path))
+    shutil.copyfile(source_dll_path, dest_dll_path)
+    if os.path.exists(source_manifest_path):
+        dest_manifest_path = os.path.join(dest_dir, os.path.basename(source_manifest_path))
+        shutil.copyfile(source_manifest_path, dest_manifest_path)
+    return dest_dll_path
+
+
+def assert_distinct_dll_instances(a: "DllInstance", b: "DllInstance") -> None:
+    """The whole two-lane design rests on two ctypes.CDLL() loads of the
+    same DLL file, from two different paths, getting independent module
+    handles (and therefore independent static/global state) on Windows.
+    This was confirmed by direct measurement, but refuses to silently run
+    in a mode that would reintroduce cross-lane DLL corruption if that
+    ever turns out not to hold (a different Windows version, a different
+    loader configuration, etc.) — fail loud at startup instead."""
+    if a.handle == b.handle:
+        raise RuntimeError(
+            "dll_main and dll_background share the same loaded module handle "
+            f"({a.handle:#x}) — the two-lane DLL design requires independent "
+            "module instances. Refusing to start in a configuration that "
+            "would let background work corrupt a real calculation's output."
+        )
