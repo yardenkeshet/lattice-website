@@ -199,3 +199,53 @@ def test_tile_call_is_not_blocked_by_a_running_main_calculation(monkeypatch):
         m['name'] == 'result' for m in c2.get_received()
     ), timeout=0.4)
     assert time.time() - start < 0.4  # nowhere near c1's 0.5s hold on dll_main
+
+
+def test_silent_calculate_never_enters_the_main_queue_or_blocks_it(monkeypatch):
+    """A silent (background macro-preview) calculate must not occupy a
+    waiting-room slot, must not delay a real calculate queued after it,
+    and must not surface any queue_status/queue_rejected to the client."""
+    _install_fake_revolution(monkeypatch, delay=0.1)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+
+    payload = _calc_payload()
+    payload['silent'] = True
+    c1.emit('calculate', payload)
+
+    time.sleep(0.05)
+    # A silent request must never occupy the main queue's waiting room.
+    assert len(main_module.queue_manager._waiting) == 0
+
+    received = c1.get_received()
+    assert not any(m['name'] == 'queue_status' for m in received)
+    assert not any(m['name'] == 'queue_rejected' for m in received)
+
+    # Wait for the background calculation to complete and release the lane
+    assert _wait_until(lambda: main_module.dll_background_lane.try_acquire(), timeout=2.0)
+    main_module.dll_background_lane.release()
+    # Give the finish phase (including logging) time to complete before test ends
+    time.sleep(0.2)
+
+
+def test_silent_calculate_is_dropped_when_the_background_lane_is_busy(monkeypatch):
+    _install_fake_revolution(monkeypatch, delay=0.3)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    # Drain the receive buffer from client connection
+    time.sleep(0.1)
+    while c1.get_received():
+        pass
+
+    assert main_module.dll_background_lane.try_acquire() is True  # simulate in-flight background work
+    try:
+        payload = _calc_payload()
+        payload['silent'] = True
+        c1.emit('calculate', payload)
+        time.sleep(0.1)
+        received = c1.get_received()
+        # Dropped silently — no error, no result, no queue event.
+        assert received == []
+    finally:
+        main_module.dll_background_lane.release()

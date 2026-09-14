@@ -587,10 +587,6 @@ def handle_calculate(data):
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
-    logger.info(
-        f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
-        extra=_log_extra(sid),
-    )
 
     if tile_type_int is None:
         logger.error(f"[CALC] Unknown tileType: {tile_type!r}", extra=_log_extra(sid))
@@ -634,11 +630,33 @@ def handle_calculate(data):
         'igs_bytes': igs_bytes, 'igs_bytes2': igs_bytes2,
         't_received': t_received,
     }
-    accepted = queue_manager.enqueue(sid, payload, silent=silent)
+
+    if silent:
+        if not dll_background_lane.try_acquire():
+            # Background lane busy — drop this preview. A newer trigger
+            # (or the next debounce tick) supersedes it; never queues,
+            # never surfaces any UI, never touches dll_main.
+            return
+        logger.info(
+            f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
+            extra=_log_extra(sid),
+        )
+        threading.Thread(
+            target=_run_silent_calculate, args=(sid, payload),
+            daemon=True, name=f'calc-silent-{sid}',
+        ).start()
+        return
+
+    logger.info(
+        f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
+        extra=_log_extra(sid),
+    )
+
+    accepted = queue_manager.enqueue(sid, payload, silent=False)
     if not accepted:
         socketio.emit('queue_rejected', {
             'message': 'Site is too busy right now. Please wait a few minutes and try again.',
-            'silent': silent,
+            'silent': False,
         }, room=sid)
 
 
@@ -816,6 +834,17 @@ def _run_calculate_job(job: Job) -> None:
             target=_finish_calculate, args=(job.payload, job.sid, dll_result),
             daemon=True, name=f'calc-finish-{job.sid}',
         ).start()
+
+
+def _run_silent_calculate(sid: str, payload: dict) -> None:
+    """Lane B: a silent macro-shape preview. Caller must already hold
+    dll_background_lane (a successful try_acquire()) before calling this;
+    releases it here, right after the DLL phase, before the (potentially
+    slow) finish phase."""
+    dll_result = _run_calculate_dll_phase(dll_background, payload, sid)
+    dll_background_lane.release()
+    if dll_result is not None:
+        _finish_calculate(payload, sid, dll_result)
 
 
 queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event)
