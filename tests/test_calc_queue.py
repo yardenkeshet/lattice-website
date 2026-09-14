@@ -176,8 +176,9 @@ def test_worker_survives_a_job_that_raises():
 def test_mark_dll_free_lets_the_worker_pick_up_the_next_job_without_waiting_for_run_job_to_return():
     """run_job itself is expected to call mark_dll_free() partway through
     (right after its own DLL work, before its slower non-DLL tail) —
-    simulate that here and confirm the worker's *own* end-of-job release
-    doesn't have to fire first."""
+    simulate that here and confirm the DLL slot is released early enough for
+    a concurrent external thread (e.g., a tile-preview caller via
+    BackgroundDllLane) to acquire it during the tail, not after."""
     order = []
 
     def run_job(job):
@@ -185,17 +186,44 @@ def test_mark_dll_free_lets_the_worker_pick_up_the_next_job_without_waiting_for_
         manager.mark_dll_free()
         order.append(f'dll-end-{job.sid}')
         time.sleep(0.05)  # simulate a slow non-DLL tail (compression)
+        order.append(f'tail-end-{job.sid}')
 
     manager, _, _ = make_manager(run_job=run_job)
     manager.start()
 
-    manager.enqueue('first', {})
-    assert _wait_until(lambda: 'dll-end-first' in order)
+    acquired_during_tail = threading.Event()
 
-    manager.enqueue('second', {})
-    # 'second' must start soon after mark_dll_free(), not after 'first''s
-    # full run_job (including its 0.05s tail) returns.
-    assert _wait_until(lambda: 'dll-start-second' in order, timeout=1.0)
+    def external_dll_user():
+        """Simulate a BackgroundDllLane thread trying to acquire the slot."""
+        # Spin-wait for dll-end marker (mark_dll_free called), then check if
+        # _busy is False before tail-end appears. Proves slot was released
+        # early by mark_dll_free, not late by finally block.
+        while 'dll-end-first' not in order:
+            time.sleep(0.001)
+        # Now spin until we see _busy False, or tail-end, whichever comes first
+        for _ in range(100):
+            with manager._lock:
+                if not manager._busy:
+                    # Got the slot while first still sleeping in its tail
+                    acquired_during_tail.set()
+                    break
+            if 'tail-end-first' in order:
+                break
+            time.sleep(0.001)
+
+    t = threading.Thread(target=external_dll_user)
+    t.start()
+
+    manager.enqueue('first', {})
+    assert _wait_until(lambda: 'tail-end-first' in order, timeout=2.0)
+
+    t.join()
+
+    # If mark_dll_free() works, the external thread acquired the slot during
+    # the tail. If mark_dll_free() is a no-op, _busy stays True until finally
+    # block runs (after tail-end), so acquisition fails.
+    assert acquired_during_tail.is_set(), \
+        "mark_dll_free() did not release the slot early — external thread could not acquire during tail"
 
 
 # ── Finding 2: queue_status emit ordering ───────────────────────────────

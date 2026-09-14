@@ -119,11 +119,11 @@ class CalcQueueManager:
                 finally:
                     with self._lock:
                         self._busy = False
-                        # See release_dll for why this must be notify_all:
-                        # acquire_dll_blocking callers (e.g. a queued
-                        # /convert_igs_to_stl request waiting out a full
-                        # calculate job) only care about `self._busy`, a
-                        # different predicate than the worker's own.
+                        # Safety net: mark_dll_free() (called during run_job)
+                        # typically releases the slot early, but if run_job
+                        # never called it or crashed, this ensures the slot
+                        # is freed so the queue doesn't freeze. Use notify_all
+                        # for consistency with mark_dll_free().
                         self._not_empty.notify_all()
                 try:
                     self._broadcast_positions()
