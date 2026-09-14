@@ -883,17 +883,16 @@ def handle_convert_igs_to_stl():
     igs_bytes = request.files['file'].read()
     tolerance = float(request.form.get('tolerance', 0.0))
 
-    # This route hits the same DLL as calculate/calculate_tile (on every file
-    # upload, potentially twice concurrently in ruling mode), so it must go
-    # through the queue's DLL slot too — otherwise "exactly one DLL call in
-    # flight, ever" doesn't hold. Unlike calculate_tile, a dropped request
-    # here is user-visible (the upload just fails), so we wait briefly for
-    # the slot rather than skipping silently. No SocketIO request.sid exists
-    # for a plain HTTP POST, so _current_calc_sid is deliberately left
-    # untouched — the progress callbacks' `if _current_calc_sid:` guard makes
-    # that a safe no-op.
-    if not queue_manager.acquire_dll_blocking(timeout=30.0):
-        logger.warning("[IGS2STL] DLL busy — timed out waiting for the queue slot")
+    # This route hits the same DLL as calculate_tile / silent calculate (on
+    # every file upload, potentially twice concurrently in ruling mode), so
+    # it goes through the same background lane. Unlike calculate_tile, a
+    # dropped request here is user-visible (the upload just fails), so it
+    # waits briefly for the lane rather than skipping silently. No SocketIO
+    # request.sid exists for a plain HTTP POST, so dll_background's current
+    # sid is deliberately left untouched — its progress callbacks' `if not
+    # self._current_sid: return` guard makes that a safe no-op.
+    if not dll_background_lane.acquire_blocking(timeout=30.0):
+        logger.warning("[IGS2STL] DLL busy — timed out waiting for the background lane")
         return jsonify({'error': 'Server busy, please try again shortly'}), 503
 
     try:
@@ -901,9 +900,9 @@ def handle_convert_igs_to_stl():
             with temp_igs_file(igs_bytes) as igs_path:
                 stl_path = igs_path[:-4] + '_preview.stl'
                 t_igs_start = time.time()
-                err = _dll_iges2stl(igs_path.encode('ascii'),
-                                    stl_path.encode('ascii'),
-                                    c_double(tolerance))
+                err = dll_background.iges2stl(igs_path.encode('ascii'),
+                                               stl_path.encode('ascii'),
+                                               tolerance)
                 t_igs_ms = round((time.time() - t_igs_start) * 1000)
                 if err:
                     logger.warning(f"[IGS2STL] DLL warning: {err}")
@@ -932,7 +931,7 @@ def handle_convert_igs_to_stl():
             logger.exception(f"[IGS2STL] {exc}")
             return jsonify({'error': f'Internal server error: {exc}'}), 500
     finally:
-        queue_manager.release_dll()
+        dll_background_lane.release()
 
 
 @app.route('/log-calculation', methods=['POST'])
