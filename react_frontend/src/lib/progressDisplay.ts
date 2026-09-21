@@ -19,7 +19,7 @@ export function calcLabelForUpdate(update: UpdatePayload): string {
       return `Calculating… ${capped}%`
     }
     case 'progress_end':
-      return 'Finalizing…'
+      return 'Compressing…'
     default:
       return 'Calculating…'
   }

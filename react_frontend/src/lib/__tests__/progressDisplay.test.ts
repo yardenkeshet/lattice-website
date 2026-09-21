@@ -25,8 +25,8 @@ describe('calcLabelForUpdate', () => {
       .toBe('Calculating… 0%')
   })
 
-  it('shows an indeterminate Finalizing state on progress_end, not 100%', () => {
-    expect(calcLabelForUpdate({ type: 'progress_end', progress: 100 })).toBe('Finalizing…')
+  it('shows an indeterminate Compressing state on progress_end, not 100%', () => {
+    expect(calcLabelForUpdate({ type: 'progress_end', progress: 100 })).toBe('Compressing…')
   })
 
   it('DLL_PROGRESS_CAP is below 100 so progress_update never itself claims done', () => {
