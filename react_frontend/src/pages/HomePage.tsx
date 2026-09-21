@@ -10,10 +10,6 @@ const SLIDES = Object.entries(imageModules).map(([path, mod]) => ({
   alt: path.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? '',
 }))
 
-const TAMC_TEXT = `The Technion Additive Manufacturing and 3D printing Center (TAMC), inaugurated in 2021, reflects the Technion's commitment to promoting cutting-edge additive manufacturing (AM) innovation. The center was founded with the generous support of Mr. Robert Davis and is committed to fulfilling an academic leadership role in promoting futuristic advancements in AM technology, as well as supporting Israeli industry.
-
-TAM will develop a comprehensive repository of AM data and technologies while encouraging, advising, and supporting synergic AM research efforts.`
-
 /* ─── Styles ─── */
 
 const pageStyle: React.CSSProperties = {
@@ -34,6 +30,10 @@ const paragraphStyle: React.CSSProperties = {
   lineHeight: '19px',
   color: 'var(--text-base)',
   margin: '0 0 var(--space-sm)',
+}
+
+const bodyLinkStyle: React.CSSProperties = {
+  color: 'var(--action-primary)',
 }
 
 /* ── CTA section ── */
@@ -102,7 +102,7 @@ export function HomePage() {
           Upload your surface file and generate a parametric lattice in seconds.
         </p>
         <p style={ctaSubtitleStyle}>
-          Go to the <a href="/help" style={hyperlinkStyle} >help page</a> or hover over an item to see helpful tips.
+          Go to the <a href="/help/full" style={hyperlinkStyle} >help page</a> or hover over an item to see helpful tips.
         </p>
         <button
           type="button"
@@ -115,9 +115,21 @@ export function HomePage() {
 
       {/* ── Body text ── */}
       <div style={bodyTextStyle}>
-        {TAMC_TEXT.split('\n\n').map((para, i) => (
-          <p key={i} style={paragraphStyle}>{para}</p>
-        ))}
+        <p style={paragraphStyle}>
+          This Web interface is based on patented volumetric representation (V-rep) abilities of
+          the IRIT solid modeling kernel (see{' '}
+          <a href="https://gershon.cs.technion.ac.il/irit" target="_blank" rel="noopener noreferrer" style={bodyLinkStyle}>
+            https://gershon.cs.technion.ac.il/irit
+          </a>). For more, see the <a href="/help/full" style={bodyLinkStyle}>full guide</a>.
+        </p>
+        <p style={paragraphStyle}>
+          Use of lattices created using this interface is free of charge, including for
+          commercial purposes. Please acknowledge as follows: "Created using{' '}
+          <em>LatticeMaker</em>,{' '}
+          <a href="https://lattice.cs.technion.ac.il" target="_blank" rel="noopener noreferrer" style={bodyLinkStyle}>
+            https://lattice.cs.technion.ac.il
+          </a>, Gershon Elber, Technion".
+        </p>
       </div>
 
       <Footer />

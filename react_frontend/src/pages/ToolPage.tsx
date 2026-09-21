@@ -7,12 +7,12 @@ import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
 import { ViewerScene } from '../components/ViewerScene'
-import type { MeshLayer } from '../components/ViewerScene'
+import type { MeshLayer, ViewerSceneHandle, CameraSnapshot } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
-import { calcLabelForUpdate } from '../lib/progressDisplay'
+import { calcLabelForUpdate, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
@@ -73,6 +73,15 @@ export function ToolPage() {
      handler knows whether to reset the viewer camera. null = no reset. */
   const pendingResetKey = React.useRef<string | null>(null)
 
+  /* ── Camera-mode toggle: preserve position/rotation/zoom across the remount ──
+     ViewerScene remounts its Canvas on a perspective↔orthographic switch, so the
+     live transform has to be captured synchronously (via the imperative handle)
+     *before* cameraMode changes, then handed to the next mount to restore.
+     State (not a ref) so React batches it with the cameraMode update and
+     ViewerScene reads it as a normal prop rather than a ref during render. */
+  const viewerSceneRef = React.useRef<ViewerSceneHandle>(null)
+  const [pendingCameraSnapshot, setPendingCameraSnapshot] = React.useState<CameraSnapshot | null>(null)
+
   /* ── Tile state ── */
   const [tileType, setTileType]           = React.useState<TileType>(DEFAULT_TILE_TYPE)
   const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues(DEFAULT_TILE_TYPE))
@@ -101,6 +110,13 @@ export function ToolPage() {
   const [isCalculating, setIsCalculating] = React.useState(false)
   const [calcLabel, setCalcLabel]         = React.useState('Calculating…')
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
+  const [queueBusyMsg, setQueueBusyMsg]   = React.useState<string | null>(null)
+
+  const handleCameraModeChange = React.useCallback((mode: 'perspective' | 'orthographic') => {
+    setErrorMsg(null)
+    setPendingCameraSnapshot(viewerSceneRef.current?.getCameraSnapshot() ?? null)
+    setCameraMode(mode)
+  }, [setErrorMsg, setPendingCameraSnapshot, setCameraMode])
 
   /* ── Second file slot for ruling mode ── */
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
@@ -248,7 +264,24 @@ export function ToolPage() {
     const unsubUpdate = socket.onUpdate(upd => {
       flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
     })
-    return () => { unsubResult(); unsubError(); unsubUpdate() }
+    const unsubQueueStatus = socket.onQueueStatus(status => {
+      if (status.silent) return  // background macro-preview call — never surfaced
+      setCalcLabel(calcLabelForQueueStatus(status))
+    })
+    const unsubQueueRejected = socket.onQueueRejected(rejection => {
+      if (rejection.silent) {
+        // A background macro-preview call was bounced; it will never
+        // produce a result, so release the counter the same way a normal
+        // response would.
+        if (pendingMacroCountRef.current > 0) pendingMacroCountRef.current -= 1
+        return
+      }
+      pendingMacroCountRef.current = 0
+      setIsCalculating(false)
+      setCalcLabel('Calculating…')
+      setQueueBusyMsg(rejection.message)
+    })
+    return () => { unsubResult(); unsubError(); unsubUpdate(); unsubQueueStatus(); unsubQueueRejected() }
   }, [socket])
 
   /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
@@ -285,7 +318,8 @@ export function ToolPage() {
         p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
         extrudeLength,
       },
-      tolerance: igsConversionTolerance
+      tolerance: igsConversionTolerance,
+      silent: true,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // extrudeLength intentionally omitted: a separate debounced effect handles it.
@@ -311,7 +345,8 @@ export function ToolPage() {
           p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
           extrudeLength,
         },
-        tolerance: igsConversionTolerance
+        tolerance: igsConversionTolerance,
+        silent: true,
       })
     }, 500)
     return () => clearTimeout(timer)
@@ -331,6 +366,7 @@ export function ToolPage() {
      the DLL isn't thread-safe, so overlapping calls corrupt each other's output.
      Wait for the conversions to fully settle before firing calculateTile. ── */
   const handleToleranceChange = React.useCallback((v: number) => {
+    setErrorMsg(null)
     setIgsConversionTolerance(v)
     const conversions: Promise<void>[] = []
     if (originalIgsFile) {
@@ -357,17 +393,19 @@ export function ToolPage() {
     Promise.all(conversions).then(() => {
       socket.calculateTile({ type: tileType, values: padded, tolerance: v })
     })
-  }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket])
+  }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket, setErrorMsg])
 
   /* ── Tile param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
+    setErrorMsg(null)
     pendingResetKey.current = null
     const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
-    socket.calculateTile({ type: tileType, 
+    socket.calculateTile({ type: tileType,
       values: padded, tolerance: igsConversionTolerance })
-  }, [socket, tileType, igsConversionTolerance])
+  }, [socket, tileType, igsConversionTolerance, setErrorMsg])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
+    setErrorMsg(null)
     pendingResetKey.current = type
     setTileType(type)
     const defaults = defaultSliderValues(type)
@@ -375,7 +413,7 @@ export function ToolPage() {
     const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
     socket.calculateTile({ type, values: padded,
       tolerance: igsConversionTolerance })
-  }, [socket, igsConversionTolerance])
+  }, [socket, igsConversionTolerance, setErrorMsg])
 
   const handleCalcModeChange = React.useCallback((mode: CalcMode) => {
     pendingMacroCountRef.current = 0
@@ -475,6 +513,8 @@ export function ToolPage() {
 
   /* ── Calculate ── */
   const handleCalculate = React.useCallback(() => {
+    setErrorMsg(null)
+    setQueueBusyMsg(null)
     pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
@@ -504,7 +544,6 @@ export function ToolPage() {
     pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
     setCalcLabel('Calculating…')
-    setErrorMsg(null)
     const calculateArgs = {
       filename: uploadedFile!.name,
       surface_b64: uploadedIgsB64!,
@@ -514,18 +553,20 @@ export function ToolPage() {
       tolerance: igsConversionTolerance
     }
     socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket])
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket, setErrorMsg, setQueueBusyMsg])
 
   /* ── Export ── */
   const handleExportStl = React.useCallback(() => {
     if (!downloadToken) return
+    setErrorMsg(null)
     downloadResults(downloadToken, 'stl').catch(() => setErrorMsg('Download failed'))
-  }, [downloadToken])
+  }, [downloadToken, setErrorMsg])
 
   const handleExportIgs = React.useCallback(() => {
     if (!downloadToken) return
+    setErrorMsg(null)
     downloadResults(downloadToken, 'igs').catch(() => setErrorMsg('Download failed'))
-  }, [downloadToken])
+  }, [downloadToken, setErrorMsg])
 
   /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
   const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
@@ -608,7 +649,7 @@ export function ToolPage() {
               isCalculating={isCalculating}
               calcLabel={calcLabel}
               canExport={!!downloadToken}
-              onCameraModeChange={setCameraMode}
+              onCameraModeChange={handleCameraModeChange}
               onExportStl={handleExportStl}
               onExportIgs={handleExportIgs}
             />
@@ -627,11 +668,29 @@ export function ToolPage() {
             </div>
           )}
 
+          {/* Queue-busy message (site too busy to accept another calculation right now).
+              role="status" (not "alert" like the error banner above): this is a
+              "please retry later" state, read out politely once idle, not an
+              urgent failure that should interrupt the screen reader immediately. */}
+          {queueBusyMsg && (
+            <div style={queueBusyStyle} role="status">
+              {queueBusyMsg}
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => setQueueBusyMsg(null)}
+                style={queueBusyDismissStyle}
+              >✕</button>
+            </div>
+          )}
+
           <div style={viewerStyle}>
             <ViewerScene
+              ref={viewerSceneRef}
               layers={displayedLayers}
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
+              pendingCameraSnapshot={pendingCameraSnapshot}
               onFileDrop={handleViewerFileDrop}
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
@@ -739,6 +798,28 @@ const errorDismissStyle: React.CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   color: 'var(--text-error)',
+  fontSize: 12,
+  padding: 0,
+}
+
+const queueBusyStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  padding: '8px 12px',
+  backgroundColor: 'var(--status-warning-bg)',
+  borderRadius: 'var(--radius-card)',
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--text-size-sm)',
+  color: 'var(--text-base)',
+}
+
+const queueBusyDismissStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-base)',
   fontSize: 12,
   padding: 0,
 }

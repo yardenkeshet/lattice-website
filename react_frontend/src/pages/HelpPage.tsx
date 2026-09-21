@@ -83,46 +83,6 @@ const stepBodyStyle: React.CSSProperties = {
   margin: 0,
 }
 
-/* ── CTA section ── */
-
-const ctaSectionStyle: React.CSSProperties = {
-  backgroundColor: 'var(--navy-primary)',
-  padding: '40px 32px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 16,
-  textAlign: 'center',
-}
-
-const ctaTitleStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-heading)',
-  fontSize: 22,
-  fontWeight: 700,
-  color: 'var(--text-on-brand)',
-  margin: 0,
-}
-
-const ctaSubtitleStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)',
-  fontSize: 13,
-  color: 'rgba(255,255,255,0.7)',
-  margin: 0,
-}
-
-const ctaButtonStyle: React.CSSProperties = {
-  backgroundColor: 'var(--gray-50)',
-  color: 'var(--navy-primary)',
-  border: 'none',
-  borderRadius: 'var(--radius-button)',
-  padding: '16px 48px',
-  fontFamily: 'var(--font-body)',
-  fontSize: 18,
-  fontWeight: 700,
-  cursor: 'pointer',
-  marginTop: 8,
-}
-
 export function HelpPage() {
   const navigate = useNavigate()
 
@@ -145,21 +105,6 @@ export function HelpPage() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* ── CTA ── */}
-      <div style={ctaSectionStyle}>
-        <p style={ctaTitleStyle}>Ready to build a lattice structure?</p>
-        <p style={ctaSubtitleStyle}>
-          Upload your surface file and generate a parametric lattice in seconds.
-        </p>
-        <button
-          type="button"
-          style={ctaButtonStyle}
-          onClick={() => navigate('/tool')}
-        >
-          Open Lattice Maker →
-        </button>
       </div>
 
       <Footer />

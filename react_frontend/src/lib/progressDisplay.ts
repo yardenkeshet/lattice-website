@@ -1,4 +1,4 @@
-import type { UpdatePayload } from '../api/types'
+import type { UpdatePayload, QueueStatusPayload } from '../api/types'
 
 /**
  * The DLL's own progress callback only covers the "microstructure building"
@@ -23,4 +23,17 @@ export function calcLabelForUpdate(update: UpdatePayload): string {
     default:
       return 'Calculating…'
   }
+}
+
+/**
+ * Label shown while a calculate request sits ahead of the "calculating"
+ * state — either waiting in the bounded server-side queue, or already
+ * running (in which case the caller should fall through to the normal
+ * calcLabelForUpdate-driven percentage display instead).
+ */
+export function calcLabelForQueueStatus(status: QueueStatusPayload): string {
+  if (status.state === 'waiting') {
+    return `Site is busy — you're #${status.position} in line`
+  }
+  return 'Calculating…'
 }

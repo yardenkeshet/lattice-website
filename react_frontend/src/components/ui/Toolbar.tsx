@@ -36,26 +36,25 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
 
     return (
       <div ref={ref} className={cn('toolbar', className)} style={containerStyle}>
-        {/* Left spacer — balances the right-hand help column so the pill below stays centered */}
-        <div style={sideStyle} />
+        {/* Left: camera mode toggle, in its own pill at the toolbar's far left */}
+        <div style={sideStyle}>
+          <div style={pillStyle}>
+            <Tooltip content="Toggles between perspective and orthographic views.">
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                onClick={() => onCameraModeChange(cameraMode === 'orthographic' ? 'perspective' : 'orthographic')}
+                style={cameraPillButtonStyle}
+              >
+                <CameraIcon />
+                <span style={pillTextStyle}>{cameraMode}</span>
+              </button>
+            </Tooltip>
+          </div>
+        </div>
 
-        {/* ── Pill: camera mode + export + calculate ── */}
+        {/* ── Pill: export + calculate ── */}
         <div style={pillStyle}>
-          {/* Camera mode toggle */}
-          <Tooltip content="Toggles between perspective and orthographic views.">
-            <button
-              type="button"
-              aria-haspopup="listbox"
-              onClick={() => onCameraModeChange(cameraMode === 'orthographic' ? 'perspective' : 'orthographic')}
-              style={cameraPillButtonStyle}
-            >
-              <CameraIcon />
-              <span style={pillTextStyle}>{cameraMode}</span>
-            </button>
-          </Tooltip>
-
-          <PillDivider />
-
           {/* Make Lattice button */}
           <Button
             variant="secondary"
@@ -206,7 +205,10 @@ const pillTextStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-base)',
-  width: 70,
+  // Fixed to fit the longer label ("orthographic") so the pill never resizes
+  // on toggle; "perspective" just centers within the same space.
+  width: '12ch',
+  textAlign: 'center',
 }
 
 const exportPopupStyle: React.CSSProperties = {

@@ -21,6 +21,8 @@ from ctypes import (
     c_void_p, c_char_p, c_int, c_float, c_double, POINTER, Structure, CFUNCTYPE
 )
 
+from calc_queue import CalcQueueManager, Job
+
 from flask import Flask, render_template, send_file, jsonify, request, Response
 from flask_socketio import SocketIO, emit
 
@@ -51,11 +53,20 @@ class IritMiscProgressReportStruct(Structure):
 _PRInfoPtr = POINTER(IritMiscProgressReportStruct)
 _ProgressCB = CFUNCTYPE(None, _PRInfoPtr)
 
+# Set by whichever code currently holds the DLL (either the queue worker's
+# _run_calculate_job, or handle_calculate_tile via try_acquire_dll) so these
+# globally-registered callbacks know which client to report progress to.
+# Safe only because CalcQueueManager guarantees exactly one DLL call is ever
+# in flight at a time.
+_current_calc_sid: str | None = None
+
+
 def _cb_init(pr):
     try:
         msg = pr.contents.InitMsg.decode()
         print(f"[DLL] {msg}     ", end='', flush=True)
-        emit('update', {'type': 'progress_start', 'message': f'[DLL] {msg}'})
+        if _current_calc_sid:
+            socketio.emit('update', {'type': 'progress_start', 'message': f'[DLL] {msg}'}, room=_current_calc_sid)
     except Exception:
         pass
 
@@ -63,14 +74,16 @@ def _cb_update(pr):
     try:
         progress = pr.contents.Progress
         print(f"\b\b\b{progress:3d}", end='', flush=True)
-        emit('update', {'type': 'progress_update', 'progress': progress})
+        if _current_calc_sid:
+            socketio.emit('update', {'type': 'progress_update', 'progress': progress}, room=_current_calc_sid)
     except Exception:
         pass
 
 def _cb_done(pr):
     print("\b\b\b100\n", end='', flush=True)
     try:
-        emit('update', {'type': 'progress_end', 'progress': 100})
+        if _current_calc_sid:
+            socketio.emit('update', {'type': 'progress_end', 'progress': 100}, room=_current_calc_sid)
     except Exception:
         pass
 
@@ -488,6 +501,18 @@ CALC_MODE_DISPATCH = {
 VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
+def _emit_queue_event(event: str, sid: str, payload: dict) -> None:
+    socketio.emit(event, payload, room=sid)
+
+
+# queue_manager is instantiated further down, right after _run_calculate_job
+# is defined (see there for why: unlike a name referenced inside a function
+# body — which is looked up only when that function is actually called,
+# well after the whole module has finished importing — this keyword
+# argument is bound eagerly, at this statement's own execution time, so
+# _run_calculate_job must already exist as a module global here).
+
+
 def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
@@ -669,6 +694,7 @@ def clean_session(sid, token):
 def on_disconnect(reason=None):
     sid = request.sid
     logger.info(f'Client disconnected  ip={_client_ip(sid)}', extra=_log_extra(sid))
+    queue_manager.remove_waiting(sid)
     token = (client_state.get(sid) or {}).get('current_token')
     if token:
         DOWNLOAD_CACHE.pop(token, None)
@@ -679,13 +705,14 @@ def on_disconnect(reason=None):
 @socketio.on('calculate')
 def handle_calculate(data):
     sid = request.sid
-    t_start = time.time()
+    t_received = time.time()
 
     client_ts    = data.get('client_ts')
     filename     = data.get('filename', 'uploaded.igs')
     args         = data.get('args', {})
     surface_b64  = data.get('surface_b64')
     surface2_b64 = data.get('surface2_b64')
+    silent       = bool(data.get('silent', False))
 
     tile_type = args.get('tileType')
     calc_mode = args.get('calcMode')
@@ -744,6 +771,47 @@ def handle_calculate(data):
             emit('error', {'msg': f'Invalid second surface data: {exc}'})
             return
 
+    payload = {
+        'client_ts': client_ts, 'filename': filename, 'args': args,
+        'calc_mode': calc_mode, 'tile_type_int': tile_type_int,
+        'nt1': nt1, 'nt2': nt2, 'nt3': nt3, 'g1': g1, 'g2': g2,
+        'p1': p1, 'p2': p2, 'p3': p3, 'extrude_length': extrude_length,
+        'igs_bytes': igs_bytes, 'igs_bytes2': igs_bytes2,
+        't_received': t_received,
+    }
+    accepted = queue_manager.enqueue(sid, payload, silent=silent)
+    if not accepted:
+        socketio.emit('queue_rejected', {
+            'message': 'Site is too busy right now. Please wait a few minutes and try again.',
+            'silent': silent,
+        }, room=sid)
+
+
+def _run_calculate_job(job: Job) -> None:
+    """CalcQueueManager's run_job callback for a full calculate request.
+    Runs on the queue's dedicated worker thread — never concurrently with
+    another call to this function, and never while a tile-preview call
+    holds the DLL slot. Must use explicit room=sid emits (no implicit
+    request context on this thread)."""
+    global _current_calc_sid
+
+    sid = job.sid
+    p = job.payload
+    client_ts      = p['client_ts']
+    filename       = p['filename']
+    args           = p['args']
+    calc_mode      = p['calc_mode']
+    tile_type_int  = p['tile_type_int']
+    nt1, nt2, nt3  = p['nt1'], p['nt2'], p['nt3']
+    g1, g2         = p['g1'], p['g2']
+    p1, p2, p3     = p['p1'], p['p2'], p['p3']
+    extrude_length = p['extrude_length']
+    igs_bytes      = p['igs_bytes']
+    igs_bytes2     = p['igs_bytes2']
+    t_received     = p['t_received']
+
+    t_start = time.time()
+
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
@@ -753,6 +821,7 @@ def handle_calculate(data):
     os.makedirs(out_folder, exist_ok=True)
 
     t_dll_start = time.time()
+    _current_calc_sid = sid
     try:
         logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
         with temp_igs_file(igs_bytes) as igs_path:
@@ -774,20 +843,30 @@ def handle_calculate(data):
                 )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
-        emit('error', {'msg': f'DLL did not produce output file: {exc}'})
+        socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return
     except Exception as exc:
         logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
-        emit('error', {'msg': f'Processing error: {exc}'})
+        socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return
+    finally:
+        _current_calc_sid = None
 
     t_dll_end = time.time()
 
     if not stl_content:
         logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
-        emit('error', {'msg': 'No output produced by DLL'})
+        socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
+        shutil.rmtree(out_folder, ignore_errors=True)
+        return
+
+    # The client may have disconnected while this job was queued/running.
+    # Nothing will ever redeem this token — discard the result rather than
+    # leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
+    if sid not in connected_clients:
+        logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
         shutil.rmtree(out_folder, ignore_errors=True)
         return
 
@@ -798,7 +877,17 @@ def handle_calculate(data):
         comp_kb = len(base64.b64decode(compressed_b64)) / 1024
     except Exception as exc:
         logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
-        emit('error', {'msg': 'Compression failed'})
+        socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
+        shutil.rmtree(out_folder, ignore_errors=True)
+        return
+
+    # The client may also have disconnected *during* compression (which can
+    # take several seconds for large outputs) — re-check right before
+    # registering the download, not just before compression, or we'd leak a
+    # DOWNLOAD_CACHE entry and a last_results/<token>/ folder that nothing
+    # will ever redeem.
+    if sid not in connected_clients:
+        logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
         shutil.rmtree(out_folder, ignore_errors=True)
         return
 
@@ -813,13 +902,13 @@ def handle_calculate(data):
 
     t_total = time.time() - t_start
     timings = {
-        'client_to_server_ms': None if client_ts is None else (t_dll_start * 1000 - client_ts),
+        'client_to_server_ms': None if client_ts is None else (t_received * 1000 - client_ts),
         'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
         'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
         'overall_ms':          round(t_total * 1000),
     }
 
-    emit('result', {
+    socketio.emit('result', {
         'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
         'kind':             'model_stl',
         'stl_gz_b64':       compressed_b64,
@@ -827,7 +916,7 @@ def handle_calculate(data):
         'args_echo':        args,
         'filename':         filename,
         'download_token':   new_token,
-    })
+    }, room=sid)
 
     logger.info(
         f"[CALC] done  {comp_kb:.0f}KB"
@@ -838,8 +927,14 @@ def handle_calculate(data):
         extra=_log_extra(sid),
     )
 
+
+queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event)
+queue_manager.start()
+
+
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
+    global _current_calc_sid
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
@@ -848,7 +943,19 @@ def handle_calculate_tile(data):
         graded  = (c_double * 2)(graded1, graded2)
         tolerance = float(data.get('tolerance', 0.0))
 
-        calculate_tile(tile_params, graded, tile_type, tolerance, request.sid)
+        if not queue_manager.try_acquire_dll():
+            # A full calculation (or another tile call) currently holds the
+            # DLL slot — skip silently rather than queue or block; the next
+            # scrub tick, or the in-flight calculation finishing, will
+            # produce a fresh preview normally.
+            return
+        sid = request.sid
+        _current_calc_sid = sid
+        try:
+            calculate_tile(tile_params, graded, tile_type, tolerance, sid)
+        finally:
+            _current_calc_sid = None
+            queue_manager.release_dll()
     except Exception as exc:
         logger.exception(f"[TILE] bad request: {exc}", extra={'sid': request.sid})
         emit('error', {'msg': f'Bad tile request: {exc}'})
@@ -862,40 +969,56 @@ def handle_convert_igs_to_stl():
     igs_bytes = request.files['file'].read()
     tolerance = float(request.form.get('tolerance', 0.0))
 
+    # This route hits the same DLL as calculate/calculate_tile (on every file
+    # upload, potentially twice concurrently in ruling mode), so it must go
+    # through the queue's DLL slot too — otherwise "exactly one DLL call in
+    # flight, ever" doesn't hold. Unlike calculate_tile, a dropped request
+    # here is user-visible (the upload just fails), so we wait briefly for
+    # the slot rather than skipping silently. No SocketIO request.sid exists
+    # for a plain HTTP POST, so _current_calc_sid is deliberately left
+    # untouched — the progress callbacks' `if _current_calc_sid:` guard makes
+    # that a safe no-op.
+    if not queue_manager.acquire_dll_blocking(timeout=30.0):
+        logger.warning("[IGS2STL] DLL busy — timed out waiting for the queue slot")
+        return jsonify({'error': 'Server busy, please try again shortly'}), 503
+
     try:
-        with temp_igs_file(igs_bytes) as igs_path:
-            stl_path = igs_path[:-4] + '_preview.stl'
-            t_igs_start = time.time()
-            err = _dll_iges2stl(igs_path.encode('ascii'), 
-                                stl_path.encode('ascii'), 
-                                c_double(tolerance))
-            t_igs_ms = round((time.time() - t_igs_start) * 1000)
-            if err:
-                logger.warning(f"[IGS2STL] DLL warning: {err}")
-                return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
-            if not os.path.exists(stl_path):
-                logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
-                return jsonify({'error': err or 'IGS conversion produced no output'}), 500
+        try:
+            with temp_igs_file(igs_bytes) as igs_path:
+                stl_path = igs_path[:-4] + '_preview.stl'
+                t_igs_start = time.time()
+                err = _dll_iges2stl(igs_path.encode('ascii'),
+                                    stl_path.encode('ascii'),
+                                    c_double(tolerance))
+                t_igs_ms = round((time.time() - t_igs_start) * 1000)
+                if err:
+                    logger.warning(f"[IGS2STL] DLL warning: {err}")
+                    return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
+                if not os.path.exists(stl_path):
+                    logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
+                    return jsonify({'error': err or 'IGS conversion produced no output'}), 500
 
-            try:
-                with open(stl_path, 'rb') as f:
-                    stl_content = f.read()
-            finally:
                 try:
-                    os.remove(stl_path)
-                except OSError:
-                    logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
+                    with open(stl_path, 'rb') as f:
+                        stl_content = f.read()
+                finally:
+                    try:
+                        os.remove(stl_path)
+                    except OSError:
+                        logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
 
-        b64_str = base64.b64encode(stl_content).decode('utf-8')
-        logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
-        response = {'stl_b64': b64_str}
-        if err:
-            response['warning'] = err
-        return jsonify(response)
+            b64_str = base64.b64encode(stl_content).decode('utf-8')
+            logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
+            response = {'stl_b64': b64_str}
+            if err:
+                response['warning'] = err
+            return jsonify(response)
 
-    except Exception as exc:
-        logger.exception(f"[IGS2STL] {exc}")
-        return jsonify({'error': f'Internal server error: {exc}'}), 500
+        except Exception as exc:
+            logger.exception(f"[IGS2STL] {exc}")
+            return jsonify({'error': f'Internal server error: {exc}'}), 500
+    finally:
+        queue_manager.release_dll()
 
 
 @app.route('/log-calculation', methods=['POST'])
