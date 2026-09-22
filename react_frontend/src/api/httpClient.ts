@@ -105,10 +105,12 @@ export async function downloadResults(token: string, fileType: 'stl' | 'igs'): P
  * perspective — failures should be caught and ignored by the caller so a
  * logging hiccup never affects the displayed calculation result.
  */
-export async function logCalculation(image: Blob, filename: string, args: CalculateArgs): Promise<void> {
+export async function logCalculation(
+  image: Blob, filename: string, args: CalculateArgs, savedInputPaths: string[] = [],
+): Promise<void> {
   const form = new FormData();
   form.append('image', image, 'snapshot.png');
-  form.append('metadata', JSON.stringify({ filename, args }));
+  form.append('metadata', JSON.stringify({ filename, args, saved_input_paths: savedInputPaths }));
 
   const response = await fetch(`${BASE_URL}/log-calculation`, {
     method: 'POST',

@@ -105,4 +105,28 @@ describe('logCalculation()', () => {
     await expect(logCalculation(new Blob(['x']), 'f.igs', args))
       .rejects.toThrow('Calc log failed: 500')
   })
+
+  it('includes saved_input_paths in the metadata when provided', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"ok":true}', { status: 200 }))
+
+    const blob = new Blob(['fake-png-bytes'], { type: 'image/png' })
+    await logCalculation(blob, 'mypart.igs', args, ['client_data/sid1/abc_mypart.igs'])
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    const form = init.body as FormData
+    const metadata = JSON.parse(form.get('metadata') as string)
+    expect(metadata.saved_input_paths).toEqual(['client_data/sid1/abc_mypart.igs'])
+  })
+
+  it('defaults saved_input_paths to an empty array when omitted', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"ok":true}', { status: 200 }))
+
+    const blob = new Blob(['fake-png-bytes'], { type: 'image/png' })
+    await logCalculation(blob, 'mypart.igs', args)
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    const form = init.body as FormData
+    const metadata = JSON.parse(form.get('metadata') as string)
+    expect(metadata.saved_input_paths).toEqual([])
+  })
 })

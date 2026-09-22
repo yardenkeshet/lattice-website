@@ -880,6 +880,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             'args_echo':        args,
             'filename':         filename,
             'download_token':   new_token,
+            'saved_input_paths': saved_input_paths,
         }, room=sid)
 
         logger.info(
@@ -1028,6 +1029,7 @@ def handle_log_calculation():
         metadata = {}
     filename = metadata.get('filename', '')
     args     = metadata.get('args', {})
+    saved_input_paths = metadata.get('saved_input_paths', [])
 
     entry_id   = uuid.uuid4().hex
     image_name = f'{entry_id}.png'
@@ -1043,8 +1045,11 @@ def handle_log_calculation():
         f"  tile={args.get('tileType')}  mode={args.get('calcMode')}"
         f"  tiles=({args.get('nt1')},{args.get('nt2')},{args.get('nt3')})"
         f"  g=({args.get('g1')},{args.get('g2')})"
-        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})",
-        extra={'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}'},
+        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})"
+        f"  inputs={saved_input_paths}",
+        extra={
+            'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}',
+        },
     )
     return jsonify({'ok': True})
 

@@ -99,6 +99,24 @@ describe('LatticeSocketClient', () => {
       expect(received.kind).toBe('token')
       expect(received.download_token).toBe('tok-abc-123')
     })
+
+    it('carries saved_input_paths through for a model_stl result', () => {
+      const handler = vi.fn()
+      client.onResult(handler)
+
+      const rawStl = {
+        kind: 'model_stl',
+        filename: 'MSExtrd.stl',
+        stl_gz_b64: 'base64data',
+        download_token: 'tok-1',
+        saved_input_paths: ['client_data/sid1/abc_part.igs'],
+        timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
+      }
+      getHandler('result')(rawStl)
+
+      const received = handler.mock.calls[0][0]
+      expect(received.saved_input_paths).toEqual(['client_data/sid1/abc_part.igs'])
+    })
   })
 
   // 4. onError() normalises both `msg` and `message` fields

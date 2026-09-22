@@ -21,6 +21,7 @@ interface RawResult {
   timings?: TileSTLResult['timings'];
   args_echo?: ModelSTLResult['args_echo'];
   download_token?: string;
+  saved_input_paths?: ModelSTLResult['saved_input_paths'];
 }
 
 interface RawError {
@@ -134,6 +135,7 @@ export class LatticeSocketClient {
           download_token: raw.download_token ?? '',
           timings: raw.timings!,
           args_echo: raw.args_echo,
+          saved_input_paths: raw.saved_input_paths,
         }
       : {
           kind: 'tile_stl',
