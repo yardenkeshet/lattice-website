@@ -6,13 +6,14 @@ import { Footer } from '../components/ui/Footer'
 import { LatticeMenu } from '../components/ui/LatticeMenu'
 import { TileMenu, defaultSliderValues } from '../components/ui/TileMenu'
 import { Toolbar } from '../components/ui/Toolbar'
+import { CalculationOverlay } from '../components/ui/CalculationOverlay'
 import { ViewerScene } from '../components/ViewerScene'
 import type { MeshLayer, ViewerSceneHandle, CameraSnapshot } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { computeDisplayedLayers } from '../lib/displayedLayers'
 import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
 import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
-import { calcLabelForUpdate, calcLabelForQueueStatus } from '../lib/progressDisplay'
+import { type CalcOverlayPhase, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
 import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
 import {
@@ -108,9 +109,26 @@ export function ToolPage() {
   const [resultGzB64, setResultGzB64]     = React.useState<string | null>(null)
   const [downloadToken, setDownloadToken] = React.useState<string | null>(null)
   const [isCalculating, setIsCalculating] = React.useState(false)
-  const [calcLabel, setCalcLabel]         = React.useState('Calculating…')
+  const [overlayPhase, setOverlayPhase]   = React.useState<CalcOverlayPhase>('calculating')
+  const [queueWaitingLabel, setQueueWaitingLabel] = React.useState('')
   const [errorMsg, setErrorMsg]           = React.useState<string | null>(null)
   const [queueBusyMsg, setQueueBusyMsg]   = React.useState<string | null>(null)
+
+  const appContentRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const el = appContentRef.current
+    if (!el) return
+    // Imperative attribute, not the JSX `inert` prop — sidesteps any gap in
+    // @types/react's DOM attribute typings for `inert`. Freezes both
+    // pointer and keyboard access to everything except the overlay itself,
+    // which must render OUTSIDE this wrapper (see the return statement) so
+    // it isn't made inert along with the rest of the page.
+    if (isCalculating) {
+      el.setAttribute('inert', '')
+    } else {
+      el.removeAttribute('inert')
+    }
+  }, [isCalculating])
 
   const handleCameraModeChange = React.useCallback((mode: 'perspective' | 'orthographic') => {
     setErrorMsg(null)
@@ -242,7 +260,7 @@ export function ToolPage() {
           // else: more responses still expected — intermediate response discarded silently
         } else {
           setIsCalculating(false)
-          setCalcLabel('Calculating…')
+          setOverlayPhase('calculating')
           setResultGzB64(payload.stl_gz_b64)
           setDownloadToken(payload.download_token)
           if (payload.args_echo) {
@@ -258,15 +276,16 @@ export function ToolPage() {
     const unsubError = socket.onError(err => {
       pendingMacroCountRef.current = 0
       setIsCalculating(false)
-      setCalcLabel('Calculating…')
+      setOverlayPhase('calculating')
       setErrorMsg(err.message)
     })
     const unsubUpdate = socket.onUpdate(upd => {
-      flushSync(() => setCalcLabel(calcLabelForUpdate(upd)))
+      flushSync(() => setOverlayPhase(upd.type === 'progress_end' ? 'finalizing' : 'calculating'))
     })
     const unsubQueueStatus = socket.onQueueStatus(status => {
       if (status.silent) return  // background macro-preview call — never surfaced
-      setCalcLabel(calcLabelForQueueStatus(status))
+      setOverlayPhase(status.state === 'waiting' ? 'waiting' : 'calculating')
+      setQueueWaitingLabel(calcLabelForQueueStatus(status))
     })
     const unsubQueueRejected = socket.onQueueRejected(rejection => {
       if (rejection.silent) {
@@ -278,7 +297,7 @@ export function ToolPage() {
       }
       pendingMacroCountRef.current = 0
       setIsCalculating(false)
-      setCalcLabel('Calculating…')
+      setOverlayPhase('calculating')
       setQueueBusyMsg(rejection.message)
     })
     return () => { unsubResult(); unsubError(); unsubUpdate(); unsubQueueStatus(); unsubQueueRejected() }
@@ -543,7 +562,8 @@ export function ToolPage() {
     }
     pendingResetKey.current = 'calc-' + Date.now()
     setIsCalculating(true)
-    setCalcLabel('Calculating…')
+    setOverlayPhase('calculating')
+    setQueueWaitingLabel('')
     const calculateArgs = {
       filename: uploadedFile!.name,
       surface_b64: uploadedIgsB64!,
@@ -604,7 +624,8 @@ export function ToolPage() {
   }, [uploadedFile, uploadedFile2, handleClear1, handleClear2])
 
   return (
-    <div style={pageStyle}>
+    <>
+      <div ref={appContentRef} style={pageStyle}>
       <Banner onClick={() => navigate('/')}/>
 
       {/* ── Workspace ── */}
@@ -724,7 +745,13 @@ export function ToolPage() {
       </div>
 
       <Footer />
-    </div>
+      </div>
+      <CalculationOverlay
+        isOpen={isCalculating}
+        phase={overlayPhase}
+        waitingText={queueWaitingLabel}
+      />
+    </>
   )
 }
 
