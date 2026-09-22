@@ -24,8 +24,11 @@ The page uses SocketIO to receive `log_update` events.
 ---
 
 ### `GET /viewfulllog`
-Renders a static full-log dump (`templates/full_log_view.html`).  
-Reads the entire `lattice.log` file into the template at request time.
+Renders a live full-detail log viewer (`templates/full_log_view.html`), sharing
+`static/log_viewer.js` with `/viewlog`. Streams `log_update` events over SocketIO
+the same way `/viewlog` does, but defaults to showing all levels including `DEBUG`
+(vs. `/viewlog`'s default of hiding `DEBUG`) and renders exception tracebacks
+always-expanded. Each page links to the other via a small nav link in its header.
 
 ---
 
@@ -144,7 +147,8 @@ Sent by the server after both `calculate` and `calculate_tile`.
     "time_parsed_ms": 0.1,
     "overall_ms": 380.0            // wall time from event receipt to emit
   },
-  "args_echo": { /* original args object echoed back */ }
+  "args_echo": { /* original args object echoed back */ },
+  "saved_input_paths": ["client_data/<sid>/<uuid>_part.igs"]  // paths to the original upload(s) this calc used (empty for silent/preview calcs)
 }
 ```
 

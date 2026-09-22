@@ -69,11 +69,10 @@ function initLogViewer(config) {
                 + (e.args ? '<span class="calc-log-params">' + esc(paramsSummary(e.args)) + '</span>' : '')
                 + '</div>'
             : '';
-        var excOpenAttr = config.excBlocksExpandedByDefault ? ' open' : '';
         var excBlock = e.exc
             ? (config.excBlocksExpandedByDefault
                 ? '<pre class="exc-block">' + esc(e.exc) + '</pre>'
-                : '<details' + excOpenAttr + '><summary style="cursor:pointer;color:#e06c75;font-size:11px;margin:3px 0 0 90px;">Exception</summary><pre class="exc-block">' + esc(e.exc) + '</pre></details>')
+                : '<details><summary style="cursor:pointer;color:#e06c75;font-size:11px;margin:3px 0 0 90px;">Exception</summary><pre class="exc-block">' + esc(e.exc) + '</pre></details>')
             : '';
         return '<div class="log-entry ' + lc + '">'
             + '<div class="log-line">'

@@ -46,10 +46,21 @@ def test_uncaught_http_exception_is_logged_and_returns_500(fresh_test_client_for
     assert any('[UNCAUGHT]' in r.message for r in caplog.records)
 
 
-def test_normal_404_is_not_hijacked_by_the_errorhandler():
+def test_normal_404_is_not_hijacked_by_the_errorhandler(caplog):
     client = main_module.app.test_client()
-    resp = client.get('/__definitely_does_not_exist__')
+    with caplog.at_level(logging.ERROR, logger='lattice'):
+        resp = client.get('/__definitely_does_not_exist__')
     assert resp.status_code == 404
+    assert not any('[UNCAUGHT]' in r.message for r in caplog.records)
+
+
+def test_normal_405_is_not_hijacked_by_the_errorhandler(caplog):
+    client = main_module.app.test_client()
+    with caplog.at_level(logging.ERROR, logger='lattice'):
+        # /log-calculation only accepts POST; GET should be a normal 405, not a hijacked 500
+        resp = client.get('/log-calculation')
+    assert resp.status_code == 405
+    assert not any('[UNCAUGHT]' in r.message for r in caplog.records)
 
 
 def test_uncaught_socketio_exception_is_logged(monkeypatch, caplog):

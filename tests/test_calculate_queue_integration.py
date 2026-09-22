@@ -313,13 +313,49 @@ def test_silent_calculate_with_invalid_field_does_not_leak_background_lane(monke
     main_module.dll_background_lane.release()
 
 
-def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp_path):
+def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
     _install_fake_revolution(monkeypatch, delay=0.02)
 
     c1 = main_module.socketio.test_client(main_module.app)
     c1.get_received()
-    c1.emit('calculate', _calc_payload())
+
+    with caplog.at_level(logging.INFO, logger='lattice'):
+        c1.emit('calculate', _calc_payload())
+
+        def got_result():
+            events = c1.get_received()
+            return any(e['name'] == 'result' for e in events)
+
+        assert _wait_until(got_result, timeout=5.0)
+
+    saved = list(tmp_path.rglob('*_part.igs'))
+    assert len(saved) == 1
+    assert saved[0].read_bytes() == b'dummy igs bytes'
+
+    saved_path_str = str(saved[0])
+    start_lines = [r.message for r in caplog.records if '[CALC] ->' in r.message]
+    done_lines = [r.message for r in caplog.records if '[CALC] done' in r.message]
+    assert start_lines, "no '[CALC] ->' line was logged"
+    assert done_lines, "no '[CALC] done' line was logged"
+    assert any('inputs=' in m and os.path.basename(saved_path_str) in m for m in start_lines)
+    assert any('inputs=' in m and os.path.basename(saved_path_str) in m for m in done_lines)
+
+
+def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
+    monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
+
+    def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+        return "solid fake\nendsolid fake\n", "MSRuled.stl", "MSRuled.igs"
+
+    monkeypatch.setattr(main_module, 'do_Ruling', _fake_ruling)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    payload = _calc_payload()
+    payload['args']['calcMode'] = 'ruling'
+    payload['surface2_b64'] = base64.b64encode(b'second surface bytes').decode('ascii')
+    c1.emit('calculate', payload)
 
     def got_result():
         events = c1.get_received()
@@ -327,9 +363,11 @@ def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp
 
     assert _wait_until(got_result, timeout=5.0)
 
-    saved = list(tmp_path.rglob('*_part.igs'))
-    assert len(saved) == 1
-    assert saved[0].read_bytes() == b'dummy igs bytes'
+    saved_primary = list(tmp_path.rglob('*_part.igs'))
+    saved_secondary = list(tmp_path.rglob('*_surface2.igs'))
+    assert len(saved_primary) == 1
+    assert len(saved_secondary) == 1
+    assert saved_secondary[0].read_bytes() == b'second surface bytes'
 
 
 def test_calculate_tile_entry_is_logged_at_debug_level(caplog):
@@ -358,8 +396,7 @@ def test_calculate_logs_internal_steps_at_debug_level(monkeypatch, caplog):
         assert _wait_until(got_result, timeout=5.0)
 
     messages = [r.message for r in caplog.records]
-    assert any('[CALC] surface decoded' in m for m in messages)
-    assert any('[CALC] invoking DLL' in m for m in messages)
+    assert any('[CALC] dll phase started' in m for m in messages)
     assert any('[CALC] DLL returned' in m for m in messages)
     assert any('[CALC] compressing result' in m for m in messages)
     assert any('[CALC] compression done' in m for m in messages)

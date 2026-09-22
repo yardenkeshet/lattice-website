@@ -81,10 +81,9 @@ socketio = SocketIO(
 def handle_uncaught_http_exception(exc):
     if isinstance(exc, HTTPException):
         return exc
-    logger.exception(
-        f"[UNCAUGHT] {request.method} {request.path}",
-        extra=_log_extra(getattr(request, 'sid', None)),
-    )
+    sid = getattr(request, 'sid', None)
+    extra = _log_extra(sid) if sid else _http_log_extra()
+    logger.exception(f"[UNCAUGHT] {request.method} {request.path}", extra=extra)
     return jsonify({'error': 'Internal server error'}), 500
 
 
@@ -340,11 +339,21 @@ def _save_original_upload(sid: str, filename: str, raw_bytes: bytes) -> str:
     """Persist an uploaded surface file under client_data/<sid>/, keyed by a
     UUID prefix so repeat uploads in one session (or Ruling mode's two
     files) never collide. Returns the path a log line can point at, so a
-    calculation can be reproduced later from its exact original input."""
-    session_dir = os.path.join(DATA_DIR, sid)
+    calculation can be reproduced later from its exact original input.
+
+    `filename` is client-supplied and untrusted — reduced to a single path
+    component before use, and the final path is verified to still resolve
+    inside session_dir before writing, so a crafted name (e.g. containing
+    `../`) can never escape client_data/<sid>/."""
+    session_dir = os.path.realpath(os.path.join(DATA_DIR, sid))
     os.makedirs(session_dir, exist_ok=True)
-    saved_name = f"{uuid.uuid4().hex}_{filename}"
+    base = os.path.basename(str(filename).replace('\\', '/').split('/')[-1]).strip()
+    if not base or base in ('.', '..'):
+        base = 'upload.igs'
+    saved_name = f"{uuid.uuid4().hex}_{base}"
     saved_path = os.path.join(session_dir, saved_name)
+    if os.path.commonpath([session_dir, os.path.realpath(saved_path)]) != session_dir:
+        raise OSError(f"refusing to write outside session dir: {saved_path!r}")
     with open(saved_path, 'wb') as f:
         f.write(raw_bytes)
     return saved_path
@@ -484,7 +493,7 @@ calc_log_thread = None
 thread_stop_event = False
 
 
-def get_initial_log_content(file_path, num_lines=50):
+def get_initial_log_content(file_path, num_lines=150):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -534,7 +543,6 @@ def on_connect():
     global log_thread, calc_log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
-    logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
     state = {
         "sid": sid,
@@ -552,6 +560,7 @@ def on_connect():
         'user_agent': request.headers.get('User-Agent', '?'),
         'unique_file_id': unique_file_id,
     }
+    logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
     for line in get_initial_log_content(LOG_FILE_NAME):
         emit('log_update', {'data': line})
@@ -582,8 +591,21 @@ def _log_extra(sid):
     return {'sid': sid, 'ip': _client_ip(sid), 'user_agent': _client_user_agent(sid)}
 
 
+def _http_log_extra():
+    """Like _log_extra(sid), but for a plain HTTP route with no SocketIO
+    sid — reads ip/user_agent directly from the current request instead of
+    looking them up in connected_clients (which only tracks socket sids)."""
+    return {'sid': None, 'ip': request.remote_addr or '?', 'user_agent': request.headers.get('User-Agent', '?')}
+
+
 def clean_session(sid, token):
     connected_clients.pop(sid, None)
+    upload_folder = os.path.join(os.getcwd(), DATA_DIR, sid)
+    try:
+        if os.path.exists(upload_folder):
+            shutil.rmtree(upload_folder)
+    except Exception as exc:
+        logger.exception(f"[SESSION] cleanup failed {upload_folder}: {exc}")
     if not token:
         return
     folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
@@ -702,9 +724,14 @@ def handle_calculate(data):
         return
 
     # Only a real (non-silent) calculation's inputs are worth keeping —
-    # this is the point that matches "files uploaded for calculation," not
-    # every drag-in or background preview. Errors here degrade
-    # traceability, never the calculation itself.
+    # this matches "files uploaded for calculation," not every drag-in or
+    # background preview. Saved BEFORE enqueue so the worker thread (which
+    # can start reading `payload` the instant enqueue() returns) always
+    # sees the final saved_input_paths — never a race where it dequeues
+    # before this key is set. If the request turns out to be rejected
+    # (queue full), whatever was just saved is deleted immediately below,
+    # so a rejected request never leaves an orphan file either. Errors
+    # here degrade traceability, never the calculation itself.
     saved_input_paths = []
     try:
         saved_input_paths.append(_save_original_upload(sid, filename, igs_bytes))
@@ -718,6 +745,11 @@ def handle_calculate(data):
 
     accepted = queue_manager.enqueue(sid, payload, silent=False)
     if not accepted:
+        for p in saved_input_paths:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
         socketio.emit('queue_rejected', {
             'message': 'Site is too busy right now. Please wait a few minutes and try again.',
             'silent': False,
@@ -743,7 +775,8 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
-    logger.debug(f"[CALC] surface decoded  {len(igs_bytes)} bytes", extra=_log_extra(sid))
+    inputs_desc = f"{len(igs_bytes)} bytes" if igs_bytes2 is None else f"{len(igs_bytes)}+{len(igs_bytes2)} bytes"
+    logger.debug(f"[CALC] dll phase started  {inputs_desc}", extra=_log_extra(sid))
 
     new_token  = str(uuid.uuid4())
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
@@ -756,7 +789,6 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
             f"[CALC] -> {calc_mode}  filename={filename}  inputs={p.get('saved_input_paths', [])}",
             extra=_log_extra(sid),
         )
-        logger.debug("[CALC] invoking DLL", extra=_log_extra(sid))
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
@@ -959,7 +991,7 @@ def handle_calculate_tile(data):
 
 @app.route('/convert_igs_to_stl', methods=['POST'])
 def handle_convert_igs_to_stl():
-    logger.debug("[IGS2STL] request received", extra=_log_extra(None))
+    logger.debug("[IGS2STL] request received", extra=_http_log_extra())
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -1017,9 +1049,24 @@ def handle_convert_igs_to_stl():
         dll_background_lane.release()
 
 
+def _validate_saved_input_paths(raw_paths) -> list:
+    """`saved_input_paths` round-trips server -> browser -> server in the
+    /log-calculation POST; the browser is not a trusted source for what
+    ends up in the permanent calc_log/log.jsonl audit record. Keep only
+    entries that look like paths this server itself would have produced:
+    a list of at most 2 short strings, each rooted under DATA_DIR."""
+    if not isinstance(raw_paths, list):
+        return []
+    valid = []
+    for p in raw_paths[:2]:
+        if isinstance(p, str) and 0 < len(p) <= 512 and p.startswith(DATA_DIR):
+            valid.append(p)
+    return valid
+
+
 @app.route('/log-calculation', methods=['POST'])
 def handle_log_calculation():
-    logger.debug("[CALC_LOG] request received", extra=_log_extra(None))
+    logger.debug("[CALC_LOG] request received", extra=_http_log_extra())
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -1029,7 +1076,8 @@ def handle_log_calculation():
         metadata = {}
     filename = metadata.get('filename', '')
     args     = metadata.get('args', {})
-    saved_input_paths = metadata.get('saved_input_paths', [])
+    raw_saved_paths = metadata.get('saved_input_paths', [])
+    saved_input_paths = _validate_saved_input_paths(raw_saved_paths)
 
     entry_id   = uuid.uuid4().hex
     image_name = f'{entry_id}.png'
@@ -1056,14 +1104,13 @@ def handle_log_calculation():
 
 @app.route('/calc-log-image/<name>')
 def calc_log_image(name):
-    logger.debug(f"[CALC_LOG] image requested: {name}", extra=_log_extra(None))
     safe_name = os.path.basename(name)
     if safe_name != name or not safe_name.lower().endswith('.png'):
         return jsonify({'error': 'Invalid image name'}), 400
     path = os.path.join(CALC_LOG_IMAGES_DIR, safe_name)
     if not os.path.exists(path):
         return jsonify({'error': 'Image not found'}), 404
-    return send_file(path, mimetype='image/png')
+    return send_file(path, mimetype='image/png', max_age=86400)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP routes
@@ -1086,7 +1133,7 @@ def view_full_log():
 
 @app.route('/download-results', methods=['POST'])
 def download_results():
-    logger.debug("[DOWNLOAD] request received", extra=_log_extra(None))
+    logger.debug("[DOWNLOAD] request received", extra=_http_log_extra())
     token     = request.form.get('token')
     file_type = request.form.get('file_type')
 

@@ -303,11 +303,21 @@ def _save_original_upload(sid: str, filename: str, raw_bytes: bytes) -> str:
     """Persist an uploaded surface file under client_data/<sid>/, keyed by a
     UUID prefix so repeat uploads in one session (or Ruling mode's two
     files) never collide. Returns the path a log line can point at, so a
-    calculation can be reproduced later from its exact original input."""
-    session_dir = os.path.join(DATA_DIR, sid)
+    calculation can be reproduced later from its exact original input.
+
+    `filename` is client-supplied and untrusted — reduced to a single path
+    component before use, and the final path is verified to still resolve
+    inside session_dir before writing, so a crafted name (e.g. containing
+    `../`) can never escape client_data/<sid>/."""
+    session_dir = os.path.realpath(os.path.join(DATA_DIR, sid))
     os.makedirs(session_dir, exist_ok=True)
-    saved_name = f"{uuid.uuid4().hex}_{filename}"
+    base = os.path.basename(str(filename).replace('\\', '/').split('/')[-1]).strip()
+    if not base or base in ('.', '..'):
+        base = 'upload.igs'
+    saved_name = f"{uuid.uuid4().hex}_{base}"
     saved_path = os.path.join(session_dir, saved_name)
+    if os.path.commonpath([session_dir, os.path.realpath(saved_path)]) != session_dir:
+        raise OSError(f"refusing to write outside session dir: {saved_path!r}")
     with open(saved_path, 'wb') as f:
         f.write(raw_bytes)
     return saved_path
