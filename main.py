@@ -743,6 +743,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
+    logger.debug(f"[CALC] surface decoded  {len(igs_bytes)} bytes", extra=_log_extra(sid))
 
     new_token  = str(uuid.uuid4())
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
@@ -755,6 +756,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
             f"[CALC] -> {calc_mode}  filename={filename}  inputs={p.get('saved_input_paths', [])}",
             extra=_log_extra(sid),
         )
+        logger.debug("[CALC] invoking DLL", extra=_log_extra(sid))
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
@@ -785,6 +787,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     finally:
         dll_instance.set_current_sid(None)
     t_dll_end = time.time()
+    logger.debug(f"[CALC] DLL returned  {round((t_dll_end - t_dll_start) * 1000)}ms", extra=_log_extra(sid))
 
     if not stl_content:
         logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
@@ -829,11 +832,13 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
+        logger.debug("[CALC] compressing result", extra=_log_extra(sid))
         try:
             t_comp_start = time.time()
             compressed_b64 = compress_text_to_b64_gz(stl_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+            logger.debug(f"[CALC] compression done  {comp_kb:.0f}KB", extra=_log_extra(sid))
         except Exception as exc:
             logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
             socketio.emit('error', {'msg': 'Compression failed'}, room=sid)

@@ -341,3 +341,25 @@ def test_calculate_tile_entry_is_logged_at_debug_level(caplog):
         time.sleep(0.05)
 
     assert any('[CALCULATE_TILE] request received' in r.message for r in caplog.records)
+
+
+def test_calculate_logs_internal_steps_at_debug_level(monkeypatch, caplog):
+    _install_fake_revolution(monkeypatch, delay=0.02)
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+
+    with caplog.at_level(logging.DEBUG, logger='lattice'):
+        c1.emit('calculate', _calc_payload())
+
+        def got_result():
+            events = c1.get_received()
+            return any(e['name'] == 'result' for e in events)
+
+        assert _wait_until(got_result, timeout=5.0)
+
+    messages = [r.message for r in caplog.records]
+    assert any('[CALC] surface decoded' in m for m in messages)
+    assert any('[CALC] invoking DLL' in m for m in messages)
+    assert any('[CALC] DLL returned' in m for m in messages)
+    assert any('[CALC] compressing result' in m for m in messages)
+    assert any('[CALC] compression done' in m for m in messages)
