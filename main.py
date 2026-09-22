@@ -75,6 +75,22 @@ socketio = SocketIO(
     ping_timeout=120,
 )
 
+
+@app.errorhandler(Exception)
+def handle_uncaught_http_exception(exc):
+    logger.exception(
+        f"[UNCAUGHT] {request.method} {request.path}",
+        extra=_log_extra(getattr(request, 'sid', None)),
+    )
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+@socketio.on_error_default
+def handle_uncaught_socketio_exception(exc):
+    sid = request.sid if request else None
+    logger.exception("[UNCAUGHT] socketio handler failed", extra=_log_extra(sid))
+
+
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAIN_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
 MAIN_DLL_MANIFEST_PATH = MAIN_DLL_PATH + ".manifest"
@@ -133,6 +149,7 @@ class _JsonFormatter(logging.Formatter):
     EXTRA_FIELDS = (
         ('sid', 'sid'),
         ('ip', 'ip'),
+        ('user_agent', 'user_agent'),
         ('filename', 'calc_filename'),
         ('args', 'calc_args'),
         ('image', 'image'),
@@ -515,6 +532,7 @@ def on_connect():
     connected_clients[sid] = {
         'sid': sid,
         'ip_address_reported': ip_address,
+        'user_agent': request.headers.get('User-Agent', '?'),
         'unique_file_id': unique_file_id,
     }
 
@@ -539,8 +557,12 @@ def _client_ip(sid):
     return (connected_clients.get(sid) or {}).get('ip_address_reported', '?')
 
 
+def _client_user_agent(sid):
+    return (connected_clients.get(sid) or {}).get('user_agent', '?')
+
+
 def _log_extra(sid):
-    return {'sid': sid, 'ip': _client_ip(sid)}
+    return {'sid': sid, 'ip': _client_ip(sid), 'user_agent': _client_user_agent(sid)}
 
 
 def clean_session(sid, token):
