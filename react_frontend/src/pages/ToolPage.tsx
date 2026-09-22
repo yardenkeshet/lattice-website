@@ -668,7 +668,6 @@ export function ToolPage() {
               onCalculate={handleCalculate}
               cameraMode={cameraMode}
               isCalculating={isCalculating}
-              calcLabel={calcLabel}
               canExport={!!downloadToken}
               onCameraModeChange={handleCameraModeChange}
               onExportStl={handleExportStl}

@@ -8,7 +8,6 @@ import { IoInformationCircle } from "react-icons/io5";
 export interface ToolbarProps {
   cameraMode?: 'perspective' | 'orthographic'
   isCalculating?: boolean
-  calcLabel?: string
   canExport?: boolean
   onCameraModeChange: (mode: 'perspective' | 'orthographic') => void
   onExportStl: () => void
@@ -22,7 +21,6 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
     {
       cameraMode = 'perspective',
       isCalculating = false,
-      calcLabel = 'Calculating…',
       canExport = false,
       onCameraModeChange,
       onExportStl,
@@ -61,7 +59,7 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
             disabled={isCalculating}
             onClick={onCalculate}
           >
-            {isCalculating ? calcLabel : 'Make Lattice'}
+            Make Lattice
           </Button>
 
           <PillDivider />
