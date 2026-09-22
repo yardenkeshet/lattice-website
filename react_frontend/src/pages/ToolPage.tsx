@@ -279,7 +279,18 @@ export function ToolPage() {
       setOverlayPhase('calculating')
       setErrorMsg(err.message)
     })
+    const unsubDisconnect = socket.onDisconnect(() => {
+      if (!isCalculatingRef.current) return
+      pendingMacroCountRef.current = 0
+      setIsCalculating(false)
+      setOverlayPhase('calculating')
+      setErrorMsg('Lost connection to the server during calculation. Please try again.')
+    })
     const unsubUpdate = socket.onUpdate(upd => {
+      // `update` carries no `silent` flag (unlike queue_status/queue_rejected), so it
+      // may belong to an in-flight background macro preview rather than this user's
+      // real calculation. A non-zero pendingMacroCountRef means exactly that — skip it.
+      if (!isCalculatingRef.current || pendingMacroCountRef.current > 0) return
       flushSync(() => setOverlayPhase(upd.type === 'progress_end' ? 'finalizing' : 'calculating'))
     })
     const unsubQueueStatus = socket.onQueueStatus(status => {
@@ -300,7 +311,7 @@ export function ToolPage() {
       setOverlayPhase('calculating')
       setQueueBusyMsg(rejection.message)
     })
-    return () => { unsubResult(); unsubError(); unsubUpdate(); unsubQueueStatus(); unsubQueueRejected() }
+    return () => { unsubResult(); unsubError(); unsubDisconnect(); unsubUpdate(); unsubQueueStatus(); unsubQueueRejected() }
   }, [socket])
 
   /* ── Hidden log-viewer access (Ctrl+Shift+L) ── */
