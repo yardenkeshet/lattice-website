@@ -1,35 +1,52 @@
-import type { UpdatePayload, QueueStatusPayload } from '../api/types'
+import type { QueueStatusPayload } from '../api/types'
 
 /**
- * The DLL's own progress callback only covers the "microstructure building"
- * phase. Writing output files and our own gzip compression happen afterward
- * with no progress reporting, so capping the DLL-driven percentage below
- * 100 avoids a false "done" signal during that silent tail — see
- * docs/superpowers/specs/2026-07-14-mentor-feedback-fixes-round2-design.md.
+ * Which stage of a real "Calculate" request the full-screen
+ * CalculationOverlay is currently representing. Driven entirely by
+ * existing server signals — see ToolPage.tsx's socket-event handlers.
+ * 'waiting' shows the real queue-position text (calcLabelForQueueStatus);
+ * 'calculating'/'finalizing' cycle through a fabricated, non-percentage
+ * phrase sequence instead — see the design spec
+ * (docs/superpowers/specs/2026-09-22-calculation-overlay-design.md) for why.
  */
-export const DLL_PROGRESS_CAP = 90
+export type CalcOverlayPhase = 'waiting' | 'calculating' | 'finalizing'
 
-export function calcLabelForUpdate(update: UpdatePayload): string {
-  switch (update.type) {
-    case 'progress_start':
-      return update.message
-    case 'progress_update': {
-      const clamped = Math.min(100, Math.max(0, update.progress))
-      const capped = Math.round(clamped * (DLL_PROGRESS_CAP / 100))
-      return `Calculating… ${capped}%`
-    }
-    case 'progress_end':
-      return 'Finalizing…'
-    default:
-      return 'Calculating…'
-  }
+/** Rotation interval for the overlay's phrase sequence, in milliseconds. */
+export const OVERLAY_PHRASE_STEP_MS = 2500
+
+export const CALCULATING_PHRASES = [
+  'Reading your surfaces…',
+  'Setting up the macro shape…',
+  'Building the lattice microstructure…',
+  'Assembling tiles…',
+  'Still working — larger models take a bit longer…',
+] as const
+
+export const FINALIZING_PHRASES = [
+  'Finalizing your model…',
+  'Compressing the mesh…',
+  'Preparing your preview…',
+] as const
+
+/**
+ * Which phrase (by index into a phase's phrase list) should be showing
+ * after `elapsedMs` since that phase began. Advances one phrase per full
+ * `stepMs` and then holds on the last phrase — deliberately does not loop
+ * back to the first, since the last phrase in each list is written as a
+ * steady-state "still working" line, not something that makes sense to
+ * cycle back through.
+ */
+export function overlayPhraseIndex(elapsedMs: number, phraseCount: number, stepMs: number = OVERLAY_PHRASE_STEP_MS): number {
+  const raw = Math.floor(elapsedMs / stepMs)
+  return Math.min(Math.max(raw, 0), phraseCount - 1)
 }
 
 /**
  * Label shown while a calculate request sits ahead of the "calculating"
- * state — either waiting in the bounded server-side queue, or already
- * running (in which case the caller should fall through to the normal
- * calcLabelForUpdate-driven percentage display instead).
+ * state, waiting in the bounded server-side queue. This is real
+ * information (an actual queue position), unlike the fabricated
+ * CALCULATING_PHRASES/FINALIZING_PHRASES sequences above, so it's shown
+ * verbatim rather than replaced with a generic phrase.
  */
 export function calcLabelForQueueStatus(status: QueueStatusPayload): string {
   if (status.state === 'waiting') {
