@@ -1081,14 +1081,7 @@ def view_log():
 
 @app.route('/viewfulllog')
 def view_full_log():
-    try:
-        with open(LOG_FILE_NAME, 'r', encoding='utf-8') as f:
-            log_content = f.read()
-    except FileNotFoundError:
-        log_content = f"Error: Log file '{LOG_FILE_NAME}' not found."
-    except Exception as exc:
-        log_content = f"An unexpected error occurred: {exc}"
-    return render_template('full_log_view.html', log_file=LOG_FILE_NAME, log_content=log_content)
+    return render_template('full_log_view.html', log_file=LOG_FILE_NAME)
 
 
 @app.route('/download-results', methods=['POST'])

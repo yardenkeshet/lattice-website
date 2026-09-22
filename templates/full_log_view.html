@@ -2,32 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Full Log Viewer: {{ log_file }}</title>
+    <title>Full Log Viewer</title>
     <style>
-        body { font-family: monospace; background-color: #282c34; color: #abb2bf; margin: 0; padding: 20px; }
-        h1 { color: #50fa7b; text-align: center; margin-bottom: 30px; }
-        .log-container {
-            background-color: #3e4451;
-            padding: 15px;
-            border-radius: 8px;
-            min-height: 85vh;
-            overflow: auto; /* Allows scrolling if the log is too long */
-            border: 1px solid #5c6370;
-        }
-        /* The <pre> tag preserves all line breaks and spacing from the log file */
-        .log-container pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 0.85em;
-            line-height: 1.4;
-        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:monospace;font-size:13px;background:#21252b;color:#abb2bf;padding:16px 20px}
+        h1{color:#61afef;text-align:center;margin-bottom:16px;font-size:1em;letter-spacing:.05em;text-transform:uppercase}
+        .toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 12px;align-items:center}
+        .toolbar input[type=text]{flex:1;min-width:140px;height:32px;font-size:12px;font-family:monospace;padding:0 10px;background:#282c34;border:1px solid #3e4451;border-radius:6px;color:#abb2bf}
+        .toolbar input[type=text]::placeholder{color:#4b5263}
+        .filters{display:flex;gap:6px;flex-wrap:wrap}
+        .lvl-btn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid transparent;cursor:pointer;transition:opacity .15s}
+        .lvl-btn[data-level=INFO]{background:#2d4a2d;color:#98c379;border-color:#3a6a3a}
+        .lvl-btn[data-level=DEBUG]{background:#3e4451;color:#abb2bf;border-color:#555}
+        .lvl-btn[data-level=WARNING]{background:#4a3d1a;color:#e5c07b;border-color:#6a5a2a}
+        .lvl-btn[data-level=ERROR]{background:#4a1f22;color:#e06c75;border-color:#6a3035}
+        .lvl-btn.off{opacity:.35}
+        select{height:32px;font-size:12px;padding:0 8px;background:#282c34;border:1px solid #3e4451;border-radius:6px;color:#abb2bf}
+        .sep{width:1px;height:24px;background:#3e4451;align-self:center}
+        .stats{font-size:11px;color:#4b5263;white-space:nowrap}
+        .log-wrap{background:#282c34;border-radius:8px;border:1px solid #3e4451;max-height:80vh;overflow-y:auto}
+        .log-entry{display:flex;flex-direction:column;padding:3px 12px;border-left:3px solid transparent;border-bottom:1px solid rgba(255,255,255,.04)}
+        .log-entry:hover{background:rgba(255,255,255,.03)}
+        .log-entry.E{border-left-color:#e06c75;background:rgba(224,108,117,.06)}
+        .log-entry.W{border-left-color:#e5c07b;background:rgba(229,192,123,.05)}
+        .log-line{display:flex;gap:8px;align-items:baseline}
+        .ts{color:#4b5263;flex-shrink:0;min-width:68px;font-size:11px}
+        .badge{flex-shrink:0;font-weight:600;font-size:10px;padding:1px 6px;border-radius:3px;min-width:54px;text-align:center}
+        .badge.INFO{background:#2d4a2d;color:#98c379}
+        .badge.DEBUG{background:#3e4451;color:#636d83}
+        .badge.WARNING{background:#4a3d1a;color:#e5c07b}
+        .badge.ERROR{background:#4a1f22;color:#e06c75}
+        .msg{color:#abb2bf;flex:1;white-space:pre-wrap;overflow-wrap:break-word}
+        .prefix{color:#c678dd;font-weight:bold}
+        .sid-pill{flex-shrink:0;background:#1d3248;color:#61afef;font-size:10px;padding:1px 7px;border-radius:10px;cursor:default}
+        .exc-block{margin:3px 0 4px 90px;padding:5px 10px;background:rgba(224,108,117,.1);border-left:2px solid #e06c75;color:#e06c75;font-size:11px;white-space:pre-wrap;border-radius:0 3px 3px 0}
+        .calc-log-extra{display:flex;align-items:center;gap:8px;margin:3px 0 4px 90px;padding:4px 8px;background:rgba(97,175,239,.06);border-left:2px solid #61afef;border-radius:0 3px 3px 0}
+        .calc-log-thumb{width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid #3e4451}
+        .calc-log-filename{font-size:11px;color:#abb2bf}
+        .calc-log-params{font-size:10px;color:#4b5263}
+        .empty{padding:20px;color:#4b5263;text-align:center;font-size:12px}
+        .group-hdr{padding:4px 12px;background:#1e2127;font-size:10px;color:#61afef;letter-spacing:.04em;border-bottom:1px solid #3e4451;position:sticky;top:0;z-index:1}
+        .group-hdr span{color:#4b5263}
     </style>
 </head>
 <body>
-    <h1>Full Log Content: {{ log_file }}</h1>
-    <div class="log-container">
-        <pre>{{ log_content }}</pre>
-    </div>
+<h1 id="page-heading">&#9679; Full Detail — {{ log_file }}</h1>
+<a id="other-page-link" href="#" style="display:block;text-align:center;font-size:11px;color:#61afef;text-decoration:none;margin-bottom:8px;"></a>
+
+<div class="toolbar">
+    <input type="text" id="search" placeholder="Search messages or SID…">
+    <div class="sep"></div>
+    <div class="filters" id="lvl-filters"></div>
+    <div class="sep"></div>
+    <select id="sort">
+        <option value="asc">Oldest first</option>
+        <option value="desc">Newest first</option>
+    </select>
+    <select id="group">
+        <option value="none">No grouping</option>
+        <option value="sid">Group by SID</option>
+        <option value="prefix">Group by [TAG]</option>
+    </select>
+    <div class="sep"></div>
+    <span class="stats" id="stats"></span>
+</div>
+
+<div class="log-wrap" id="log-output">
+    <p style="padding:12px;color:#4b5263;">Waiting for connection…</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+<script src="{{ url_for('static', filename='log_viewer.js') }}"></script>
+<script>
+    initLogViewer({
+        defaultLevels: ['INFO', 'DEBUG', 'WARNING', 'ERROR'],
+        excBlocksExpandedByDefault: true,
+        heading: '● Full Detail — {{ log_file }}',
+        otherPageHref: '/viewlog',
+        otherPageLabel: '← Surface view',
+    });
+</script>
 </body>
 </html>
