@@ -22,127 +22,11 @@ from ctypes import (
 )
 
 from calc_queue import CalcQueueManager, Job
+from dll_instance import DllInstance, prepare_background_dll_copy, assert_distinct_dll_instances
+from dll_lane import BackgroundDllLane
 
 from flask import Flask, render_template, send_file, jsonify, request, Response
 from flask_socketio import SocketIO, emit
-
-# ──────────────────────────────────────────────────────────────────────────────
-# DLL — load and configure signatures
-# ──────────────────────────────────────────────────────────────────────────────
-
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
-
-try:
-    _dll = ctypes.CDLL(_DLL_PATH)
-except OSError as _exc:
-    raise OSError(
-        f"Failed to load DLL at '{_DLL_PATH}'. "
-        f"Check that the file exists and all dependencies are present. "
-        f"Original error: {_exc}"
-    ) from _exc
-
-# ── Progress-report callbacks ─────────────────────────────────────────────────
-
-class IritMiscProgressReportStruct(Structure):
-    _fields_ = [
-        ("InitMsg",  c_char_p),
-        ("Progress", c_int),
-    ]
-
-_PRInfoPtr = POINTER(IritMiscProgressReportStruct)
-_ProgressCB = CFUNCTYPE(None, _PRInfoPtr)
-
-# Set by whichever code currently holds the DLL (either the queue worker's
-# _run_calculate_job, or handle_calculate_tile via try_acquire_dll) so these
-# globally-registered callbacks know which client to report progress to.
-# Safe only because CalcQueueManager guarantees exactly one DLL call is ever
-# in flight at a time.
-_current_calc_sid: str | None = None
-
-
-def _cb_init(pr):
-    try:
-        msg = pr.contents.InitMsg.decode()
-        print(f"[DLL] {msg}     ", end='', flush=True)
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_start', 'message': f'[DLL] {msg}'}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-def _cb_update(pr):
-    try:
-        progress = pr.contents.Progress
-        print(f"\b\b\b{progress:3d}", end='', flush=True)
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_update', 'progress': progress}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-def _cb_done(pr):
-    print("\b\b\b100\n", end='', flush=True)
-    try:
-        if _current_calc_sid:
-            socketio.emit('update', {'type': 'progress_end', 'progress': 100}, room=_current_calc_sid)
-    except Exception:
-        pass
-
-_cb_init_c   = _ProgressCB(_cb_init)
-_cb_update_c = _ProgressCB(_cb_update)
-_cb_done_c   = _ProgressCB(_cb_done)
-
-_dll.MSDLLSetProgressReportFuncs.restype  = None
-_dll.MSDLLSetProgressReportFuncs.argtypes = [_ProgressCB, _ProgressCB, _ProgressCB, c_void_p]
-_dll.MSDLLSetProgressReportFuncs(_cb_init_c, _cb_update_c, _cb_done_c, None)
-
-# ── Function signatures ───────────────────────────────────────────────────────
-
-_dll.MSDLLGetTile.restype  = c_char_p
-_dll.MSDLLGetTile.argtypes = [
-    c_int,
-    POINTER(c_double),  # Params
-    POINTER(c_double),  # Graded
-    c_char_p,           # MSSTLFile
-]
-
-_dll.MSDLLMSFromRuling.restype  = c_char_p
-_dll.MSDLLMSFromRuling.argtypes = [
-    c_char_p,
-    c_char_p,
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFilee (typo in DLL author's name)
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLMSFromExtrusion.restype  = c_char_p
-_dll.MSDLLMSFromExtrusion.argtypes = [
-    c_char_p,
-    c_double,           # ExtrudeLength
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFile
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLMSFromRevolution.restype  = c_char_p
-_dll.MSDLLMSFromRevolution.argtypes = [
-    c_char_p,
-    POINTER(c_int),     # NumTiles[3]
-    POINTER(c_double),  # Graded[2]
-    c_int,
-    POINTER(c_double),  # TileParams
-    c_char_p,           # MSIGSFile
-    c_char_p,           # MSTLSFile
-]
-
-_dll.MSDLLIGES2STL.restype  = c_char_p
-_dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_double]
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tile-type constants and map
@@ -161,49 +45,6 @@ TILE_TYPE_MAP = {
     "diagonal":       MSDLL_TILE_DIAGONAL,
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Direct DLL wrapper helpers
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _call(fn, *args):
-    """Call a DLL function and return decoded error string (or None)."""
-    result = fn(*args)
-    if result:
-        decoded = result.decode("utf-8", errors="replace")
-        logger.warning(f"[DLL] {fn.__name__} returned: {decoded}")
-        return decoded
-    return None
-
-
-def _dll_get_tile(tile_type, tile_params, graded, tolerance, out_stl_file: bytes):
-    return _call(_dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
-
-
-def _dll_from_revolution(srf_igs: bytes, num_tiles, graded, tile_type, tile_params,
-                          out_igs: bytes, out_stl: bytes):
-    return _call(_dll.MSDLLMSFromRevolution,
-                 srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_from_extrusion(srf_igs: bytes, extrude_length: float, num_tiles, graded,
-                         tile_type, tile_params, out_igs: bytes, out_stl: bytes):
-    return _call(_dll.MSDLLMSFromExtrusion,
-                 srf_igs, c_double(extrude_length), num_tiles, graded,
-                 tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_from_ruling(srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
-                      out_igs: bytes, out_stl: bytes):
-    logger.debug(f"[DLL] FromRuling srf1={srf1}  srf2={srf2}")
-    return _call(_dll.MSDLLMSFromRuling,
-                 srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
-
-
-def _dll_iges2stl(igs_file: bytes, stl_file: bytes, tolerance: c_double) -> str | None:
-    return _call(_dll.MSDLLIGES2STL, igs_file, stl_file, tolerance)
-
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -233,6 +74,42 @@ socketio = SocketIO(
     ping_interval=25,
     ping_timeout=120,
 )
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAIN_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
+MAIN_DLL_MANIFEST_PATH = MAIN_DLL_PATH + ".manifest"
+
+
+def _emit_queue_event(event: str, sid: str, payload: dict) -> None:
+    socketio.emit(event, payload, room=sid)
+
+
+try:
+    dll_main = DllInstance(MAIN_DLL_PATH, emit=_emit_queue_event)
+except OSError as _exc:
+    raise OSError(
+        f"Failed to load DLL at '{MAIN_DLL_PATH}'. "
+        f"Check that the file exists and all dependencies are present. "
+        f"Original error: {_exc}"
+    ) from _exc
+
+_BACKGROUND_DLL_DEST_DIR = os.path.join(os.getcwd(), 'tmp', 'dll_background_instance')
+try:
+    _background_dll_path = prepare_background_dll_copy(
+        MAIN_DLL_PATH, MAIN_DLL_MANIFEST_PATH,
+        dest_dir=_BACKGROUND_DLL_DEST_DIR,
+    )
+except OSError as _exc:
+    raise OSError(
+        f"Failed to prepare the background DLL copy at '{_BACKGROUND_DLL_DEST_DIR}'. "
+        f"This can happen if another instance of this server is already "
+        f"running and still has that file open — check for a leftover "
+        f"python main.py process and stop it, then retry. "
+        f"Original error: {_exc}"
+    ) from _exc
+dll_background = DllInstance(_background_dll_path, emit=_emit_queue_event)
+assert_distinct_dll_instances(dll_main, dll_background)
+dll_background_lane = BackgroundDllLane()
 
 LOGFILE               = 'lattice.log'
 DATA_DIR              = 'client_data'
@@ -442,10 +319,10 @@ def temp_igs_file(igs_bytes: bytes):
 DOWNLOAD_CACHE = {}
 
 
-def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+def do_revolution(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRevolv.stl").encode('ascii')
-    dll_error = _dll_from_revolution(
+    dll_error = dll_instance.from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
@@ -458,10 +335,10 @@ def do_revolution(out_folder, igs_path, num_tiles, tile_params, grading_params, 
     return stl_content, "MSRevolv.stl", "MSRevolv.igs"
 
 
-def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
+def do_extrusion(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
-    dll_error = _dll_from_extrusion(
+    dll_error = dll_instance.from_extrusion(
         igs_path.encode('ascii'),
         extrude_length,
         num_tiles, grading_params,
@@ -476,11 +353,11 @@ def do_extrusion(out_folder, igs_path, num_tiles, tile_params, grading_params, t
     return stl_content, "MSExtrd.stl", "MSExtrd.igs"
 
 
-def do_Ruling(out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+def do_Ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
     out_stl = os.path.join(out_folder, "MSRuled.stl").encode('ascii')
 
-    dll_error = _dll_from_ruling(
+    dll_error = dll_instance.from_ruling(
         igs_path.encode('ascii'), igs_path2.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
@@ -501,19 +378,7 @@ CALC_MODE_DISPATCH = {
 VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
-def _emit_queue_event(event: str, sid: str, payload: dict) -> None:
-    socketio.emit(event, payload, room=sid)
-
-
-# queue_manager is instantiated further down, right after _run_calculate_job
-# is defined (see there for why: unlike a name referenced inside a function
-# body — which is looked up only when that function is actually called,
-# well after the whole module has finished importing — this keyword
-# argument is bound eagerly, at this statement's own execution time, so
-# _run_calculate_job must already exist as a module global here).
-
-
-def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
+def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
     if tile_type_int is None:
@@ -523,7 +388,7 @@ def calculate_tile(tile_params, graded, tile_type_str, tolerance, sid):
     stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
     
     # Actual calculation
-    dll_error = _dll_get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
+    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
     
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
@@ -732,6 +597,7 @@ def handle_calculate(data):
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
+
     logger.info(
         f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
         extra=_log_extra(sid),
@@ -779,27 +645,38 @@ def handle_calculate(data):
         'igs_bytes': igs_bytes, 'igs_bytes2': igs_bytes2,
         't_received': t_received,
     }
-    accepted = queue_manager.enqueue(sid, payload, silent=silent)
+
+    if silent:
+        if not dll_background_lane.try_acquire():
+            # Background lane busy — drop this preview. A newer trigger
+            # (or the next debounce tick) supersedes it; never queues,
+            # never surfaces any UI, never touches dll_main.
+            return
+        try:
+            threading.Thread(
+                target=_run_silent_calculate, args=(sid, payload),
+                daemon=True, name=f'calc-silent-{sid}',
+            ).start()
+        except Exception as exc:
+            dll_background_lane.release()
+            logger.exception(f"[CALC] failed to start silent-calculate thread: {exc}", extra=_log_extra(sid))
+        return
+
+    accepted = queue_manager.enqueue(sid, payload, silent=False)
     if not accepted:
         socketio.emit('queue_rejected', {
             'message': 'Site is too busy right now. Please wait a few minutes and try again.',
-            'silent': silent,
+            'silent': False,
         }, room=sid)
 
 
-def _run_calculate_job(job: Job) -> None:
-    """CalcQueueManager's run_job callback for a full calculate request.
-    Runs on the queue's dedicated worker thread — never concurrently with
-    another call to this function, and never while a tile-preview call
-    holds the DLL slot. Must use explicit room=sid emits (no implicit
-    request context on this thread)."""
-    global _current_calc_sid
-
-    sid = job.sid
-    p = job.payload
-    client_ts      = p['client_ts']
+def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | None:
+    """The exclusive part of a calculate request: builds the ctypes args
+    and calls the DLL. Emits its own error and returns None on failure.
+    Callers release their own lane's DLL slot immediately after this
+    returns — nothing below this function touches the DLL."""
+    p = payload
     filename       = p['filename']
-    args           = p['args']
     calc_mode      = p['calc_mode']
     tile_type_int  = p['tile_type_int']
     nt1, nt2, nt3  = p['nt1'], p['nt2'], p['nt3']
@@ -808,9 +685,6 @@ def _run_calculate_job(job: Job) -> None:
     extrude_length = p['extrude_length']
     igs_bytes      = p['igs_bytes']
     igs_bytes2     = p['igs_bytes2']
-    t_received     = p['t_received']
-
-    t_start = time.time()
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
@@ -821,111 +695,168 @@ def _run_calculate_job(job: Job) -> None:
     os.makedirs(out_folder, exist_ok=True)
 
     t_dll_start = time.time()
-    _current_calc_sid = sid
+    dll_instance.set_current_sid(sid)
     try:
         logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
                     stl_content, out_stl_name, out_igs_name = do_Ruling(
-                        out_folder, igs_path, igs_path2,
+                        dll_instance, out_folder, igs_path, igs_path2,
                         curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     )
             elif calc_mode == CALC_MODE_EXTRUSION:
                 stl_content, out_stl_name, out_igs_name = do_extrusion(
-                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
+                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     extrude_length,
                 )
             else:
                 dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
                 stl_content, out_stl_name, out_igs_name = dispatch_fn(
-                    out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
+                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
                 )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
     except Exception as exc:
         logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
     finally:
-        _current_calc_sid = None
-
+        dll_instance.set_current_sid(None)
     t_dll_end = time.time()
 
     if not stl_content:
         logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
-        return
+        return None
 
-    # The client may have disconnected while this job was queued/running.
-    # Nothing will ever redeem this token — discard the result rather than
-    # leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
-    if sid not in connected_clients:
-        logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    try:
-        t_comp_start = time.time()
-        compressed_b64 = compress_text_to_b64_gz(stl_content)
-        t_comp_end = time.time()
-        comp_kb = len(base64.b64decode(compressed_b64)) / 1024
-    except Exception as exc:
-        logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
-        socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    # The client may also have disconnected *during* compression (which can
-    # take several seconds for large outputs) — re-check right before
-    # registering the download, not just before compression, or we'd leak a
-    # DOWNLOAD_CACHE entry and a last_results/<token>/ folder that nothing
-    # will ever redeem.
-    if sid not in connected_clients:
-        logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
-        shutil.rmtree(out_folder, ignore_errors=True)
-        return
-
-    # Success — register the new result and retire the previous one for this session.
-    DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
-    old_token = client_state.get(sid, {}).get('current_token')
-    if old_token and old_token != new_token:
-        DOWNLOAD_CACHE.pop(old_token, None)
-        shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
-    if sid in client_state:
-        client_state[sid]['current_token'] = new_token
-
-    t_total = time.time() - t_start
-    timings = {
-        'client_to_server_ms': None if client_ts is None else (t_received * 1000 - client_ts),
-        'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
-        'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
-        'overall_ms':          round(t_total * 1000),
+    return {
+        'stl_content': stl_content, 'out_stl_name': out_stl_name, 'out_igs_name': out_igs_name,
+        'out_folder': out_folder, 'new_token': new_token,
+        't_dll_start': t_dll_start, 't_dll_end': t_dll_end,
     }
 
-    socketio.emit('result', {
-        'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
-        'kind':             'model_stl',
-        'stl_gz_b64':       compressed_b64,
-        'timings':          timings,
-        'args_echo':        args,
-        'filename':         filename,
-        'download_token':   new_token,
-    }, room=sid)
 
-    logger.info(
-        f"[CALC] done  {comp_kb:.0f}KB"
-        f"  overall={timings['overall_ms']}ms"
-        f"  dll={timings['time_dll_ms']}ms"
-        f"  compress={timings['time_compress_ms']}ms"
-        f"  token={new_token}",
-        extra=_log_extra(sid),
-    )
+def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
+    """The non-exclusive tail of a calculate request: disconnect checks,
+    compression, DOWNLOAD_CACHE bookkeeping, the result emit. Deliberately
+    never touches the DLL — safe to run on its own thread, in parallel
+    with the *next* DLL call on either lane. Must use explicit room=sid
+    emits (no implicit request context on a spawned thread)."""
+    try:
+        client_ts  = payload['client_ts']
+        filename   = payload['filename']
+        args       = payload['args']
+        t_received = payload['t_received']
+
+        stl_content  = dll_result['stl_content']
+        out_stl_name = dll_result['out_stl_name']
+        out_igs_name = dll_result['out_igs_name']
+        out_folder   = dll_result['out_folder']
+        new_token    = dll_result['new_token']
+        t_dll_start  = dll_result['t_dll_start']
+        t_dll_end    = dll_result['t_dll_end']
+        t_start      = t_dll_start
+
+        # The client may have disconnected while this job was queued/running.
+        # Nothing will ever redeem this token — discard the result rather
+        # than leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
+        if sid not in connected_clients:
+            logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        try:
+            t_comp_start = time.time()
+            compressed_b64 = compress_text_to_b64_gz(stl_content)
+            t_comp_end = time.time()
+            comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+        except Exception as exc:
+            logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
+            socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        # The client may also have disconnected *during* compression (which
+        # can take several seconds for large outputs) — re-check right
+        # before registering the download, not just before compression, or
+        # we'd leak a DOWNLOAD_CACHE entry and a last_results/<token>/
+        # folder that nothing will ever redeem.
+        if sid not in connected_clients:
+            logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
+            shutil.rmtree(out_folder, ignore_errors=True)
+            return
+
+        # Success — register the new result and retire the previous one for this session.
+        DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
+        old_token = client_state.get(sid, {}).get('current_token')
+        if old_token and old_token != new_token:
+            DOWNLOAD_CACHE.pop(old_token, None)
+            shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
+        if sid in client_state:
+            client_state[sid]['current_token'] = new_token
+
+        t_total = time.time() - t_start
+        timings = {
+            'client_to_server_ms': None if client_ts is None else (t_received * 1000 - client_ts),
+            'time_dll_ms':         round((t_dll_end - t_dll_start) * 1000),
+            'time_compress_ms':    round((t_comp_end - t_comp_start) * 1000),
+            'overall_ms':          round(t_total * 1000),
+        }
+
+        socketio.emit('result', {
+            'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
+            'kind':             'model_stl',
+            'stl_gz_b64':       compressed_b64,
+            'timings':          timings,
+            'args_echo':        args,
+            'filename':         filename,
+            'download_token':   new_token,
+        }, room=sid)
+
+        logger.info(
+            f"[CALC] done  {comp_kb:.0f}KB"
+            f"  overall={timings['overall_ms']}ms"
+            f"  dll={timings['time_dll_ms']}ms"
+            f"  compress={timings['time_compress_ms']}ms"
+            f"  token={new_token}",
+            extra=_log_extra(sid),
+        )
+    except Exception:
+        # This runs on its own thread — an uncaught exception here would
+        # otherwise vanish silently instead of failing the request visibly.
+        logger.exception("[CALC] _finish_calculate failed unexpectedly", extra=_log_extra(sid))
+
+
+def _run_calculate_job(job: Job) -> None:
+    """CalcQueueManager's run_job callback — Lane A (main queue). Runs on
+    the queue's dedicated worker thread — never concurrently with another
+    call to this function, and never while dll_main is otherwise in use."""
+    dll_result = _run_calculate_dll_phase(dll_main, job.payload, job.sid)
+    queue_manager.mark_dll_free()
+    if dll_result is not None:
+        threading.Thread(
+            target=_finish_calculate, args=(job.payload, job.sid, dll_result),
+            daemon=True, name=f'calc-finish-{job.sid}',
+        ).start()
+
+
+def _run_silent_calculate(sid: str, payload: dict) -> None:
+    """Lane B: a silent macro-shape preview. Caller must already hold
+    dll_background_lane (a successful try_acquire()) before calling this;
+    releases it here, right after the DLL phase, before the (potentially
+    slow) finish phase."""
+    try:
+        dll_result = _run_calculate_dll_phase(dll_background, payload, sid)
+    finally:
+        dll_background_lane.release()
+    if dll_result is not None:
+        _finish_calculate(payload, sid, dll_result)
 
 
 queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event)
@@ -934,7 +865,6 @@ queue_manager.start()
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
-    global _current_calc_sid
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
@@ -943,19 +873,19 @@ def handle_calculate_tile(data):
         graded  = (c_double * 2)(graded1, graded2)
         tolerance = float(data.get('tolerance', 0.0))
 
-        if not queue_manager.try_acquire_dll():
-            # A full calculation (or another tile call) currently holds the
-            # DLL slot — skip silently rather than queue or block; the next
-            # scrub tick, or the in-flight calculation finishing, will
-            # produce a fresh preview normally.
-            return
         sid = request.sid
-        _current_calc_sid = sid
+        if not dll_background_lane.try_acquire():
+            # Background lane busy with someone else's silent/tile/upload
+            # work — skip silently rather than queue or block; the next
+            # scrub tick, or the moment the lane frees up, produces a
+            # fresh preview normally. Never affected by dll_main.
+            return
+        dll_background.set_current_sid(sid)
         try:
-            calculate_tile(tile_params, graded, tile_type, tolerance, sid)
+            calculate_tile(dll_background, tile_params, graded, tile_type, tolerance, sid)
         finally:
-            _current_calc_sid = None
-            queue_manager.release_dll()
+            dll_background.set_current_sid(None)
+            dll_background_lane.release()
     except Exception as exc:
         logger.exception(f"[TILE] bad request: {exc}", extra={'sid': request.sid})
         emit('error', {'msg': f'Bad tile request: {exc}'})
@@ -969,17 +899,16 @@ def handle_convert_igs_to_stl():
     igs_bytes = request.files['file'].read()
     tolerance = float(request.form.get('tolerance', 0.0))
 
-    # This route hits the same DLL as calculate/calculate_tile (on every file
-    # upload, potentially twice concurrently in ruling mode), so it must go
-    # through the queue's DLL slot too — otherwise "exactly one DLL call in
-    # flight, ever" doesn't hold. Unlike calculate_tile, a dropped request
-    # here is user-visible (the upload just fails), so we wait briefly for
-    # the slot rather than skipping silently. No SocketIO request.sid exists
-    # for a plain HTTP POST, so _current_calc_sid is deliberately left
-    # untouched — the progress callbacks' `if _current_calc_sid:` guard makes
-    # that a safe no-op.
-    if not queue_manager.acquire_dll_blocking(timeout=30.0):
-        logger.warning("[IGS2STL] DLL busy — timed out waiting for the queue slot")
+    # This route hits the same DLL as calculate_tile / silent calculate (on
+    # every file upload, potentially twice concurrently in ruling mode), so
+    # it goes through the same background lane. Unlike calculate_tile, a
+    # dropped request here is user-visible (the upload just fails), so it
+    # waits briefly for the lane rather than skipping silently. No SocketIO
+    # request.sid exists for a plain HTTP POST, so dll_background's current
+    # sid is deliberately left untouched — its progress callbacks' `if not
+    # self._current_sid: return` guard makes that a safe no-op.
+    if not dll_background_lane.acquire_blocking(timeout=30.0):
+        logger.warning("[IGS2STL] DLL busy — timed out waiting for the background lane")
         return jsonify({'error': 'Server busy, please try again shortly'}), 503
 
     try:
@@ -987,9 +916,9 @@ def handle_convert_igs_to_stl():
             with temp_igs_file(igs_bytes) as igs_path:
                 stl_path = igs_path[:-4] + '_preview.stl'
                 t_igs_start = time.time()
-                err = _dll_iges2stl(igs_path.encode('ascii'),
-                                    stl_path.encode('ascii'),
-                                    c_double(tolerance))
+                err = dll_background.iges2stl(igs_path.encode('ascii'),
+                                               stl_path.encode('ascii'),
+                                               tolerance)
                 t_igs_ms = round((time.time() - t_igs_start) * 1000)
                 if err:
                     logger.warning(f"[IGS2STL] DLL warning: {err}")
@@ -1018,7 +947,7 @@ def handle_convert_igs_to_stl():
             logger.exception(f"[IGS2STL] {exc}")
             return jsonify({'error': f'Internal server error: {exc}'}), 500
     finally:
-        queue_manager.release_dll()
+        dll_background_lane.release()
 
 
 @app.route('/log-calculation', methods=['POST'])
