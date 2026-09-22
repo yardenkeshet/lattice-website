@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import time
 
@@ -329,3 +330,14 @@ def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp
     saved = list(tmp_path.rglob('*_part.igs'))
     assert len(saved) == 1
     assert saved[0].read_bytes() == b'dummy igs bytes'
+
+
+def test_calculate_tile_entry_is_logged_at_debug_level(caplog):
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+
+    with caplog.at_level(logging.DEBUG, logger='lattice'):
+        c1.emit('calculate_tile', {'type': 'cross', 'values': [0.2, 0.2, 0.4]})
+        time.sleep(0.05)
+
+    assert any('[CALCULATE_TILE] request received' in r.message for r in caplog.records)

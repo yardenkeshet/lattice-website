@@ -924,6 +924,7 @@ queue_manager.start()
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
+    logger.debug("[CALCULATE_TILE] request received", extra=_log_extra(request.sid))
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
@@ -952,6 +953,7 @@ def handle_calculate_tile(data):
 
 @app.route('/convert_igs_to_stl', methods=['POST'])
 def handle_convert_igs_to_stl():
+    logger.debug("[IGS2STL] request received", extra=_log_extra(None))
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -1011,6 +1013,7 @@ def handle_convert_igs_to_stl():
 
 @app.route('/log-calculation', methods=['POST'])
 def handle_log_calculation():
+    logger.debug("[CALC_LOG] request received", extra=_log_extra(None))
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -1043,6 +1046,7 @@ def handle_log_calculation():
 
 @app.route('/calc-log-image/<name>')
 def calc_log_image(name):
+    logger.debug(f"[CALC_LOG] image requested: {name}", extra=_log_extra(None))
     safe_name = os.path.basename(name)
     if safe_name != name or not safe_name.lower().endswith('.png'):
         return jsonify({'error': 'Invalid image name'}), 400
@@ -1079,6 +1083,7 @@ def view_full_log():
 
 @app.route('/download-results', methods=['POST'])
 def download_results():
+    logger.debug("[DOWNLOAD] request received", extra=_log_extra(None))
     token     = request.form.get('token')
     file_type = request.form.get('file_type')
 
