@@ -1,37 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { calcLabelForUpdate, calcLabelForQueueStatus, DLL_PROGRESS_CAP } from '../progressDisplay'
+import { overlayPhraseIndex, CALCULATING_PHRASES, FINALIZING_PHRASES, OVERLAY_PHRASE_STEP_MS, calcLabelForQueueStatus } from '../progressDisplay'
 
-describe('calcLabelForUpdate', () => {
-  it('passes progress_start message through unchanged', () => {
-    expect(calcLabelForUpdate({ type: 'progress_start', message: '[DLL] Building' }))
-      .toBe('[DLL] Building')
+describe('overlayPhraseIndex', () => {
+  it('starts at the first phrase when no time has elapsed', () => {
+    expect(overlayPhraseIndex(0, CALCULATING_PHRASES.length)).toBe(0)
   })
 
-  it('caps progress_update at DLL_PROGRESS_CAP percent', () => {
-    expect(calcLabelForUpdate({ type: 'progress_update', progress: 100 }))
-      .toBe(`Calculating… ${DLL_PROGRESS_CAP}%`)
+  it('advances one phrase per full step', () => {
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS, 5)).toBe(1)
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS * 2, 5)).toBe(2)
   })
 
-  it('scales intermediate progress proportionally under the cap', () => {
-    // 50% of the DLL phase → 50% of the cap
-    expect(calcLabelForUpdate({ type: 'progress_update', progress: 50 }))
-      .toBe(`Calculating… ${Math.round(DLL_PROGRESS_CAP * 0.5)}%`)
+  it('does not advance again until a full step has elapsed', () => {
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS + 100, 5)).toBe(1)
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS * 2 - 1, 5)).toBe(1)
   })
 
-  it('clamps out-of-range progress values into 0-100 before capping', () => {
-    expect(calcLabelForUpdate({ type: 'progress_update', progress: 150 }))
-      .toBe(`Calculating… ${DLL_PROGRESS_CAP}%`)
-    expect(calcLabelForUpdate({ type: 'progress_update', progress: -10 }))
-      .toBe('Calculating… 0%')
+  it('caps at the last phrase and never loops back to the first', () => {
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS * 4, 5)).toBe(4)
+    expect(overlayPhraseIndex(OVERLAY_PHRASE_STEP_MS * 999, 5)).toBe(4)
   })
 
-  it('shows an indeterminate Finalizing state on progress_end, not 100%', () => {
-    expect(calcLabelForUpdate({ type: 'progress_end', progress: 100 })).toBe('Finalizing…')
-  })
-
-  it('DLL_PROGRESS_CAP is below 100 so progress_update never itself claims done', () => {
-    expect(DLL_PROGRESS_CAP).toBeLessThan(100)
-    expect(DLL_PROGRESS_CAP).toBeGreaterThan(0)
+  it('CALCULATING_PHRASES and FINALIZING_PHRASES are both non-empty', () => {
+    expect(CALCULATING_PHRASES.length).toBeGreaterThan(0)
+    expect(FINALIZING_PHRASES.length).toBeGreaterThan(0)
   })
 })
 

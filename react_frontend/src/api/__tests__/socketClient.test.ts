@@ -221,4 +221,25 @@ describe('LatticeSocketClient', () => {
     client.calculate(payload)
     expect(mockEmit).toHaveBeenCalledWith('calculate', payload)
   })
+
+  it('onResult fires exactly once per raw "result" event from the server', () => {
+    // Documents the contract pendingMacroCountRef's += 1 (ToolPage.tsx) relies
+    // on: the server emits `result` exactly once per calculate call, not
+    // twice. If this ever needs to become 2 again, pendingMacroCountRef's
+    // increments in ToolPage.tsx must change back to += 2 to match.
+    const handler = vi.fn()
+    client.onResult(handler)
+
+    // Simulate one raw 'result' event from server
+    const rawResult = {
+      kind: 'model_stl',
+      filename: 'x',
+      stl_gz_b64: 'AA==',
+      download_token: 't',
+      timings: { client_to_server_ms: 1, time_processed_ms: 1, time_compress_ms: 1, time_parsed_ms: 1, overall_ms: 4 },
+    }
+    getHandler('result')(rawResult)
+
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
 })

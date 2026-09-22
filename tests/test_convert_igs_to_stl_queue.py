@@ -24,7 +24,7 @@ def _fake_dll_success(stl_bytes=b'solid fake\nendsolid fake\n'):
 
 
 def test_success_releases_dll_slot(monkeypatch):
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -32,52 +32,52 @@ def test_success_releases_dll_slot(monkeypatch):
     assert resp.status_code == 200
     assert 'stl_b64' in resp.get_json()
     # Slot must be free again — provably released, not just "probably".
-    assert main_module.queue_manager.try_acquire_dll() is True
-    main_module.queue_manager.release_dll()
+    assert main_module.dll_background_lane.try_acquire() is True
+    main_module.dll_background_lane.release()
 
 
 def test_dll_error_releases_dll_slot(monkeypatch):
     def _fake(igs_file, stl_file, tolerance):
         return "DLL said no"
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
 
     assert resp.status_code == 500
-    assert main_module.queue_manager.try_acquire_dll() is True
-    main_module.queue_manager.release_dll()
+    assert main_module.dll_background_lane.try_acquire() is True
+    main_module.dll_background_lane.release()
 
 
 def test_missing_output_releases_dll_slot(monkeypatch):
     def _fake(igs_file, stl_file, tolerance):
         return None  # "succeeds" but never writes stl_file
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
 
     assert resp.status_code == 500
-    assert main_module.queue_manager.try_acquire_dll() is True
-    main_module.queue_manager.release_dll()
+    assert main_module.dll_background_lane.try_acquire() is True
+    main_module.dll_background_lane.release()
 
 
 def test_internal_exception_releases_dll_slot(monkeypatch):
     def _fake(igs_file, stl_file, tolerance):
         raise RuntimeError('boom')
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
 
     assert resp.status_code == 500
-    assert main_module.queue_manager.try_acquire_dll() is True
-    main_module.queue_manager.release_dll()
+    assert main_module.dll_background_lane.try_acquire() is True
+    main_module.dll_background_lane.release()
 
 
 def test_returns_503_when_slot_cannot_be_acquired_in_time(monkeypatch):
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake_dll_success())
-    monkeypatch.setattr(main_module.queue_manager, 'acquire_dll_blocking', lambda timeout: False)
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background_lane, 'acquire_blocking', lambda timeout: False)
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -91,14 +91,14 @@ def test_request_blocks_then_succeeds_once_slot_frees(monkeypatch):
     DLL slot from this thread, fire the request on a background thread, and
     confirm it stays pending until another thread releases the slot — then
     completes well before the 30s route timeout."""
-    monkeypatch.setattr(main_module, '_dll_iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
     client = main_module.app.test_client()
 
-    assert main_module.queue_manager.try_acquire_dll() is True  # simulate an in-flight holder
+    assert main_module.dll_background_lane.try_acquire() is True  # simulate an in-flight holder
 
     def release_soon():
         time.sleep(0.3)
-        main_module.queue_manager.release_dll()
+        main_module.dll_background_lane.release()
 
     threading.Thread(target=release_soon).start()
 
@@ -109,5 +109,5 @@ def test_request_blocks_then_succeeds_once_slot_frees(monkeypatch):
     assert resp.status_code == 200
     assert elapsed >= 0.3  # actually waited for the release, didn't skip
     assert elapsed < 10.0  # nowhere near the 30s route timeout
-    assert main_module.queue_manager.try_acquire_dll() is True
-    main_module.queue_manager.release_dll()
+    assert main_module.dll_background_lane.try_acquire() is True
+    main_module.dll_background_lane.release()
