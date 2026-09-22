@@ -336,6 +336,20 @@ def temp_igs_file(igs_bytes: bytes):
             logger.warning(f"[TMP] failed to remove temp file: {path}")
 
 
+def _save_original_upload(sid: str, filename: str, raw_bytes: bytes) -> str:
+    """Persist an uploaded surface file under client_data/<sid>/, keyed by a
+    UUID prefix so repeat uploads in one session (or Ruling mode's two
+    files) never collide. Returns the path a log line can point at, so a
+    calculation can be reproduced later from its exact original input."""
+    session_dir = os.path.join(DATA_DIR, sid)
+    os.makedirs(session_dir, exist_ok=True)
+    saved_name = f"{uuid.uuid4().hex}_{filename}"
+    saved_path = os.path.join(session_dir, saved_name)
+    with open(saved_path, 'wb') as f:
+        f.write(raw_bytes)
+    return saved_path
+
+
 DOWNLOAD_CACHE = {}
 
 
@@ -687,6 +701,21 @@ def handle_calculate(data):
             logger.exception(f"[CALC] failed to start silent-calculate thread: {exc}", extra=_log_extra(sid))
         return
 
+    # Only a real (non-silent) calculation's inputs are worth keeping —
+    # this is the point that matches "files uploaded for calculation," not
+    # every drag-in or background preview. Errors here degrade
+    # traceability, never the calculation itself.
+    saved_input_paths = []
+    try:
+        saved_input_paths.append(_save_original_upload(sid, filename, igs_bytes))
+        if igs_bytes2 is not None:
+            base, ext = os.path.splitext(filename)
+            filename2 = f"{base}_surface2{ext or '.igs'}"
+            saved_input_paths.append(_save_original_upload(sid, filename2, igs_bytes2))
+    except OSError as exc:
+        logger.warning(f"[CALC] failed to save original upload: {exc}", extra=_log_extra(sid))
+    payload['saved_input_paths'] = saved_input_paths
+
     accepted = queue_manager.enqueue(sid, payload, silent=False)
     if not accepted:
         socketio.emit('queue_rejected', {
@@ -722,7 +751,10 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     t_dll_start = time.time()
     dll_instance.set_current_sid(sid)
     try:
-        logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
+        logger.info(
+            f"[CALC] -> {calc_mode}  filename={filename}  inputs={p.get('saved_input_paths', [])}",
+            extra=_log_extra(sid),
+        )
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
@@ -774,10 +806,11 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
     with the *next* DLL call on either lane. Must use explicit room=sid
     emits (no implicit request context on a spawned thread)."""
     try:
-        client_ts  = payload['client_ts']
-        filename   = payload['filename']
-        args       = payload['args']
-        t_received = payload['t_received']
+        client_ts          = payload['client_ts']
+        filename           = payload['filename']
+        args               = payload['args']
+        t_received         = payload['t_received']
+        saved_input_paths  = payload.get('saved_input_paths', [])
 
         stl_content  = dll_result['stl_content']
         out_stl_name = dll_result['out_stl_name']
@@ -849,7 +882,8 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             f"  overall={timings['overall_ms']}ms"
             f"  dll={timings['time_dll_ms']}ms"
             f"  compress={timings['time_compress_ms']}ms"
-            f"  token={new_token}",
+            f"  token={new_token}"
+            f"  inputs={saved_input_paths}",
             extra=_log_extra(sid),
         )
     except Exception:

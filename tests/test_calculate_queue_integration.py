@@ -310,3 +310,22 @@ def test_silent_calculate_with_invalid_field_does_not_leak_background_lane(monke
     assert main_module.dll_background_lane.try_acquire() is True, \
         "Background lane is held/leaked! Validation failure must not acquire the lane."
     main_module.dll_background_lane.release()
+
+
+def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp_path):
+    monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
+    _install_fake_revolution(monkeypatch, delay=0.02)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    c1.emit('calculate', _calc_payload())
+
+    def got_result():
+        events = c1.get_received()
+        return any(e['name'] == 'result' for e in events)
+
+    assert _wait_until(got_result, timeout=5.0)
+
+    saved = list(tmp_path.rglob('*_part.igs'))
+    assert len(saved) == 1
+    assert saved[0].read_bytes() == b'dummy igs bytes'
