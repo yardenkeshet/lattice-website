@@ -27,6 +27,7 @@ from dll_lane import BackgroundDllLane
 
 from flask import Flask, render_template, send_file, jsonify, request, Response
 from flask_socketio import SocketIO, emit
+from werkzeug.exceptions import HTTPException
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tile-type constants and map
@@ -78,6 +79,8 @@ socketio = SocketIO(
 
 @app.errorhandler(Exception)
 def handle_uncaught_http_exception(exc):
+    if isinstance(exc, HTTPException):
+        return exc
     logger.exception(
         f"[UNCAUGHT] {request.method} {request.path}",
         extra=_log_extra(getattr(request, 'sid', None)),

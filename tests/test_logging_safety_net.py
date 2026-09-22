@@ -32,21 +32,24 @@ def test_json_formatter_surfaces_user_agent(caplog=None):
     assert obj['user_agent'] == 'pytest-agent/1.0'
 
 
-def test_uncaught_http_exception_is_logged_and_returns_500(monkeypatch, caplog):
-    # Test the error handler directly by simulating a Flask exception context
-    exc = RuntimeError("test boom")
+def test_uncaught_http_exception_is_logged_and_returns_500(fresh_test_client_for_http_error_test, caplog):
+    def _boom():
+        raise RuntimeError("boom")
+    main_module.app.add_url_rule('/__test_boom_http', view_func=_boom)
+    client = fresh_test_client_for_http_error_test
 
-    # Create a mock request context
-    with main_module.app.test_request_context('GET', '/__test_boom_http'):
-        with caplog.at_level(logging.ERROR, logger='lattice'):
-            result = main_module.handle_uncaught_http_exception(exc)
+    with caplog.at_level(logging.ERROR, logger='lattice'):
+        resp = client.get('/__test_boom_http')
 
-    # Check response
-    assert result[1] == 500
-    assert result[0].get_json() == {'error': 'Internal server error'}
-
-    # Check logging
+    assert resp.status_code == 500
+    assert resp.get_json() == {'error': 'Internal server error'}
     assert any('[UNCAUGHT]' in r.message for r in caplog.records)
+
+
+def test_normal_404_is_not_hijacked_by_the_errorhandler():
+    client = main_module.app.test_client()
+    resp = client.get('/__definitely_does_not_exist__')
+    assert resp.status_code == 404
 
 
 def test_uncaught_socketio_exception_is_logged(monkeypatch, caplog):
