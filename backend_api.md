@@ -5,7 +5,7 @@ SocketIO transport: `threading` async mode, CORS open (`*`), max HTTP buffer 100
 
 > **React frontend:** Do not talk to the server directly from UI components.  
 > Use the typed wrappers in `react_frontend/src/api/` — all event strings, payload shapes,  
-> and edge cases (double `result` emit, inconsistent error fields) are encapsulated there.  
+> and edge cases (inconsistent error fields) are encapsulated there.  
 > See the [React API Layer](#react-api-layer) section at the bottom of this file.
 
 ---
@@ -95,7 +95,7 @@ Triggers a full lattice generation from an uploaded STL surface.
 > Note: `nt1`/`nt2`/`nt3` and `g1`/`g2` are extracted but the current DLL calls
 > use hardcoded internal values — these parameters are wired up but not yet forwarded.
 
-**Server responds with two sequential `result` emissions** (see below).
+**Server responds with a single `result` emission** (see below).
 
 ---
 
