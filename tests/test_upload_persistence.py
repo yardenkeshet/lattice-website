@@ -65,6 +65,11 @@ def test_log_calculation_rejects_forged_saved_input_paths(tmp_path):
     })
     resp = client.post('/log-calculation', data={'image': image, 'metadata': metadata}, content_type='multipart/form-data')
     assert resp.status_code == 200
-    # None of the forged paths should have been accepted (none start with DATA_DIR)
+    # None of the forged paths should have been accepted
     assert main_module._validate_saved_input_paths(['/etc/passwd', 'evil']) == []
-    assert main_module._validate_saved_input_paths([f'{main_module.DATA_DIR}/sid1/a.igs']) == [f'{main_module.DATA_DIR}/sid1/a.igs']
+
+    # Regression: _save_original_upload returns a realpath'd ABSOLUTE path
+    # (post path-traversal fix), not a DATA_DIR-relative one — the validator
+    # must accept its own real output, not just a synthetic relative string.
+    real_saved_path = main_module._save_original_upload(TEST_SID, 'a.igs', b'x')
+    assert main_module._validate_saved_input_paths([real_saved_path]) == [real_saved_path]

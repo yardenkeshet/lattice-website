@@ -1054,12 +1054,24 @@ def _validate_saved_input_paths(raw_paths) -> list:
     /log-calculation POST; the browser is not a trusted source for what
     ends up in the permanent calc_log/log.jsonl audit record. Keep only
     entries that look like paths this server itself would have produced:
-    a list of at most 2 short strings, each rooted under DATA_DIR."""
+    a list of at most 2 short strings, each resolving inside DATA_DIR.
+
+    _save_original_upload returns realpath'd absolute paths, so containment
+    must be checked by resolving each candidate the same way (a naive
+    p.startswith(DATA_DIR) string check would reject every real path, since
+    DATA_DIR itself is a relative name like 'client_data')."""
     if not isinstance(raw_paths, list):
         return []
+    data_root = os.path.realpath(DATA_DIR)
     valid = []
     for p in raw_paths[:2]:
-        if isinstance(p, str) and 0 < len(p) <= 512 and p.startswith(DATA_DIR):
+        if not (isinstance(p, str) and 0 < len(p) <= 512):
+            continue
+        try:
+            resolved = os.path.realpath(p)
+        except (OSError, ValueError):
+            continue
+        if os.path.commonpath([data_root, resolved]) == data_root:
             valid.append(p)
     return valid
 
