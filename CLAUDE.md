@@ -32,8 +32,7 @@ cd react_frontend && npx vitest run --project unit
 
 # End-to-end tests (requires `python main.py` AND `npm run dev` already
 # running in two other terminals; first time only, also run
-# `npx playwright test --install-deps chromium` — or `npx playwright
-# install chromium` — to download the browser binary)
+# `npx playwright install chromium` to download the browser binary)
 cd react_frontend && npx playwright test
 
 # Or all three at once:
