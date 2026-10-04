@@ -42,7 +42,9 @@ type DisconnectHandler = (reason: string) => void;
 export class LatticeSocketClient {
   private socket: Socket;
 
-  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? '') {
+  // '||' (not '??') deliberately: VITE_BACKEND_URL is left blank in .env for
+  // local dev, and '??' doesn't treat an empty string as missing.
+  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_LOCAL_URL || '') {
     this.socket = io(serverUrl);
     this.socket.on('result', this.handleRawResult.bind(this));
   }

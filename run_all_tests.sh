@@ -28,7 +28,7 @@ fi
 echo ""
 echo "=== Frontend unit tests (vitest) ==="
 if ! (cd react_frontend && npx vitest run --project unit); then
-  echo "❌ Frontend unit tests FAILED (note: 4 known pre-existing failures in httpClient.test.ts/socketClient.test.ts are expected here — see CLAUDE.md)"
+  echo "❌ Frontend unit tests FAILED"
   overall_status=1
 else
   echo "✅ Frontend unit tests passed"
