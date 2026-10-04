@@ -334,12 +334,12 @@ def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp
     assert saved[0].read_bytes() == b'dummy igs bytes'
 
     saved_path_str = str(saved[0])
-    start_lines = [r.message for r in caplog.records if '[CALC] ->' in r.message]
-    done_lines = [r.message for r in caplog.records if '[CALC] done' in r.message]
-    assert start_lines, "no '[CALC] ->' line was logged"
-    assert done_lines, "no '[CALC] done' line was logged"
-    assert any('inputs=' in m and os.path.basename(saved_path_str) in m for m in start_lines)
-    assert any('inputs=' in m and os.path.basename(saved_path_str) in m for m in done_lines)
+    start_lines = [r.message for r in caplog.records if '[CALC] Invoking the native engine' in r.message]
+    done_lines = [r.message for r in caplog.records if '[CALC] Done —' in r.message]
+    assert start_lines, "no 'Invoking the native engine' line was logged"
+    assert done_lines, "no 'Done —' line was logged"
+    assert any('Original file(s):' in m and os.path.basename(saved_path_str) in m for m in start_lines)
+    assert any('Original file(s):' in m and os.path.basename(saved_path_str) in m for m in done_lines)
 
 
 def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
@@ -396,7 +396,7 @@ def test_calculate_logs_internal_steps_at_debug_level(monkeypatch, caplog):
         assert _wait_until(got_result, timeout=5.0)
 
     messages = [r.message for r in caplog.records]
-    assert any('[CALC] dll phase started' in m for m in messages)
-    assert any('[CALC] DLL returned' in m for m in messages)
-    assert any('[CALC] compressing result' in m for m in messages)
-    assert any('[CALC] compression done' in m for m in messages)
+    assert any('[CALC] Handing the surface' in m for m in messages)
+    assert any('[CALC] Native engine finished in' in m for m in messages)
+    assert any('[CALC] Compressing the result for transfer' in m for m in messages)
+    assert any('[CALC] Compressed down to' in m for m in messages)

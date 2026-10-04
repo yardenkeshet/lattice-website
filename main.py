@@ -653,48 +653,50 @@ def handle_calculate(data):
         p3  = float(args.get('p3', 0.4))
         extrude_length = float(args.get('extrudeLength', 10.0))
     except (TypeError, ValueError) as exc:
-        logger.exception(f"[CALC] Bad numeric argument: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request — one of the tile/grading numbers wasn't valid: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
 
     logger.info(
-        f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
+        f"[CALC] Received a calculation request for \"{filename}\" from {_client_ip(sid)} — "
+        f"{calc_mode} mode, {tile_type} tiles, grid {nt1}×{nt2}×{nt3}, "
+        f"grading ({g1}, {g2}), tile shape ({p1:.2f}, {p2:.2f}, {p3:.2f}).",
         extra=_log_extra(sid),
     )
 
     if tile_type_int is None:
-        logger.error(f"[CALC] Unknown tileType: {tile_type!r}", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request — {tile_type!r} isn't a tile type this server recognizes.", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
     if calc_mode not in VALID_CALC_MODES:
-        logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request — {calc_mode!r} isn't a calculation mode this server recognizes.", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
 
     if not surface_b64:
-        logger.error("[CALC] No surface_b64 in payload", extra=_log_extra(sid))
+        logger.error("[CALC] Rejected the request — no surface file was included.", extra=_log_extra(sid))
         emit('error', {'msg': 'No surface file provided'})
         return
     try:
         igs_bytes = base64.b64decode(surface_b64)
     except (ValueError, TypeError) as exc:
-        logger.exception(f"[CALC] Bad surface_b64: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request — the surface file data couldn't be decoded: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid surface data: {exc}'})
         return
 
     igs_bytes2 = None
     if calc_mode == CALC_MODE_RULING:
         if not surface2_b64:
-            logger.error("[CALC] Ruling mode requires surface2_b64", extra=_log_extra(sid))
+            logger.error("[CALC] Rejected the request — Ruling mode needs a second surface file, which wasn't provided.", extra=_log_extra(sid))
             emit('error', {'msg': 'Ruling mode requires a second surface file'})
             return
         try:
             igs_bytes2 = base64.b64decode(surface2_b64)
         except (ValueError, TypeError) as exc:
-            logger.exception(f"[CALC] Bad surface2_b64: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Rejected the request — the second surface file's data couldn't be decoded: {exc}", extra=_log_extra(sid))
             emit('error', {'msg': f'Invalid second surface data: {exc}'})
             return
 
@@ -740,7 +742,7 @@ def handle_calculate(data):
             filename2 = f"{base}_surface2{ext or '.igs'}"
             saved_input_paths.append(_save_original_upload(sid, filename2, igs_bytes2))
     except OSError as exc:
-        logger.warning(f"[CALC] failed to save original upload: {exc}", extra=_log_extra(sid))
+        logger.warning(f"[CALC] Couldn't save a copy of the uploaded file for the audit trail (continuing anyway): {exc}", extra=_log_extra(sid))
     payload['saved_input_paths'] = saved_input_paths
 
     accepted = queue_manager.enqueue(sid, payload, silent=False)
@@ -776,7 +778,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
     inputs_desc = f"{len(igs_bytes)} bytes" if igs_bytes2 is None else f"{len(igs_bytes)}+{len(igs_bytes2)} bytes"
-    logger.debug(f"[CALC] dll phase started  {inputs_desc}", extra=_log_extra(sid))
+    logger.debug(f"[CALC] Handing the surface ({inputs_desc}) to the native lattice engine…", extra=_log_extra(sid))
 
     new_token  = str(uuid.uuid4())
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
@@ -786,7 +788,8 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     dll_instance.set_current_sid(sid)
     try:
         logger.info(
-            f"[CALC] -> {calc_mode}  filename={filename}  inputs={p.get('saved_input_paths', [])}",
+            f"[CALC] Invoking the native engine for \"{filename}\" ({calc_mode} mode). "
+            f"Original file(s): {p.get('saved_input_paths', [])}",
             extra=_log_extra(sid),
         )
         with temp_igs_file(igs_bytes) as igs_path:
@@ -807,22 +810,22 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
                     dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
                 )
     except FileNotFoundError as exc:
-        logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine finished but didn't produce the expected output file: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     except Exception as exc:
-        logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine raised an error while processing \"{filename}\": {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     finally:
         dll_instance.set_current_sid(None)
     t_dll_end = time.time()
-    logger.debug(f"[CALC] DLL returned  {round((t_dll_end - t_dll_start) * 1000)}ms", extra=_log_extra(sid))
+    logger.debug(f"[CALC] Native engine finished in {round((t_dll_end - t_dll_start) * 1000)}ms.", extra=_log_extra(sid))
 
     if not stl_content:
-        logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
+        logger.error("[CALC] The native engine returned successfully but produced no geometry.", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
@@ -860,19 +863,19 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # Nothing will ever redeem this token — discard the result rather
         # than leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
         if sid not in connected_clients:
-            logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
+            logger.info("[CALC] The browser disconnected while this was still running — discarding the result, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
-        logger.debug("[CALC] compressing result", extra=_log_extra(sid))
+        logger.debug("[CALC] Compressing the result for transfer…", extra=_log_extra(sid))
         try:
             t_comp_start = time.time()
             compressed_b64 = compress_text_to_b64_gz(stl_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
-            logger.debug(f"[CALC] compression done  {comp_kb:.0f}KB", extra=_log_extra(sid))
+            logger.debug(f"[CALC] Compressed down to {comp_kb:.0f} KB.", extra=_log_extra(sid))
         except Exception as exc:
-            logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Compressing the result failed: {exc}", extra=_log_extra(sid))
             socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
             shutil.rmtree(out_folder, ignore_errors=True)
             return
@@ -883,7 +886,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # we'd leak a DOWNLOAD_CACHE entry and a last_results/<token>/
         # folder that nothing will ever redeem.
         if sid not in connected_clients:
-            logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
+            logger.info("[CALC] The browser disconnected while compressing the result — discarding it, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
@@ -916,18 +919,16 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         }, room=sid)
 
         logger.info(
-            f"[CALC] done  {comp_kb:.0f}KB"
-            f"  overall={timings['overall_ms']}ms"
-            f"  dll={timings['time_dll_ms']}ms"
-            f"  compress={timings['time_compress_ms']}ms"
-            f"  token={new_token}"
-            f"  inputs={saved_input_paths}",
+            f"[CALC] Done — sent \"{filename}\" back to the browser "
+            f"({comp_kb:.0f} KB, {timings['overall_ms']}ms total: "
+            f"{timings['time_dll_ms']}ms engine + {timings['time_compress_ms']}ms compression, "
+            f"token={new_token}). Original file(s): {saved_input_paths}",
             extra=_log_extra(sid),
         )
     except Exception:
         # This runs on its own thread — an uncaught exception here would
         # otherwise vanish silently instead of failing the request visibly.
-        logger.exception("[CALC] _finish_calculate failed unexpectedly", extra=_log_extra(sid))
+        logger.exception("[CALC] Something went wrong wrapping up this calculation that wasn't caught anywhere else — see the traceback below.", extra=_log_extra(sid))
 
 
 def _run_calculate_job(job: Job) -> None:
