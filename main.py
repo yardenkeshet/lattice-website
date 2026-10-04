@@ -598,12 +598,34 @@ def _http_log_extra():
     return {'sid': None, 'ip': request.remote_addr or '?', 'user_agent': request.headers.get('User-Agent', '?')}
 
 
+def _rmtree_with_retry(path, attempts=5, delay=0.3):
+    """shutil.rmtree can transiently fail with PermissionError on Windows
+    when something else (observed: OneDrive sync) still holds a handle on
+    a just-written file. Retry a few times with a short backoff before
+    giving up — this is a best-effort cleanup, not a correctness-critical
+    path, so a bounded retry catches the quick transient case without
+    making every disconnect noticeably slower. It does NOT reliably solve
+    a longer-held lock (e.g. the native DLL itself keeping a handle open)
+    — that failure still propagates to the caller exactly as before, so
+    it stays visible in the log rather than being silently discarded."""
+    last_exc = None
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError as exc:
+            last_exc = exc
+            if attempt < attempts - 1:
+                time.sleep(delay)
+    raise last_exc
+
+
 def clean_session(sid, token):
     connected_clients.pop(sid, None)
     upload_folder = os.path.join(os.getcwd(), DATA_DIR, sid)
     try:
         if os.path.exists(upload_folder):
-            shutil.rmtree(upload_folder)
+            _rmtree_with_retry(upload_folder)
     except Exception as exc:
         logger.exception(f"[SESSION] cleanup failed {upload_folder}: {exc}")
     if not token:
@@ -611,7 +633,7 @@ def clean_session(sid, token):
     folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
     try:
         if os.path.exists(folder):
-            shutil.rmtree(folder)
+            _rmtree_with_retry(folder)
     except Exception as exc:
         logger.exception(f"[SESSION] cleanup failed {folder}: {exc}")
 
