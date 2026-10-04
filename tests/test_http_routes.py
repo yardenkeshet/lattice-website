@@ -49,20 +49,19 @@ def test_calc_log_image_400s_for_non_png_name():
     assert resp.status_code == 400
 
 
-def test_calc_log_image_serves_an_existing_png():
+def test_calc_log_image_serves_an_existing_png(monkeypatch, tmp_path):
+    monkeypatch.setattr(main_module, 'CALC_LOG_IMAGES_DIR', str(tmp_path))
     name = 'sanity-test-image.png'
-    path = os.path.join(main_module.CALC_LOG_IMAGES_DIR, name)
+    path = os.path.join(str(tmp_path), name)
     png_bytes = b'\x89PNG\r\n\x1a\nnot a real png, just test bytes'
     with open(path, 'wb') as f:
         f.write(png_bytes)
-    try:
-        client = main_module.app.test_client()
-        resp = client.get(f'/calc-log-image/{name}')
-        assert resp.status_code == 200
-        assert resp.content_type == 'image/png'
-        assert resp.get_data() == png_bytes
-    finally:
-        os.remove(path)
+
+    client = main_module.app.test_client()
+    resp = client.get(f'/calc-log-image/{name}')
+    assert resp.status_code == 200
+    assert resp.content_type == 'image/png'
+    assert resp.get_data() == png_bytes
 
 
 def test_download_results_get_is_405():
@@ -82,7 +81,7 @@ def test_download_results_happy_path(monkeypatch, tmp_path):
     out_folder = tmp_path / token
     out_folder.mkdir()
     stl_path = out_folder / 'result.stl'
-    stl_path.write_text('solid sanity\nendsolid sanity\n')
+    stl_path.write_bytes(b'solid sanity\nendsolid sanity\n')
 
     # os.path.join(os.getcwd(), LAST_RESULTS_DIR, token) resets to the
     # absolute tmp_path once LAST_RESULTS_DIR itself is absolute — this is
