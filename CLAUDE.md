@@ -41,7 +41,7 @@ cd react_frontend && npx playwright test
 
 `tests/test_real_dll_sanity.py` and `react_frontend/e2e/happy-path.spec.ts` both exercise the real native DLL (not a mock) — expect those two specifically to take several real seconds, unlike the rest of the suite.
 
-Two frontend unit tests in `httpClient.test.ts` and two in `socketClient.test.ts` are known, pre-existing failures (stale `'stl'`/`'token'` result-kind naming vs. the current `'tile_stl'`/`'model_stl'`) — unrelated to this test suite, not something `run_all_tests.sh` fixes or hides.
+Two frontend unit tests in `httpClient.test.ts` and two in `socketClient.test.ts` are known, pre-existing failures: the `socketClient.test.ts` pair is stale `'stl'`/`'token'` result-kind naming vs. the current `'tile_stl'`/`'model_stl'`, while the `httpClient.test.ts` pair expects `'http://127.0.0.1:5003/download-results'`/`'results.stl'` but gets `'http://localhost:5003/download-results'`/`'results.zip'` — both unrelated to this test suite, not something `run_all_tests.sh` fixes or hides.
 
 **To get every layer to actually run in one sitting:** run `./run_all_tests.sh` once with the backend stopped (covers the backend + frontend-unit layers), then start `python main.py` and `npm run dev` and run it again (covers the end-to-end layer — the backend/frontend-unit layers will just re-run quickly alongside it, which is harmless).
 

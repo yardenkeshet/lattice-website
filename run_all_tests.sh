@@ -7,7 +7,7 @@ overall_status=0
 backend_tests_ran=1
 
 echo "=== Backend (pytest) ==="
-if netstat -ano 2>/dev/null | grep -q ":5003.*LISTENING"; then
+if netstat -ano 2>/dev/null | grep -qE ":5003[^0-9].*LISTENING"; then
   echo "⚠️  Skipped — python main.py appears to already be running on :5003."
   echo "    pytest can't run alongside it: every pytest run re-copies the"
   echo "    background-lane DLL at import time (by design, so the two loaded"

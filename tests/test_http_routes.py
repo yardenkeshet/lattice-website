@@ -49,6 +49,18 @@ def test_calc_log_image_400s_for_non_png_name():
     assert resp.status_code == 400
 
 
+def test_calc_log_image_400s_for_traversal_name():
+    # The extension check alone wouldn't catch this: this exercises the
+    # safe_name != name traversal guard itself. A backslash-encoded ".."
+    # segment reaches the view (a forward-slash form gets rejected by
+    # werkzeug's URL routing before the view ever runs) and os.path.basename
+    # strips it down on Windows, making safe_name != name.
+    client = main_module.app.test_client()
+    resp = client.get('/calc-log-image/..%5Cfoo.png')
+    assert resp.status_code == 400
+    assert resp.get_json() == {'error': 'Invalid image name'}
+
+
 def test_calc_log_image_serves_an_existing_png(monkeypatch, tmp_path):
     monkeypatch.setattr(main_module, 'CALC_LOG_IMAGES_DIR', str(tmp_path))
     name = 'sanity-test-image.png'
