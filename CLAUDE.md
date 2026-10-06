@@ -15,6 +15,36 @@ Use the `.venv` virtual environment (Python 3.13). Install dependencies:
 pip install flask flask-socketio numpy
 ```
 
+## Testing
+
+Three layers, each runnable independently or all together:
+
+```bash
+# Backend (self-contained — but note: do NOT run this while `python main.py`
+# is already running. Every pytest run re-copies the background-lane DLL at
+# import time, which collides with a live server's own copy. Stop the
+# backend first, or just use ./run_all_tests.sh, which detects this and
+# skips the layer with a clear message instead of failing confusingly.)
+.venv/Scripts/python -m pytest tests/ -v
+
+# Frontend unit tests (self-contained, no server needs to be running)
+cd react_frontend && npx vitest run --project unit
+
+# End-to-end tests (requires `python main.py` AND `npm run dev` already
+# running in two other terminals; first time only, also run
+# `npx playwright install chromium` to download the browser binary)
+cd react_frontend && npx playwright test
+
+# Or all three at once:
+./run_all_tests.sh
+```
+
+`tests/test_real_dll_sanity.py` and `react_frontend/e2e/happy-path.spec.ts` both exercise the real native DLL (not a mock) — expect those two specifically to take several real seconds, unlike the rest of the suite.
+
+All layers are expected to be fully green. If you see a frontend-unit failure in `httpClient.test.ts` or `socketClient.test.ts`, it's a real regression, not a known/accepted one — the test suite has none of those on file.
+
+**To get every layer to actually run in one sitting:** run `./run_all_tests.sh` once with the backend stopped (covers the backend + frontend-unit layers), then start `python main.py` and `npm run dev` and run it again (covers the end-to-end layer — the backend/frontend-unit layers will just re-run quickly alongside it, which is harmless).
+
 ## Architecture
 
 This is a Flask + SocketIO web app for generating parametric lattice structures from CAD surface files. The key data flow is:

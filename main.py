@@ -27,6 +27,7 @@ from dll_lane import BackgroundDllLane
 
 from flask import Flask, render_template, send_file, jsonify, request, Response
 from flask_socketio import SocketIO, emit
+from werkzeug.exceptions import HTTPException
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tile-type constants and map
@@ -74,6 +75,23 @@ socketio = SocketIO(
     ping_interval=25,
     ping_timeout=120,
 )
+
+
+@app.errorhandler(Exception)
+def handle_uncaught_http_exception(exc):
+    if isinstance(exc, HTTPException):
+        return exc
+    sid = getattr(request, 'sid', None)
+    extra = _log_extra(sid) if sid else _http_log_extra()
+    logger.exception(f"[UNCAUGHT] {request.method} {request.path}", extra=extra)
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+@socketio.on_error_default
+def handle_uncaught_socketio_exception(exc):
+    sid = request.sid if request else None
+    logger.exception("[UNCAUGHT] socketio handler failed", extra=_log_extra(sid))
+
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAIN_DLL_PATH = os.path.join(_BASE_DIR, "gershon", "MSDLL64.dll")
@@ -133,6 +151,7 @@ class _JsonFormatter(logging.Formatter):
     EXTRA_FIELDS = (
         ('sid', 'sid'),
         ('ip', 'ip'),
+        ('user_agent', 'user_agent'),
         ('filename', 'calc_filename'),
         ('args', 'calc_args'),
         ('image', 'image'),
@@ -316,6 +335,30 @@ def temp_igs_file(igs_bytes: bytes):
             logger.warning(f"[TMP] failed to remove temp file: {path}")
 
 
+def _save_original_upload(sid: str, filename: str, raw_bytes: bytes) -> str:
+    """Persist an uploaded surface file under client_data/<sid>/, keyed by a
+    UUID prefix so repeat uploads in one session (or Ruling mode's two
+    files) never collide. Returns the path a log line can point at, so a
+    calculation can be reproduced later from its exact original input.
+
+    `filename` is client-supplied and untrusted — reduced to a single path
+    component before use, and the final path is verified to still resolve
+    inside session_dir before writing, so a crafted name (e.g. containing
+    `../`) can never escape client_data/<sid>/."""
+    session_dir = os.path.realpath(os.path.join(DATA_DIR, sid))
+    os.makedirs(session_dir, exist_ok=True)
+    base = os.path.basename(str(filename).replace('\\', '/').split('/')[-1]).strip()
+    if not base or base in ('.', '..'):
+        base = 'upload.igs'
+    saved_name = f"{uuid.uuid4().hex}_{base}"
+    saved_path = os.path.join(session_dir, saved_name)
+    if os.path.commonpath([session_dir, os.path.realpath(saved_path)]) != session_dir:
+        raise OSError(f"refusing to write outside session dir: {saved_path!r}")
+    with open(saved_path, 'wb') as f:
+        f.write(raw_bytes)
+    return saved_path
+
+
 DOWNLOAD_CACHE = {}
 
 
@@ -450,7 +493,7 @@ calc_log_thread = None
 thread_stop_event = False
 
 
-def get_initial_log_content(file_path, num_lines=50):
+def get_initial_log_content(file_path, num_lines=150):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -500,7 +543,6 @@ def on_connect():
     global log_thread, calc_log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
-    logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
     state = {
         "sid": sid,
@@ -515,8 +557,10 @@ def on_connect():
     connected_clients[sid] = {
         'sid': sid,
         'ip_address_reported': ip_address,
+        'user_agent': request.headers.get('User-Agent', '?'),
         'unique_file_id': unique_file_id,
     }
+    logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
     for line in get_initial_log_content(LOG_FILE_NAME):
         emit('log_update', {'data': line})
@@ -539,18 +583,57 @@ def _client_ip(sid):
     return (connected_clients.get(sid) or {}).get('ip_address_reported', '?')
 
 
+def _client_user_agent(sid):
+    return (connected_clients.get(sid) or {}).get('user_agent', '?')
+
+
 def _log_extra(sid):
-    return {'sid': sid, 'ip': _client_ip(sid)}
+    return {'sid': sid, 'ip': _client_ip(sid), 'user_agent': _client_user_agent(sid)}
+
+
+def _http_log_extra():
+    """Like _log_extra(sid), but for a plain HTTP route with no SocketIO
+    sid — reads ip/user_agent directly from the current request instead of
+    looking them up in connected_clients (which only tracks socket sids)."""
+    return {'sid': None, 'ip': request.remote_addr or '?', 'user_agent': request.headers.get('User-Agent', '?')}
+
+
+def _rmtree_with_retry(path, attempts=5, delay=0.3):
+    """shutil.rmtree can transiently fail with PermissionError on Windows
+    when something else (observed: OneDrive sync) still holds a handle on
+    a just-written file. Retry a few times with a short backoff before
+    giving up — this is a best-effort cleanup, not a correctness-critical
+    path, so a bounded retry catches the quick transient case without
+    making every disconnect noticeably slower. It does NOT reliably solve
+    a longer-held lock (e.g. the native DLL itself keeping a handle open)
+    — that failure still propagates to the caller exactly as before, so
+    it stays visible in the log rather than being silently discarded."""
+    last_exc = None
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError as exc:
+            last_exc = exc
+            if attempt < attempts - 1:
+                time.sleep(delay)
+    raise last_exc
 
 
 def clean_session(sid, token):
     connected_clients.pop(sid, None)
+    upload_folder = os.path.join(os.getcwd(), DATA_DIR, sid)
+    try:
+        if os.path.exists(upload_folder):
+            _rmtree_with_retry(upload_folder)
+    except Exception as exc:
+        logger.exception(f"[SESSION] cleanup failed {upload_folder}: {exc}")
     if not token:
         return
     folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
     try:
         if os.path.exists(folder):
-            shutil.rmtree(folder)
+            _rmtree_with_retry(folder)
     except Exception as exc:
         logger.exception(f"[SESSION] cleanup failed {folder}: {exc}")
 
@@ -592,48 +675,50 @@ def handle_calculate(data):
         p3  = float(args.get('p3', 0.4))
         extrude_length = float(args.get('extrudeLength', 10.0))
     except (TypeError, ValueError) as exc:
-        logger.exception(f"[CALC] Bad numeric argument: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request — one of the tile/grading numbers wasn't valid: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
 
     logger.info(
-        f"[CALC] {filename}  mode={calc_mode}  tile={tile_type}  tiles=({nt1},{nt2},{nt3})  g=({g1},{g2})  p=({p1:.2f},{p2:.2f},{p3:.2f})  ip={_client_ip(sid)}",
+        f"[CALC] Received a calculation request for \"{filename}\" from {_client_ip(sid)} — "
+        f"{calc_mode} mode, {tile_type} tiles, grid {nt1}×{nt2}×{nt3}, "
+        f"grading ({g1}, {g2}), tile shape ({p1:.2f}, {p2:.2f}, {p3:.2f}).",
         extra=_log_extra(sid),
     )
 
     if tile_type_int is None:
-        logger.error(f"[CALC] Unknown tileType: {tile_type!r}", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request — {tile_type!r} isn't a tile type this server recognizes.", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
     if calc_mode not in VALID_CALC_MODES:
-        logger.error(f"[CALC] Unknown calcMode: {calc_mode!r}", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request — {calc_mode!r} isn't a calculation mode this server recognizes.", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown calcMode: {calc_mode}'})
         return
 
     if not surface_b64:
-        logger.error("[CALC] No surface_b64 in payload", extra=_log_extra(sid))
+        logger.error("[CALC] Rejected the request — no surface file was included.", extra=_log_extra(sid))
         emit('error', {'msg': 'No surface file provided'})
         return
     try:
         igs_bytes = base64.b64decode(surface_b64)
     except (ValueError, TypeError) as exc:
-        logger.exception(f"[CALC] Bad surface_b64: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request — the surface file data couldn't be decoded: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid surface data: {exc}'})
         return
 
     igs_bytes2 = None
     if calc_mode == CALC_MODE_RULING:
         if not surface2_b64:
-            logger.error("[CALC] Ruling mode requires surface2_b64", extra=_log_extra(sid))
+            logger.error("[CALC] Rejected the request — Ruling mode needs a second surface file, which wasn't provided.", extra=_log_extra(sid))
             emit('error', {'msg': 'Ruling mode requires a second surface file'})
             return
         try:
             igs_bytes2 = base64.b64decode(surface2_b64)
         except (ValueError, TypeError) as exc:
-            logger.exception(f"[CALC] Bad surface2_b64: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Rejected the request — the second surface file's data couldn't be decoded: {exc}", extra=_log_extra(sid))
             emit('error', {'msg': f'Invalid second surface data: {exc}'})
             return
 
@@ -662,8 +747,33 @@ def handle_calculate(data):
             logger.exception(f"[CALC] failed to start silent-calculate thread: {exc}", extra=_log_extra(sid))
         return
 
+    # Only a real (non-silent) calculation's inputs are worth keeping —
+    # this matches "files uploaded for calculation," not every drag-in or
+    # background preview. Saved BEFORE enqueue so the worker thread (which
+    # can start reading `payload` the instant enqueue() returns) always
+    # sees the final saved_input_paths — never a race where it dequeues
+    # before this key is set. If the request turns out to be rejected
+    # (queue full), whatever was just saved is deleted immediately below,
+    # so a rejected request never leaves an orphan file either. Errors
+    # here degrade traceability, never the calculation itself.
+    saved_input_paths = []
+    try:
+        saved_input_paths.append(_save_original_upload(sid, filename, igs_bytes))
+        if igs_bytes2 is not None:
+            base, ext = os.path.splitext(filename)
+            filename2 = f"{base}_surface2{ext or '.igs'}"
+            saved_input_paths.append(_save_original_upload(sid, filename2, igs_bytes2))
+    except OSError as exc:
+        logger.warning(f"[CALC] Couldn't save a copy of the uploaded file for the audit trail (continuing anyway): {exc}", extra=_log_extra(sid))
+    payload['saved_input_paths'] = saved_input_paths
+
     accepted = queue_manager.enqueue(sid, payload, silent=False)
     if not accepted:
+        for p in saved_input_paths:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
         socketio.emit('queue_rejected', {
             'message': 'Site is too busy right now. Please wait a few minutes and try again.',
             'silent': False,
@@ -689,6 +799,8 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
     curr_tile_params = (c_double * 3)(p1, p2, p3)
+    inputs_desc = f"{len(igs_bytes)} bytes" if igs_bytes2 is None else f"{len(igs_bytes)}+{len(igs_bytes2)} bytes"
+    logger.debug(f"[CALC] Handing the surface ({inputs_desc}) to the native lattice engine…", extra=_log_extra(sid))
 
     new_token  = str(uuid.uuid4())
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
@@ -697,7 +809,11 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     t_dll_start = time.time()
     dll_instance.set_current_sid(sid)
     try:
-        logger.info(f"[CALC] -> {calc_mode}  filename={filename}", extra=_log_extra(sid))
+        logger.info(
+            f"[CALC] Invoking the native engine for \"{filename}\" ({calc_mode} mode). "
+            f"Original file(s): {p.get('saved_input_paths', [])}",
+            extra=_log_extra(sid),
+        )
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
@@ -716,21 +832,22 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
                     dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
                 )
     except FileNotFoundError as exc:
-        logger.exception(f"[CALC] DLL output file not found: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine finished but didn't produce the expected output file: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     except Exception as exc:
-        logger.exception(f"[CALC] DLL call failed: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine raised an error while processing \"{filename}\": {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     finally:
         dll_instance.set_current_sid(None)
     t_dll_end = time.time()
+    logger.debug(f"[CALC] Native engine finished in {round((t_dll_end - t_dll_start) * 1000)}ms.", extra=_log_extra(sid))
 
     if not stl_content:
-        logger.error("[CALC] No STL content produced after DLL call", extra=_log_extra(sid))
+        logger.error("[CALC] The native engine returned successfully but produced no geometry.", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
@@ -749,10 +866,11 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
     with the *next* DLL call on either lane. Must use explicit room=sid
     emits (no implicit request context on a spawned thread)."""
     try:
-        client_ts  = payload['client_ts']
-        filename   = payload['filename']
-        args       = payload['args']
-        t_received = payload['t_received']
+        client_ts          = payload['client_ts']
+        filename           = payload['filename']
+        args               = payload['args']
+        t_received         = payload['t_received']
+        saved_input_paths  = payload.get('saved_input_paths', [])
 
         stl_content  = dll_result['stl_content']
         out_stl_name = dll_result['out_stl_name']
@@ -767,17 +885,19 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # Nothing will ever redeem this token — discard the result rather
         # than leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
         if sid not in connected_clients:
-            logger.info("[CALC] client disconnected during calculation — discarding result", extra=_log_extra(sid))
+            logger.info("[CALC] The browser disconnected while this was still running — discarding the result, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
+        logger.debug("[CALC] Compressing the result for transfer…", extra=_log_extra(sid))
         try:
             t_comp_start = time.time()
             compressed_b64 = compress_text_to_b64_gz(stl_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+            logger.debug(f"[CALC] Compressed down to {comp_kb:.0f} KB.", extra=_log_extra(sid))
         except Exception as exc:
-            logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Compressing the result failed: {exc}", extra=_log_extra(sid))
             socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
             shutil.rmtree(out_folder, ignore_errors=True)
             return
@@ -788,7 +908,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # we'd leak a DOWNLOAD_CACHE entry and a last_results/<token>/
         # folder that nothing will ever redeem.
         if sid not in connected_clients:
-            logger.info("[CALC] client disconnected during compression — discarding result", extra=_log_extra(sid))
+            logger.info("[CALC] The browser disconnected while compressing the result — discarding it, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
@@ -817,20 +937,20 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             'args_echo':        args,
             'filename':         filename,
             'download_token':   new_token,
+            'saved_input_paths': saved_input_paths,
         }, room=sid)
 
         logger.info(
-            f"[CALC] done  {comp_kb:.0f}KB"
-            f"  overall={timings['overall_ms']}ms"
-            f"  dll={timings['time_dll_ms']}ms"
-            f"  compress={timings['time_compress_ms']}ms"
-            f"  token={new_token}",
+            f"[CALC] Done — sent \"{filename}\" back to the browser "
+            f"({comp_kb:.0f} KB, {timings['overall_ms']}ms total: "
+            f"{timings['time_dll_ms']}ms engine + {timings['time_compress_ms']}ms compression, "
+            f"token={new_token}). Original file(s): {saved_input_paths}",
             extra=_log_extra(sid),
         )
     except Exception:
         # This runs on its own thread — an uncaught exception here would
         # otherwise vanish silently instead of failing the request visibly.
-        logger.exception("[CALC] _finish_calculate failed unexpectedly", extra=_log_extra(sid))
+        logger.exception("[CALC] Something went wrong wrapping up this calculation that wasn't caught anywhere else — see the traceback below.", extra=_log_extra(sid))
 
 
 def _run_calculate_job(job: Job) -> None:
@@ -865,6 +985,7 @@ queue_manager.start()
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
+    logger.debug("[CALCULATE_TILE] request received", extra=_log_extra(request.sid))
     try:
         p1, p2, p3 = data['values']
         tile_type   = data['type']
@@ -893,6 +1014,7 @@ def handle_calculate_tile(data):
 
 @app.route('/convert_igs_to_stl', methods=['POST'])
 def handle_convert_igs_to_stl():
+    logger.debug("[IGS2STL] request received", extra=_http_log_extra())
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -950,8 +1072,36 @@ def handle_convert_igs_to_stl():
         dll_background_lane.release()
 
 
+def _validate_saved_input_paths(raw_paths) -> list:
+    """`saved_input_paths` round-trips server -> browser -> server in the
+    /log-calculation POST; the browser is not a trusted source for what
+    ends up in the permanent calc_log/log.jsonl audit record. Keep only
+    entries that look like paths this server itself would have produced:
+    a list of at most 2 short strings, each resolving inside DATA_DIR.
+
+    _save_original_upload returns realpath'd absolute paths, so containment
+    must be checked by resolving each candidate the same way (a naive
+    p.startswith(DATA_DIR) string check would reject every real path, since
+    DATA_DIR itself is a relative name like 'client_data')."""
+    if not isinstance(raw_paths, list):
+        return []
+    data_root = os.path.realpath(DATA_DIR)
+    valid = []
+    for p in raw_paths[:2]:
+        if not (isinstance(p, str) and 0 < len(p) <= 512):
+            continue
+        try:
+            resolved = os.path.realpath(p)
+        except (OSError, ValueError):
+            continue
+        if os.path.commonpath([data_root, resolved]) == data_root:
+            valid.append(p)
+    return valid
+
+
 @app.route('/log-calculation', methods=['POST'])
 def handle_log_calculation():
+    logger.debug("[CALC_LOG] request received", extra=_http_log_extra())
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -961,6 +1111,8 @@ def handle_log_calculation():
         metadata = {}
     filename = metadata.get('filename', '')
     args     = metadata.get('args', {})
+    raw_saved_paths = metadata.get('saved_input_paths', [])
+    saved_input_paths = _validate_saved_input_paths(raw_saved_paths)
 
     entry_id   = uuid.uuid4().hex
     image_name = f'{entry_id}.png'
@@ -976,8 +1128,11 @@ def handle_log_calculation():
         f"  tile={args.get('tileType')}  mode={args.get('calcMode')}"
         f"  tiles=({args.get('nt1')},{args.get('nt2')},{args.get('nt3')})"
         f"  g=({args.get('g1')},{args.get('g2')})"
-        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})",
-        extra={'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}'},
+        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})"
+        f"  inputs={saved_input_paths}",
+        extra={
+            'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}',
+        },
     )
     return jsonify({'ok': True})
 
@@ -990,7 +1145,7 @@ def calc_log_image(name):
     path = os.path.join(CALC_LOG_IMAGES_DIR, safe_name)
     if not os.path.exists(path):
         return jsonify({'error': 'Image not found'}), 404
-    return send_file(path, mimetype='image/png')
+    return send_file(path, mimetype='image/png', max_age=86400)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP routes
@@ -1008,18 +1163,12 @@ def view_log():
 
 @app.route('/viewfulllog')
 def view_full_log():
-    try:
-        with open(LOG_FILE_NAME, 'r', encoding='utf-8') as f:
-            log_content = f.read()
-    except FileNotFoundError:
-        log_content = f"Error: Log file '{LOG_FILE_NAME}' not found."
-    except Exception as exc:
-        log_content = f"An unexpected error occurred: {exc}"
-    return render_template('full_log_view.html', log_file=LOG_FILE_NAME, log_content=log_content)
+    return render_template('full_log_view.html', log_file=LOG_FILE_NAME)
 
 
 @app.route('/download-results', methods=['POST'])
 def download_results():
+    logger.debug("[DOWNLOAD] request received", extra=_http_log_extra())
     token     = request.form.get('token')
     file_type = request.form.get('file_type')
 

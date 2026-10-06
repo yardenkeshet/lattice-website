@@ -29,7 +29,7 @@ describe('downloadResults()', () => {
 
   it('POSTs to the correct URL with a form-encoded token', async () => {
     fetchSpy.mockResolvedValue(
-      new Response(new Blob(['zip-content']), { status: 200 })
+      new Response(new Blob(['stl-content']), { status: 200 })
     )
 
     await downloadResults('tok-abc-123', 'stl')
@@ -48,9 +48,9 @@ describe('downloadResults()', () => {
     await expect(downloadResults('bad-token','stl')).rejects.toThrow('Download failed: 400 Bad Request')
   })
 
-  it('triggers a browser file download with filename results.zip', async () => {
+  it('falls back to results.<fileType> when the server sends no Content-Disposition filename', async () => {
     fetchSpy.mockResolvedValue(
-      new Response(new Blob(['zip']), { status: 200 })
+      new Response(new Blob(['stl-content']), { status: 200 })
     )
 
     const anchorMock = { href: '', download: '', click: vi.fn() }
@@ -58,7 +58,7 @@ describe('downloadResults()', () => {
 
     await downloadResults('tok-xyz', 'stl')
 
-    expect(anchorMock.download).toBe('results.zip')
+    expect(anchorMock.download).toBe('results.stl')
     expect(anchorMock.click).toHaveBeenCalledOnce()
   })
 })
@@ -104,5 +104,29 @@ describe('logCalculation()', () => {
 
     await expect(logCalculation(new Blob(['x']), 'f.igs', args))
       .rejects.toThrow('Calc log failed: 500')
+  })
+
+  it('includes saved_input_paths in the metadata when provided', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"ok":true}', { status: 200 }))
+
+    const blob = new Blob(['fake-png-bytes'], { type: 'image/png' })
+    await logCalculation(blob, 'mypart.igs', args, ['client_data/sid1/abc_mypart.igs'])
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    const form = init.body as FormData
+    const metadata = JSON.parse(form.get('metadata') as string)
+    expect(metadata.saved_input_paths).toEqual(['client_data/sid1/abc_mypart.igs'])
+  })
+
+  it('defaults saved_input_paths to an empty array when omitted', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"ok":true}', { status: 200 }))
+
+    const blob = new Blob(['fake-png-bytes'], { type: 'image/png' })
+    await logCalculation(blob, 'mypart.igs', args)
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    const form = init.body as FormData
+    const metadata = JSON.parse(form.get('metadata') as string)
+    expect(metadata.saved_input_paths).toEqual([])
   })
 })

@@ -111,3 +111,14 @@ def test_request_blocks_then_succeeds_once_slot_frees(monkeypatch):
     assert elapsed < 10.0  # nowhere near the 30s route timeout
     assert main_module.dll_background_lane.try_acquire() is True
     main_module.dll_background_lane.release()
+
+
+def test_entry_is_logged_at_debug_level(monkeypatch, caplog):
+    import logging as _logging
+    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    client = main_module.app.test_client()
+
+    with caplog.at_level(_logging.DEBUG, logger='lattice'):
+        _post(client)
+
+    assert any('[IGS2STL] request received' in r.message for r in caplog.records)

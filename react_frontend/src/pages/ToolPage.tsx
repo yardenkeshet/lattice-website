@@ -219,7 +219,7 @@ export function ToolPage() {
      finishes fitting to the newly rendered result. Cleared (read-once) by
      handleAutoFitComplete regardless of whether it was set, so unrelated
      auto-fits (plain uploads, tile previews) never reuse stale data. */
-  const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs } | null>(null)
+  const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs; savedInputPaths: string[] } | null>(null)
 
 
   /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
@@ -264,7 +264,10 @@ export function ToolPage() {
           setResultGzB64(payload.stl_gz_b64)
           setDownloadToken(payload.download_token)
           if (payload.args_echo) {
-            pendingSnapshotRef.current = { filename: payload.filename, args: payload.args_echo }
+            pendingSnapshotRef.current = {
+              filename: payload.filename, args: payload.args_echo,
+              savedInputPaths: payload.saved_input_paths ?? [],
+            }
           }
           if (pendingResetKey.current !== null) {
             setViewerResetKey(pendingResetKey.current)
@@ -614,7 +617,7 @@ export function ToolPage() {
       requestAnimationFrame(() => {
         canvas.toBlob(blob => {
           if (!blob) return
-          logCalculation(blob, pending.filename, pending.args).catch(err => {
+          logCalculation(blob, pending.filename, pending.args, pending.savedInputPaths).catch(err => {
             console.warn('calc log snapshot failed to upload', err)
           })
         }, 'image/png')
