@@ -809,6 +809,7 @@ def _run_calculate_job(job: Job) -> None:
     igs_bytes      = p['igs_bytes']
     igs_bytes2     = p['igs_bytes2']
     t_received     = p['t_received']
+    time.sleep(2)  # TEMP: simulate network latency for manual progress-label testing — remove before commit
 
     t_start = time.time()
 
@@ -875,6 +876,7 @@ def _run_calculate_job(job: Job) -> None:
         compressed_b64 = compress_text_to_b64_gz(stl_content)
         t_comp_end = time.time()
         comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+        socketio.emit('update', {'type': 'progress_sending'}, room=sid)
     except Exception as exc:
         logger.exception(f"[CALC] Compression failed: {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
@@ -899,6 +901,8 @@ def _run_calculate_job(job: Job) -> None:
         shutil.rmtree(os.path.join(os.getcwd(), LAST_RESULTS_DIR, old_token), ignore_errors=True)
     if sid in client_state:
         client_state[sid]['current_token'] = new_token
+
+    time.sleep(2)  # TEMP: simulate network latency for manual progress-label testing — remove before commit
 
     t_total = time.time() - t_start
     timings = {

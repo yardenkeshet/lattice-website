@@ -20,6 +20,8 @@ export function calcLabelForUpdate(update: UpdatePayload): string {
     }
     case 'progress_end':
       return 'Compressing…'
+    case 'progress_sending':
+      return 'Sending…'
     default:
       return 'Calculating…'
   }

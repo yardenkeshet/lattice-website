@@ -241,8 +241,7 @@ export function ToolPage() {
           }
           // else: more responses still expected — intermediate response discarded silently
         } else {
-          setIsCalculating(false)
-          setCalcLabel('Calculating…')
+          setCalcLabel('Finalizing…')
           setResultGzB64(payload.stl_gz_b64)
           setDownloadToken(payload.download_token)
           if (payload.args_echo) {
@@ -252,6 +251,10 @@ export function ToolPage() {
             setViewerResetKey(pendingResetKey.current)
             pendingResetKey.current = null
           }
+          requestAnimationFrame(() => {
+            setIsCalculating(false)
+            setCalcLabel('Calculating…')
+          })
         }
       }
     })
@@ -512,9 +515,10 @@ export function ToolPage() {
   }, [])
 
   /* ── Calculate ── */
-  const handleCalculate = React.useCallback(() => {
+  const handleCalculate = React.useCallback(async () => {
     setErrorMsg(null)
     setQueueBusyMsg(null)
+    setCalcLabel('Sending…')
     pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
     const allErrors = Object.values(validationErrors).flat()
     if (allErrors.length > 0) {
@@ -601,6 +605,7 @@ export function ToolPage() {
   const handleFileRemove = React.useCallback((name: string) => {
     if (uploadedFile?.name === name) handleClear1()
     else if (uploadedFile2?.name === name) handleClear2()
+    setErrorMsg(null)
   }, [uploadedFile, uploadedFile2, handleClear1, handleClear2])
 
   return (
