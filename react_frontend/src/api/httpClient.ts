@@ -1,6 +1,8 @@
 import type { CalculateArgs } from './types';
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL ?? '';
+// '||' (not '??') deliberately: VITE_BACKEND_URL is left blank in .env for
+// local dev, and '??' doesn't treat an empty string as missing.
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_LOCAL_URL || '';
 
 /**
  * Sends a .igs file to the server and returns the converted STL content
@@ -35,8 +37,11 @@ export async function convertIgsToStl(file: File, tolerance: number = 0.0): Prom
 /**
  * Triggers a browser file download for a completed calculation result.
  *
- * The server accepts a POST with a form-encoded `token`, validates it,
- * then streams back a ZIP containing the output STL + IGS files.
+ * The server accepts a POST with a form-encoded `token` + `fileType`,
+ * validates the token, then streams back the single requested output file
+ * (the STL or the IGS, not both) with its real filename set via
+ * `Content-Disposition`. The `results.${fileType}` fallback below only
+ * matters if that header is ever missing.
  * The token is single-use — it is invalidated on the server after one call.
  *
  * On an invalid/expired token the server redirects to `/`, so the download
@@ -109,10 +114,12 @@ export async function downloadResults(token: string, fileType: 'stl' | 'igs'): P
  * perspective — failures should be caught and ignored by the caller so a
  * logging hiccup never affects the displayed calculation result.
  */
-export async function logCalculation(image: Blob, filename: string, args: CalculateArgs): Promise<void> {
+export async function logCalculation(
+  image: Blob, filename: string, args: CalculateArgs, savedInputPaths: string[] = [],
+): Promise<void> {
   const form = new FormData();
   form.append('image', image, 'snapshot.png');
-  form.append('metadata', JSON.stringify({ filename, args }));
+  form.append('metadata', JSON.stringify({ filename, args, saved_input_paths: savedInputPaths }));
 
   const response = await fetch(`${BASE_URL}/log-calculation`, {
     method: 'POST',

@@ -21,6 +21,7 @@ interface RawResult {
   timings?: TileSTLResult['timings'];
   args_echo?: ModelSTLResult['args_echo'];
   download_token?: string;
+  saved_input_paths?: ModelSTLResult['saved_input_paths'];
 }
 
 interface RawError {
@@ -41,7 +42,9 @@ type DisconnectHandler = (reason: string) => void;
 export class LatticeSocketClient {
   private socket: Socket;
 
-  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? '') {
+  // '||' (not '??') deliberately: VITE_BACKEND_URL is left blank in .env for
+  // local dev, and '??' doesn't treat an empty string as missing.
+  constructor(serverUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_LOCAL_URL || '') {
     this.socket = io(serverUrl);
     this.socket.on('result', this.handleRawResult.bind(this));
     if (import.meta.env.DEV) {
@@ -144,6 +147,7 @@ export class LatticeSocketClient {
           download_token: raw.download_token ?? '',
           timings: raw.timings!,
           args_echo: raw.args_echo,
+          saved_input_paths: raw.saved_input_paths,
         }
       : {
           kind: 'tile_stl',

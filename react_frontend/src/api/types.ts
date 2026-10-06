@@ -75,6 +75,8 @@ export interface ModelSTLResult {
   download_token: string;
   timings: Timings;
   args_echo?: CalculateArgs;
+  /** Paths (server-side) to the original surface file(s) this calculation used. */
+  saved_input_paths?: string[];
 }
 
 export type ResultPayload = TileSTLResult | ModelSTLResult;
