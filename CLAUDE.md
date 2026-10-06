@@ -138,7 +138,7 @@ Every component in `components/ui/` has a `.stories.tsx` file alongside it.
 | `index.ts` | Barrel export — import everything from `'../api'` |
 
 **Key design notes:**
-- The raw `result` event (emitted twice by the server after `calculate`) is normalized into a discriminated union `ResultPayload = STLResult | TokenResult`. Branch on `payload.kind`.
+- The raw `result` event is normalized into a discriminated union `ResultPayload = STLResult | TokenResult`. Branch on `payload.kind`.
 - Each `onXxx()` method on `LatticeSocketClient` returns an unsubscribe function suitable for React `useEffect` cleanup.
 - No raw event strings appear outside `socketClient.ts`.
 - Tile slider drags are local state only; backend `calculateTile` is called only on commit (mouse-up or badge Enter key).
