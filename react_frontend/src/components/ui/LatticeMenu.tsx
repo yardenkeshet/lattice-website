@@ -160,15 +160,17 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               <Tooltip content="Controls how far the input surface is extruded along its normal to form the 3D macro volume. A larger value produces a deeper extrusion.">
                 <span style={sectionLabelStyle}>Extrusion Length</span>
               </Tooltip>
-              <NumberInput
-                decimal
-                step={0.01}
-                value={extrudeLength}
-                min={0.1}
-                max={MAX_EXTRUSION_LENGTH}
-                onChange={onExtrudeLengthChange}
-                aria-label="Extrusion length"
-              />
+              <Slider
+                  label="Extrusion length"
+                  min={0.1}
+                  max={MAX_EXTRUSION_LENGTH}
+                  step={0.01}
+                  value={[extrudeLength]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onExtrudeLengthChange(v)}
+                />
             </div>
           )}
         </div>

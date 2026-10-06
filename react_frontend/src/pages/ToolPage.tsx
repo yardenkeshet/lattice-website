@@ -180,15 +180,23 @@ export function ToolPage() {
      a macro-shape recalculation instead of flashing a bare surface. See
      computeDisplayedLayers for the exact rules. */
   const [displayedLayers, setDisplayedLayers] = React.useState<MeshLayer[]>([])
+  // Derived during render (React's "store info from previous renders" pattern)
+  // rather than in an effect, so the viewer never paints a stale frame. The
+  // input comparison is what stops this from re-rendering forever.
+  const layerInputs = { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl }
+  const [prevLayerInputs, setPrevLayerInputs] = React.useState(layerInputs)
+  const layerInputsChanged = (Object.keys(layerInputs) as (keyof typeof layerInputs)[])
+    .some(k => layerInputs[k] !== prevLayerInputs[k])
+  // If the blob-URL-derived upload count doesn't match the raw file count yet,
+  // skip rather than compute from stale blob URLs — that could overwrite an
+  // explicit reset (handleCalcModeChange's setDisplayedLayers([])).
+  const rawUploadedCount  = (uploadedFile ? 1 : 0) + (uploadedFile2 ? 1 : 0)
+  const blobUploadedCount = (uploadedBlobUrl ? 1 : 0) + (uploadedBlobUrl2 ? 1 : 0)
+  if (layerInputsChanged && rawUploadedCount === blobUploadedCount) {
+    setPrevLayerInputs(layerInputs)
+    setDisplayedLayers(prev => computeDisplayedLayers(layerInputs, prev))
+  }
 
-    const rawUploadedCount  = (uploadedFile ? 1 : 0) + (uploadedFile2 ? 1 : 0)
-    const blobUploadedCount = (uploadedBlobUrl ? 1 : 0) + (uploadedBlobUrl2 ? 1 : 0)
-    if (rawUploadedCount == blobUploadedCount) {
-      setDisplayedLayers(prev => computeDisplayedLayers(
-        { calcMode, resultBlobUrl, uploadedBlobUrl, uploadedBlobUrl2, macroShapeBlobUrl },
-        prev,
-      ))
-    }
   /* ── Validation errors aggregated from child components ── */
   const [validationErrors, setValidationErrors] = React.useState<Record<string, ValidationError[]>>({})
   const handleValidationChange = React.useCallback((source: string, errors: ValidationError[]) => {
