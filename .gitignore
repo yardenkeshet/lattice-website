@@ -28,3 +28,4 @@ react_frontend/.storybook-static/
 .DS_Store
 Thumbs.db
 .firecrawl/
+.worktrees/
