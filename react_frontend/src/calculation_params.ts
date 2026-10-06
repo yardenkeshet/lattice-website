@@ -14,11 +14,13 @@ export type CalcMode = keyof typeof CALC_MODE_DEFS
 export const MAX_EXTRUSION_LENGTH = 100;
 
 // images for the tile type buttons in the UI
-// to add a new tile type, add it to this list and to the TILE_DEFS object below
+// to add a new tile type follow these 2 steps:
+// 1/2 add new image to react_frontend/src/assets/TileTypes/ and import it below
 import crossImg from './assets/TileTypes/cross.png'
 import diagonalImg from './assets/TileTypes/diagonal.png'
 import crossDiagonalImg from './assets/TileTypes/cross-diagonal.png'
 
+// 2/2 add new tile type to the TILE_DEFS object below, with its label, image and sliders
 export const TILE_DEFS: Record<string, TileDef> = {
     [CROSS]: {
         label: 'Cross',

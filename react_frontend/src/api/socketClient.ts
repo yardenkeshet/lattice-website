@@ -44,6 +44,10 @@ export class LatticeSocketClient {
   constructor(serverUrl = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_BACKEND_LOCAL_URL ?? '') {
     this.socket = io(serverUrl);
     this.socket.on('result', this.handleRawResult.bind(this));
+    if (import.meta.env.DEV) {
+      this.socket.on('[DEV] connect', () => console.log('[socket] connected', this.socket.id))
+      this.socket.on('[DEV] disconnect', (reason) => console.log('[socket] disconnected:', reason))
+    }
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -59,10 +63,16 @@ export class LatticeSocketClient {
   // ── Client → Server ───────────────────────────────────────────────────────
 
   calculate(payload: CalculatePayload): void {
+    if (import.meta.env.DEV) {
+      console.log('[socket] emit calculate:', { filename: payload.filename, args: payload.args, silent: payload.silent });
+    }
     this.socket.emit('calculate', payload);
   }
 
   calculateTile(payload: CalculateTilePayload): void {
+    if (import.meta.env.DEV) {
+      console.log('[socket] emit calculate_tile:', payload);
+    }
     this.socket.emit('calculate_tile', payload);
   }
 

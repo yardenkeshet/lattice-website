@@ -162,6 +162,11 @@ TILE_TYPE_MAP = {
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
 
+VALID_CALC_MODES = {
+    CALC_MODE_RULING, 
+    CALC_MODE_EXTRUSION, 
+    CALC_MODE_REVOLUTION
+    }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Direct DLL wrapper helpers
@@ -498,7 +503,6 @@ CALC_MODE_DISPATCH = {
     CALC_MODE_REVOLUTION: do_revolution,
 }
 
-VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
 def _emit_queue_event(event: str, sid: str, payload: dict) -> None:

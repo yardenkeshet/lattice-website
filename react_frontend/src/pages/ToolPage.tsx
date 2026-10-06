@@ -24,9 +24,10 @@ import {
   DEFAULT_MODEL_COLOR as DEFAULT_MESH_COLOR,
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  ACCEPTED_FILE_EXT,
   type ShadingMode,
 } from '../lib/parameters'
-import { type CalcMode, type TileType } from '../calculation_params'
+import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../calculation_params'
 import type { CalculateArgs, ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
@@ -39,7 +40,9 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  */
 async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
   const [stlB64, igsB64, ...rest] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
-  console.log("rest:", rest)
+  if (import.meta.env.DEV) {
+    console.log("rest:", rest)
+  }
   const binary = atob(stlB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -219,7 +222,9 @@ export function ToolPage() {
   /* ── Socket subscriptions ── */
   React.useEffect(() => {
     const unsubResult = socket.onResult(payload => {
-      console.log("socket: onResult: ", payload)
+      if (import.meta.env.DEV) {
+        console.log("[DEV] socket: onResult: ", payload)
+      }
       if (payload.kind === 'tile_stl') {
         // Tile preview from calculate_tile — update mini-preview, and the main
         // viewer only when it has nothing else to show (no uploaded file or
@@ -301,7 +306,8 @@ export function ToolPage() {
   /* ── Auto-trigger macro shape preview when surfaces are uploaded ── */
   // Uses nt1=nt2=nt3=0 so the DLL returns the bounding envelope with no lattice.
   React.useEffect(() => {
-    if (calcMode === RULING) {
+    const requiredFiles = CALC_MODE_DEFS[calcMode].requiredFilesCount
+    if (calcMode === RULING || requiredFiles === 2) {
       if (!uploadedIgsB64 || !uploadedIgsB64_2) return
     } else {
       if (!uploadedIgsB64) return
@@ -440,60 +446,42 @@ export function ToolPage() {
     setErrorMsg(null)
     pendingMacroCountRef.current = 0
 
-    if (calcMode === RULING) {
-      if (files.length >= 2) {
-        setViewerResetKey('file-' + Date.now())
-        try {
-          const [r1, r2] = await Promise.all([
-            convertIgsFile(files[0], igsConversionTolerance),
-            convertIgsFile(files[1], igsConversionTolerance),
-          ])
-          setOriginalIgsFile(files[0])
-          setOriginalIgsFile2(files[1])
-          setUploadedFile(r1.stlFile)
-          setUploadedIgsB64(r1.igsB64)
-          setUploadedFile2(r2.stlFile)
-          setUploadedIgsB64_2(r2.igsB64)
-        } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
-      } else {
-        const file = files[0]
-        if (!uploadedFile) {
-          setViewerResetKey('file-' + Date.now())
-          try {
-            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
-            setOriginalIgsFile(file)
-            setUploadedFile(stlFile)
-            setUploadedIgsB64(igsB64)
-          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
-        } else if (!uploadedFile2) {
-          try {
-            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
-            setOriginalIgsFile2(file)
-            setUploadedFile2(stlFile)
-            setUploadedIgsB64_2(igsB64)
-          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
-        } else {
-          // Both already loaded — replace the first file
-          setViewerResetKey('file-' + Date.now())
-          try {
-            const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
-            setOriginalIgsFile(file)
-            setUploadedFile(stlFile)
-            setUploadedIgsB64(igsB64)
-          } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
-        }
-      }
-    } else {
-      const file = files[0]
-      setViewerResetKey('file-' + Date.now())
-      try {
-        const { stlFile, igsB64 } = await convertIgsFile(file, igsConversionTolerance)
-        setOriginalIgsFile(file)
-        setUploadedFile(stlFile)
-        setUploadedIgsB64(igsB64)
-      } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
+    const rejected = files.find(
+      (file) => ('.' + file.name.split('.').pop()?.toLowerCase()) !== ACCEPTED_FILE_EXT
+    )
+    if (rejected) {
+      setErrorMsg(`Unsupported file type: "${rejected.name}". Only ${ACCEPTED_FILE_EXT} files are accepted.`)
+      return
     }
-  }, [calcMode, uploadedFile, uploadedFile2, igsConversionTolerance])
+
+    const required = CALC_MODE_DEFS[calcMode].requiredFilesCount
+    if (files.length !== required) {
+      setErrorMsg(`${calcMode === RULING ? 'Ruling' : CALC_MODE_DEFS[calcMode].label} mode requires exactly ${required} surface file${required > 1 ? 's' : ''} — upload them all at once.`)
+      // Clear anything previously loaded so the UI can't end up holding a stale partial pair.
+      setUploadedFile(null)
+      setUploadedIgsB64(null)
+      setOriginalIgsFile(null)
+      setUploadedFile2(null)
+      setUploadedIgsB64_2(null)
+      setOriginalIgsFile2(null)
+      setMacroShapeGzB64(null)
+      setDownloadToken(null)
+      return
+    }
+
+    setViewerResetKey('file-' + Date.now())
+    try {
+      const results = await Promise.all(files.map(f => convertIgsFile(f, igsConversionTolerance)))
+      setOriginalIgsFile(files[0])
+      setUploadedFile(results[0].stlFile)
+      setUploadedIgsB64(results[0].igsB64)
+      if (required === 2) {
+        setOriginalIgsFile2(files[1])
+        setUploadedFile2(results[1].stlFile)
+        setUploadedIgsB64_2(results[1].igsB64)
+      }
+    } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
+  }, [calcMode, igsConversionTolerance])
 
   /* ── Clear handlers ── */
   const handleClear1 = React.useCallback(() => {
@@ -573,7 +561,7 @@ export function ToolPage() {
   }, [downloadToken, setErrorMsg])
 
   /* ── Stable derived callbacks to avoid inline lambdas on memoized children ── */
-  const handleViewerFileDrop = React.useCallback((f: File) => handleFilesAdd([f]), [handleFilesAdd])
+  const handleViewerFileDrop = React.useCallback((files: File[]) => handleFilesAdd(files), [handleFilesAdd])
 
   /* ── Auto-fit-complete → upload a calc-log snapshot, but only when the
      fit was triggered by a completed calculation (pendingSnapshotRef set) ── */
@@ -596,17 +584,20 @@ export function ToolPage() {
   }, [])
 
   const fileNames = React.useMemo(
-    () => [uploadedFile?.name, uploadedFile2?.name].filter((n): n is string => !!n),
-    [uploadedFile, uploadedFile2]
+    () => [
+      uploadedFile?.name ?? originalIgsFile?.name,
+      uploadedFile2?.name,
+    ].filter((n): n is string => !!n),
+    [uploadedFile, uploadedFile2, originalIgsFile]
   )
 
-  const showDropHint = !uploadedFile && !downloadToken
+  const showDropHint = !uploadedFile && !originalIgsFile && !downloadToken
 
   const handleFileRemove = React.useCallback((name: string) => {
-    if (uploadedFile?.name === name) handleClear1()
+    if (uploadedFile?.name === name || originalIgsFile?.name === name) handleClear1()
     else if (uploadedFile2?.name === name) handleClear2()
     setErrorMsg(null)
-  }, [uploadedFile, uploadedFile2, handleClear1, handleClear2])
+  }, [uploadedFile, uploadedFile2, originalIgsFile, handleClear1, handleClear2])
 
   return (
     <div style={pageStyle}>

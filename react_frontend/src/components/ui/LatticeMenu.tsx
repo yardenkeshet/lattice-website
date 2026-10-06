@@ -11,6 +11,7 @@ import {
   DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR,
   NORMAL, GOURAUD, PHONG,
   DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  ACCEPTED_FILE_EXT,
   type ShadingMode,
 } from '../../lib/parameters'
 import { Tooltip } from './Tooltip'
@@ -111,8 +112,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
-      const limited = CALC_MODE_DEFS[calcMode].requiredFilesCount === 2 ? all.slice(0, 2) : [all[0]]
-      onFilesAdd?.(limited)
+      onFilesAdd?.(all)
       e.target.value = ''
     }
 
@@ -207,8 +207,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <input
             ref={fileInputRef}
             type="file"
-            accept=".igs"
-            multiple={calcMode === 'ruling'}
+            accept={ACCEPTED_FILE_EXT}
+            multiple={CALC_MODE_DEFS[calcMode].requiredFilesCount >= 2}
             style={{ display: 'none' }}
             onChange={handleFileChange}
             aria-hidden="true"

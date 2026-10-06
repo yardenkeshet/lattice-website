@@ -16,7 +16,11 @@ export async function convertIgsToStl(file: File, tolerance: number = 0.0): Prom
     method: 'POST',
     body: form,
   });
-  console.log("got", response);
+
+  if (import.meta.env.DEV) {
+    console.log("[DEV] convertIgsToStl got", response);
+  }
+
   if (!response.ok) {
     const message = await response
       .json()
