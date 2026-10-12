@@ -141,7 +141,6 @@ dll_background_lane = BackgroundDllLane()
 LOGFILE               = 'lattice.log'
 DATA_DIR              = 'client_data'
 LAST_RESULTS_DIR      = 'last_results'
-LAST_TILES_RESULTS_DIR = 'last_tiles_results'
 LOG_FILE_NAME         = LOGFILE
 
 os.makedirs(DATA_DIR, exist_ok=True)
