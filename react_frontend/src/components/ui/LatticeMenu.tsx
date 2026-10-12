@@ -156,22 +156,21 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             onChange={v => onCalculationModeChange(v as CalcMode)}
           />
           {calculationMode === 'extrusion' && (
-            <div style={extrudeLengthWrapperStyle}>
               <Tooltip content="Controls how far the input surface is extruded along its normal to form the 3D macro volume. A larger value produces a deeper extrusion.">
-                <span style={sectionLabelStyle}>Extrusion Length</span>
+                  <div style={extrudeLengthWrapperStyle}>
+                    <Slider
+                        label="Extrusion length"
+                        min={0.1}
+                        max={MAX_EXTRUSION_LENGTH}
+                        step={0.01}
+                        value={[extrudeLength]}
+                        showValue
+                        valuePrecision={2}
+                        fontSize={12}
+                        onValueChange={([v]) => onExtrudeLengthChange(v)}
+                      />
+                  </div>
               </Tooltip>
-              <Slider
-                  label="Extrusion length"
-                  min={0.1}
-                  max={MAX_EXTRUSION_LENGTH}
-                  step={0.01}
-                  value={[extrudeLength]}
-                  showValue
-                  valuePrecision={2}
-                  fontSize={12}
-                  onValueChange={([v]) => onExtrudeLengthChange(v)}
-                />
-            </div>
           )}
         </div>
 
@@ -199,9 +198,21 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           }}
         >
           <div style={tileSummaryRowStyle}>
-            <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots. U/V degrees can be any value.">
-              <span style={sectionLabelStyle}>{fileLabel}</span>
-            </Tooltip>
+            <span style={uploadLabelGroupStyle}>
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'flex',
+                  color: isAddFilesHovered ? 'var(--text-base)' : 'var(--text-secondary)',
+                  transition: 'color 120ms ease',
+                }}
+              >
+                <FileCubeIcon />
+              </span>
+              <Tooltip content="The Extrusion and Revolution constructors require one IGES surface. The Ruling constructor requires two IGES surfaces. Each file should contain a single tensor-product Bezier or B-spline surface with no interior knots. U/V degrees can be any value.">
+                <span style={sectionLabelStyle}>{fileLabel}</span>
+              </Tooltip>
+            </span>
             <span aria-hidden="true" style={plusButtonStyle}>
               <PlusIcon />
             </span>
@@ -382,6 +393,30 @@ function PlusIcon() {
   )
 }
 
+function FileCubeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Page with folded corner */}
+      <path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+      <path d="M14 2v5h5" />
+      {/* Isometric cube — same three faces as CubeIcon3D, scaled into the page */}
+      <path d="M11.5 11l-3.5 1.75 3.5 1.75 3.5-1.75z" />
+      <path d="M8 12.75v3.5l3.5 1.75v-3.5z" />
+      <path d="M15 12.75v3.5l-3.5 1.75v-3.5z" />
+    </svg>
+  )
+}
+
 /* ─── Divider ─── */
 
 function Divider() {
@@ -441,6 +476,12 @@ const tileSummaryRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
+}
+
+const uploadLabelGroupStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
 }
 
 const plusButtonStyle: React.CSSProperties = {

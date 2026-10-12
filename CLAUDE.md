@@ -8,11 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python main.py
 ```
 
-Serves on `http://localhost:5003`. No build step required — the C++ computation engine is pre-compiled.
+Serves on `http://localhost:5003` by default (set `BACKEND_PORT` in the root `.env`, or pass `--port`). No build step required — the C++ computation engine is pre-compiled.
 
 Use the `.venv` virtual environment (Python 3.13). Install dependencies:
 ```bash
-pip install flask flask-socketio numpy
+pip install flask flask-socketio numpy python-dotenv
 ```
 
 ## Testing
@@ -80,7 +80,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 | `DATA_DIR` | `client_data/` | Uploaded STL + JSON metadata per client |
 | `LAST_RESULTS_DIR` | `last_results/` | Per-session output STL files |
 | `LAST_TILES_RESULTS_DIR` | `last_tiles_results/` | Cached tile geometries |
-| Port | `5003` | Flask listen port |
+| Port | `BACKEND_PORT` in `.env` (default `5003`; `--port` overrides) | Flask listen port |
 | SocketIO buffer | `100 MB` | Max upload size for large STL files |
 
 ## Tile Types

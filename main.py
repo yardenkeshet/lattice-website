@@ -15,6 +15,7 @@ from logging.handlers import RotatingFileHandler
 from io import BytesIO
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from dotenv import load_dotenv
 
 import ctypes
 from ctypes import (
@@ -55,8 +56,11 @@ VALID_CALC_MODES = {
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CLI args — parsed early so CORS can use --frontend-port
+# Root .env supplies the default port; --port still overrides it.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 _ap = argparse.ArgumentParser(description='Lattice website backend', add_help=True)
-_ap.add_argument('--port', type=int, default=5003, help='Backend listen port (default: 5003)')
+_ap.add_argument('--port', type=int, default=int(os.environ.get('BACKEND_PORT', 5003)),
+                 help='Backend listen port (default: BACKEND_PORT from .env, else 5003)')
 _ap.add_argument('--frontend-port', type=int, default=5173, help='Frontend dev server port for CORS (default: 5173)')
 _cli_args, _ = _ap.parse_known_args()
 
@@ -1129,5 +1133,6 @@ def download_results():
 
 if __name__ == '__main__':
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    logger.info(f"Server starting on http://localhost:{5003}")
-    socketio.run(app, host='0.0.0.0', port=5003, debug=False, use_reloader=False)
+    port = _cli_args.port
+    logger.info(f"Server starting on http://localhost:{port}")
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, use_reloader=False)
