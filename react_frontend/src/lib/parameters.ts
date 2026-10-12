@@ -1,3 +1,6 @@
+// The only surface file type the app accepts for upload/conversion.
+export const ACCEPTED_FILE_EXT = '.igs'
+
 export const EXTRUSION = 'extrusion'
 export const REVOLUTION = 'revolution'
 export const RULING = 'ruling'

@@ -109,9 +109,10 @@ export interface ErrorPayload {
 // ─── update event (server → client) ─────────────────────────────────────────
 
 export type UpdatePayload =
-  | { type: 'progress_start';  message: string }
-  | { type: 'progress_update'; progress: number }
-  | { type: 'progress_end';    progress: 100 };
+  | { type: 'progress_start';   message: string }
+  | { type: 'progress_update';  progress: number }
+  | { type: 'progress_end';     progress: 100 }
+  | { type: 'progress_sending' };
 
 // ─── log events (server → client) ────────────────────────────────────────────
 

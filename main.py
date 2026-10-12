@@ -47,6 +47,11 @@ TILE_TYPE_MAP = {
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
 }
 
+VALID_CALC_MODES = {
+    CALC_MODE_RULING, 
+    CALC_MODE_EXTRUSION, 
+    CALC_MODE_REVOLUTION
+    }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CLI args — parsed early so CORS can use --frontend-port
@@ -418,7 +423,6 @@ CALC_MODE_DISPATCH = {
     CALC_MODE_REVOLUTION: do_revolution,
 }
 
-VALID_CALC_MODES = {CALC_MODE_RULING, CALC_MODE_EXTRUSION, CALC_MODE_REVOLUTION}
 
 
 def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
@@ -895,6 +899,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             compressed_b64 = compress_text_to_b64_gz(stl_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
+            socketio.emit('update', {'type': 'progress_sending'}, room=sid)
             logger.debug(f"[CALC] Compressed down to {comp_kb:.0f} KB.", extra=_log_extra(sid))
         except Exception as exc:
             logger.exception(f"[CALC] Compressing the result failed: {exc}", extra=_log_extra(sid))

@@ -8,7 +8,7 @@ import {
   orthoZoomForPerspectiveDistance, perspectiveDistanceForOrthoZoom,
 } from '../lib/cameraFit'
 import { ShadedMaterial } from './ShadedMaterial'
-import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
+import { ACCEPTED_FILE_EXT, DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
 
 /* ─── Public API ─── */
 
@@ -57,8 +57,10 @@ export interface ViewerSceneProps {
   cameraMode?: 'perspective' | 'orthographic'
   /** Zoom level. 100 = default, range 10–500. */
   zoom?: number
-  /** Called when user drops a .igs file onto the canvas. */
-  onFileDrop?: (file: File) => void
+  /** Called with the accepted files when the user drops them onto the canvas.
+   *  Files with an extension other than ACCEPTED_FILE_EXT are filtered out
+   *  before this is called. */
+  onFileDrop?: (files: File[]) => void
   /** Called when the user scrolls over the viewer to zoom. */
   onZoomChange?: (zoom: number) => void
   /**
@@ -89,8 +91,6 @@ export interface ViewerSceneProps {
    *  resetting to the default fit. `null`/omitted on every other mount. */
   pendingCameraSnapshot?: CameraSnapshot | null
 }
-
-const ACCEPTED_EXTS = new Set(['.igs'])
 
 const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
@@ -210,11 +210,11 @@ function ViewerSceneFn({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
-    if (!ACCEPTED_EXTS.has(ext)) return
-    onFileDrop?.(file)
+    const files = Array.from(e.dataTransfer.files).filter(
+      (file) => ('.' + file.name.split('.').pop()?.toLowerCase()) === ACCEPTED_FILE_EXT
+    )
+    if (files.length === 0) return
+    onFileDrop?.(files)
   }
 
   return (

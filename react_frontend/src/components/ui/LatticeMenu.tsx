@@ -11,6 +11,7 @@ import {
   DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR,
   NORMAL, GOURAUD, PHONG,
   DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS,
+  ACCEPTED_FILE_EXT,
   type ShadingMode,
 } from '../../lib/parameters'
 import { Tooltip } from './Tooltip'
@@ -111,8 +112,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const all = Array.from(e.target.files ?? [])
       if (all.length === 0) return
-      const limited = CALC_MODE_DEFS[calcMode].requiredFilesCount === 2 ? all.slice(0, 2) : [all[0]]
-      onFilesAdd?.(limited)
+      onFilesAdd?.(all)
       e.target.value = ''
     }
 
@@ -160,15 +160,17 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               <Tooltip content="Controls how far the input surface is extruded along its normal to form the 3D macro volume. A larger value produces a deeper extrusion.">
                 <span style={sectionLabelStyle}>Extrusion Length</span>
               </Tooltip>
-              <NumberInput
-                decimal
-                step={0.01}
-                value={extrudeLength}
-                min={0.1}
-                max={MAX_EXTRUSION_LENGTH}
-                onChange={onExtrudeLengthChange}
-                aria-label="Extrusion length"
-              />
+              <Slider
+                  label="Extrusion length"
+                  min={0.1}
+                  max={MAX_EXTRUSION_LENGTH}
+                  step={0.01}
+                  value={[extrudeLength]}
+                  showValue
+                  valuePrecision={2}
+                  fontSize={12}
+                  onValueChange={([v]) => onExtrudeLengthChange(v)}
+                />
             </div>
           )}
         </div>
@@ -207,8 +209,8 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
           <input
             ref={fileInputRef}
             type="file"
-            accept=".igs"
-            multiple={calcMode === 'ruling'}
+            accept={ACCEPTED_FILE_EXT}
+            multiple={CALC_MODE_DEFS[calcMode].requiredFilesCount >= 2}
             style={{ display: 'none' }}
             onChange={handleFileChange}
             aria-hidden="true"

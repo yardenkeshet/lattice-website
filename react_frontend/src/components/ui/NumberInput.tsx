@@ -238,11 +238,11 @@ const wrapperStyle: React.CSSProperties = {
 }
 
 const hoverStyle: React.CSSProperties = {
-  borderColor: 'var(--border-base)',
+  border: '1px solid var(--border-base)',
 }
 
 const focusStyle: React.CSSProperties = {
-  borderColor: 'var(--border-focus)',
+  border: '1px solid var(--border-focus)',
 }
 
 const disabledStyle: React.CSSProperties = {
