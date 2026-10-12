@@ -1076,7 +1076,9 @@ def calc_log_image(name):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # The UI is the React app in react_frontend/ (served by Vite in dev, nginx
+    # in production); this backend root is just a health check.
+    return jsonify({'service': 'lattice-backend', 'status': 'ok'})
 
 
 @app.route('/viewlog')

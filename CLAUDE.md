@@ -69,9 +69,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 
 **`dll_lane.py`** / **`calc_queue.py`** — serialize access to the two loaded DLL copies (background lane vs. main calculation queue).
 
-**`static/client.js`** — legacy frontend: Three.js scene with OrbitControls, drag-and-drop STL upload, parameter HUD (left panel), real-time feedback during calculation, download via token. Full feature inventory is in `frontend_features.md`.
-
-**`templates/index.html`** — legacy single-page app shell.
+**`templates/`** + **`static/log_viewer.js`** — the `/viewlog` and `/viewfulllog` log pages. (The old `static/client.js` frontend has been retired; the backend's `/` is now just a JSON health check.)
 
 **`react_frontend/`** — new React + TypeScript frontend (Vite). Two pages (`HomePage`, `ToolPage`) with a full UI component library and a React Three Fiber viewer. See [React Frontend](#react-frontend) section below.
 
@@ -104,7 +102,7 @@ Visit `/viewlog` for a real-time log tail, or `/viewfulllog` for the full log.
 
 ## React Frontend
 
-A new Vite + React + TypeScript frontend is being built in `react_frontend/` to replace `static/client.js`. Routing uses `react-router-dom` with two pages: `/` (HomePage) and `/tool` (ToolPage).
+The Vite + React + TypeScript frontend lives in `react_frontend/` (it replaced the legacy `static/client.js` UI). Routing uses `react-router-dom` with two pages: `/` (HomePage) and `/tool` (ToolPage).
 
 **Dev server:**
 ```bash

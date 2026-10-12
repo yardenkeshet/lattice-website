@@ -7,11 +7,11 @@ import os
 import main as main_module
 
 
-def test_index_returns_200():
+def test_index_is_a_health_check():
     client = main_module.app.test_client()
     resp = client.get('/')
     assert resp.status_code == 200
-    assert resp.content_type.startswith('text/html')
+    assert resp.get_json() == {'service': 'lattice-backend', 'status': 'ok'}
 
 
 def test_viewlog_renders_shared_script_with_surface_level_defaults():
