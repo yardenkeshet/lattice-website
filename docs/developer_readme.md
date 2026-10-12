@@ -59,7 +59,7 @@ Calculation modes map to the DLL surface functions (`MSDLLMSFromRuling`, `MSDLLM
 - `label` — display name shown in the UI.
 - `requiredFilesCount` — how many STL files the user must upload for this mode (e.g. `2` for Ruling, which needs two surfaces).
 
-3. Make sure the corresponding backend handling exists — the mode key must match what `main.py` / `lattice.py` expect on the `calculate` socket event (see `backend_api.md`).
+3. Make sure the corresponding backend handling exists — the mode key must match what `main.py` / `dll_instance.py` expect on the `calculate` socket event (see `backend_api.md`).
 
 ### Adding a new tile type
 

@@ -56,7 +56,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 5. Results are gzipped + base64-encoded and sent back over the socket as a `result` event
 6. Three.js renders the mesh in the browser
 
-> Full Socket.IO event shapes, HTTP endpoints, and known server quirks are documented in `backend_api.md`.
+> Full Socket.IO event shapes, HTTP endpoints, and known server quirks are documented in `docs/backend_api.md`.
 
 **`main.py`** — entire backend: Flask routes, SocketIO event handlers, session management, logging, and file download logic.
 
@@ -90,7 +90,7 @@ The DLL exposes three tile variants (used as integer enum values):
 - `1` — DIAGONAL
 - `2` — CROSS_DIAGONAL
 
-The mapping from the string values used in the frontend (`"cross"`, `"diagonal"`, `"cross_diagonal"`) to DLL functions and output filenames is documented in `backend_api.md` under the `calculate` event.
+The mapping from the string values used in the frontend (`"cross"`, `"diagonal"`, `"cross_diagonal"`) to DLL functions and output filenames is documented in `docs/backend_api.md` under the `calculate` event.
 
 ## DLL Path
 
@@ -174,5 +174,5 @@ Every component in `components/ui/` has a `.stories.tsx` file alongside it.
 - Tile slider drags are local state only; backend `calculateTile` is called only on commit (mouse-up or badge Enter key).
 
 **Reference docs:**
-- `frontend_features.md` — full inventory of features from the legacy frontend (use as a checklist during the refactor)
-- `backend_api.md` — complete Socket.IO event and HTTP endpoint contract, including known server quirks
+- `docs/frontend_features.md` — full inventory of features from the legacy frontend (use as a checklist during the refactor)
+- `docs/backend_api.md` — complete Socket.IO event and HTTP endpoint contract, including known server quirks
