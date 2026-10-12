@@ -1,0 +1,24 @@
+#
+# nmake [CFG=Rel] [MACHINE=x64] [COMPILER=VS2012] -f makefile.wnt
+#
+# nmake -f makefile.wnt MACHINE=x64 COMPILER=VS2017 testD64.exe
+# nmake CFG=Rel -f makefile.wnt MACHINE=x64 COMPILER=VS2017 test64.exe
+#
+# This make file is the make file for the MSDLL dll, for lattice generation
+# via python (for the web).
+#
+#				Gershon Elber, Nov 2025
+#
+
+include ./makeflag.wnt
+
+test$(IRIT_EXE_PF).exe:  MSDLL$(IRIT_LIB_PF).dll test.$(IRIT_OBJ_PF)
+        $(IRITCONLINK) -out:$@ test.$(IRIT_OBJ_PF) MSDLL$(IRIT_LIB_PF).lib \
+				$(IRIT_MORE_LIBS) $(W32CONLIBS)
+        $(IRITMANIFEST) -manifest $@.manifest -outputresource:$@;1
+
+clean:
+	rm *.map *.bak *.old *.sym *obj *obj64 *.o *.oD \
+	      *.exe *.dll *.lib *.exp \
+	      *.manifest *.map *.pdb *.ilk \
+	      data/*
