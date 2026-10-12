@@ -19,7 +19,7 @@ from dll_instance import DllInstance, prepare_background_dll_copy
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN_DLL_PATH = os.path.join(REPO_ROOT, "gershon", "MSDLL64.dll")
 MAIN_DLL_MANIFEST_PATH = MAIN_DLL_PATH + ".manifest"
-SRF_IGS = os.path.join(REPO_ROOT, "Input", "SimpleRevolve.igs").encode("ascii")
+SRF_IGS = os.path.join(REPO_ROOT, "samples", "igs", "SimpleRevolve.igs").encode("ascii")
 
 
 def _no_emit(event, sid, payload):

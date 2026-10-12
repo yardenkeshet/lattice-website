@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { test, expect } from '@playwright/test';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const IGS_FIXTURE = path.resolve(__dirname, '../../igs/ExtrudeSrf.igs');
+const IGS_FIXTURE = path.resolve(__dirname, '../../samples/igs/ExtrudeSrf.igs');
 
 test('upload, calculate, and export a real lattice end to end', async ({ page }) => {
   await page.goto('/tool');

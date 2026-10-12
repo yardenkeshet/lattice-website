@@ -12,7 +12,7 @@ import pytest
 
 import main as main_module
 
-IGS_PATH = 'igs/ExtrudeSrf.igs'
+IGS_PATH = 'samples/igs/ExtrudeSrf.igs'
 
 
 def _wait_until(predicate, timeout=30.0, interval=0.05):
