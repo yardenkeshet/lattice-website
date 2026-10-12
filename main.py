@@ -1,4 +1,4 @@
-# main2.py — same endpoints as main.py, but calls MSDLL64.dll directly via ctypes.
+# main.py — Lattice website backend: Flask + SocketIO, calling MSDLL64.dll via ctypes.
 import os
 import argparse
 import shutil
@@ -6,7 +6,6 @@ import time
 import base64
 import gzip
 import json
-from threading import Thread
 import threading
 import uuid
 import contextlib
@@ -14,19 +13,15 @@ import logging
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
 from flask_cors import CORS
-from flask_socketio import SocketIO
 from dotenv import load_dotenv
 
-import ctypes
-from ctypes import (
-    c_void_p, c_char_p, c_int, c_float, c_double, POINTER, Structure, CFUNCTYPE
-)
+from ctypes import c_int, c_double
 
 from calc_queue import CalcQueueManager, Job
 from dll_instance import DllInstance, prepare_background_dll_copy, assert_distinct_dll_instances
 from dll_lane import BackgroundDllLane
 
-from flask import Flask, render_template, send_file, jsonify, request, Response
+from flask import Flask, render_template, send_file, jsonify, request
 from flask_socketio import SocketIO, emit
 from werkzeug.exceptions import HTTPException
 
@@ -450,37 +445,17 @@ connected_clients = {}
 client_state = {}
 
 
-def worker_loop(state):
-    logger.debug("[WORKER] started", extra={'sid': state['sid']})
-    while True:
-        state["event"].wait()
-        state["event"].clear()
-        tile_type = state["tile_type"]
-        p1, p2, p3 = state["p1"], state["p2"], state["p3"]
-        logger.debug(f"[WORKER] processing tile_type={tile_type} p=({p1},{p2},{p3})", extra={'sid': state['sid']})
-
-
 @socketio.on('connect')
 def on_connect():
     global log_thread, calc_log_thread
     sid = request.sid
     ip_address = request.environ.get('REMOTE_ADDR')
 
-    state = {
-        "sid": sid,
-        "tile_type": None, "p1": None, "p2": None, "p3": None,
-        "event": threading.Event(),
-        "current_token": None,
-    }
-    t = threading.Thread(target=worker_loop, args=(state,), daemon=True)
-    t.start()
-    client_state[sid] = state
-    unique_file_id = str(uuid.uuid4())
+    client_state[sid] = {"current_token": None}
     connected_clients[sid] = {
         'sid': sid,
         'ip_address_reported': ip_address,
         'user_agent': request.headers.get('User-Agent', '?'),
-        'unique_file_id': unique_file_id,
     }
     logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
