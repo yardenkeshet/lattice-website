@@ -49,22 +49,25 @@ All layers are expected to be fully green. If you see a frontend-unit failure in
 
 This is a Flask + SocketIO web app for generating parametric lattice structures from CAD surface files. The key data flow is:
 
-1. User uploads an STL file and sets parameters in the browser
+1. User uploads an IGS surface file and sets parameters in the browser
 2. The frontend emits a `calculate` SocketIO event
-3. `main.py` receives it, calls `lattice.py` which invokes the C++ DLL via `ctypes`
-4. The DLL writes result STL files to `last_results/<sid>/`
+3. `main.py` receives it and calls the C++ DLL via `ctypes` (`dll_instance.py`)
+4. The DLL writes result OBJ + IGS files to `last_results/<token>/`
 5. Results are gzipped + base64-encoded and sent back over the socket as a `result` event
 6. Three.js renders the mesh in the browser
 
 > Full Socket.IO event shapes, HTTP endpoints, and known server quirks are documented in `backend_api.md`.
 
-**`main.py`** (~1065 lines) — entire backend: Flask routes, SocketIO event handlers, STL parsing/writing utilities (`parse_ascii_stl`, `write_ascii_stl`, `reduce_triangles`, `twist_mesh`), session management, logging, and file download logic.
+**`main.py`** — entire backend: Flask routes, SocketIO event handlers, session management, logging, and file download logic.
 
-**`lattice.py`** — thin `ctypes` wrapper around `gershon/MSDLLD64.dll`. Exposes three surface-type functions:
-- `MSDLLMSFromRuling` — ruled surface lattice
-- `MSDLLMSFromRevolution` — revolution surface lattice
-- `MSDLLMSFromExtrusion` — extrusion surface lattice
+**`dll_instance.py`** — `ctypes` wrapper around `gershon/MSDLL64.dll`, binding only the functions declared in `gershon/Interface.h`:
+- `MSDLLMSFromRuling` / `MSDLLMSFromRevolution` / `MSDLLMSFromExtrusion` — lattice generation
 - `MSDLLGetTile` — standalone tile geometry (for the tile preview panel)
+- `MSDLLIGES2OBJ` — IGS surface → OBJ preview
+- `MSDLLSetPolyTolerance` — global tessellation fineness
+- `MSDLLSetProgressReportFuncs` — progress callbacks
+
+**`dll_lane.py`** / **`calc_queue.py`** — serialize access to the two loaded DLL copies (background lane vs. main calculation queue).
 
 **`static/client.js`** — legacy frontend: Three.js scene with OrbitControls, drag-and-drop STL upload, parameter HUD (left panel), real-time feedback during calculation, download via token. Full feature inventory is in `frontend_features.md`.
 
@@ -79,7 +82,6 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 | `LOGFILE` | `lattice.log` | Rotating log (5 MB max) |
 | `DATA_DIR` | `client_data/` | Uploaded STL + JSON metadata per client |
 | `LAST_RESULTS_DIR` | `last_results/` | Per-session output STL files |
-| `LAST_TILES_RESULTS_DIR` | `last_tiles_results/` | Cached tile geometries |
 | Port | `BACKEND_PORT` in `.env` (default `5003`; `--port` overrides) | Flask listen port |
 | SocketIO buffer | `100 MB` | Max upload size for large STL files |
 
@@ -94,7 +96,7 @@ The mapping from the string values used in the frontend (`"cross"`, `"diagonal"`
 
 ## DLL Path
 
-`lattice.py` loads the DLL from `gershon/MSDLLD64.dll` (relative to the repo root). The path was recently fixed from a hardcoded absolute path — if the DLL fails to load, check that the working directory is the repo root when running `main.py`.
+`main.py` loads `gershon/MSDLL64.dll` (resolved relative to `main.py` itself) and copies it to `tmp/dll_background_instance/` for the background lane at startup.
 
 ## Log Viewer
 
