@@ -11,15 +11,11 @@ __pycache__/
 client_data/
 last_results/
 last_tiles_results/
-last_tiles_results/TileCross.stl
-last_tiles_results/TileDiagnoal.stl
-last_tiles_results/TileCross.stl
 calc_log/
 tmp/
 
 # Node / React
 react_frontend/node_modules/
-node_modules
 react_frontend/dist/
 react_frontend/.storybook-static/
 
@@ -29,3 +25,21 @@ react_frontend/.storybook-static/
 Thumbs.db
 .firecrawl/
 .worktrees/
+
+# Native DLL build artifacts (only MSDLL64.dll + manifest are needed at runtime)
+gershon/*.obj
+gershon/*.obj64
+gershon/*.Dobj64
+gershon/*.exp
+gershon/*.lib
+gershon/*.ilk
+gershon/*.pdb
+gershon/*.map
+gershon/*.exe
+gershon/*.exe.manifest
+gershon/MSDLLD64.*
+gershon/data/
+
+# Editors
+.idea/
+.cursor/
