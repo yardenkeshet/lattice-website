@@ -124,7 +124,7 @@ export interface LogLine {
 
 export interface DownloadRequest {
   token: string;
-  file_type: 'stl' | 'igs';
+  file_type: 'obj' | 'igs';
 }
 
 // ─── Client-side validation ───────────────────────────────────────────────────

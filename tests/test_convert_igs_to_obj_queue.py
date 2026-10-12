@@ -24,7 +24,7 @@ def _fake_dll_success(obj_bytes=b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'):
 
 
 def test_success_releases_dll_slot(monkeypatch):
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake_dll_success())
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -39,7 +39,7 @@ def test_success_releases_dll_slot(monkeypatch):
 def test_dll_error_releases_dll_slot(monkeypatch):
     def _fake(igs_file, obj_file, tolerance):
         return "DLL said no"
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -52,7 +52,7 @@ def test_dll_error_releases_dll_slot(monkeypatch):
 def test_missing_output_releases_dll_slot(monkeypatch):
     def _fake(igs_file, obj_file, tolerance):
         return None  # "succeeds" but never writes obj_file
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -65,7 +65,7 @@ def test_missing_output_releases_dll_slot(monkeypatch):
 def test_internal_exception_releases_dll_slot(monkeypatch):
     def _fake(igs_file, obj_file, tolerance):
         raise RuntimeError('boom')
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()
 
     resp = _post(client)
@@ -76,7 +76,7 @@ def test_internal_exception_releases_dll_slot(monkeypatch):
 
 
 def test_returns_503_when_slot_cannot_be_acquired_in_time(monkeypatch):
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake_dll_success())
     monkeypatch.setattr(main_module.dll_background_lane, 'acquire_blocking', lambda timeout: False)
     client = main_module.app.test_client()
 
@@ -91,7 +91,7 @@ def test_request_blocks_then_succeeds_once_slot_frees(monkeypatch):
     DLL slot from this thread, fire the request on a background thread, and
     confirm it stays pending until another thread releases the slot — then
     completes well before the 30s route timeout."""
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake_dll_success())
     client = main_module.app.test_client()
 
     assert main_module.dll_background_lane.try_acquire() is True  # simulate an in-flight holder
@@ -115,7 +115,7 @@ def test_request_blocks_then_succeeds_once_slot_frees(monkeypatch):
 
 def test_entry_is_logged_at_debug_level(monkeypatch, caplog):
     import logging as _logging
-    monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake_dll_success())
+    monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake_dll_success())
     client = main_module.app.test_client()
 
     with caplog.at_level(_logging.DEBUG, logger='lattice'):

@@ -1,6 +1,6 @@
 """dll_lane.py — a standalone "one caller at a time" gate for background
 (non-queued) DLL work: silent macro-shape preview, tile preview, and
-/convert_igs_to_stl. Deliberately has no relationship to CalcQueueManager's
+/convert_igs_to_obj. Deliberately has no relationship to CalcQueueManager's
 waiting-room/worker-thread machinery — that independence is the entire
 point (see docs/superpowers/specs/2026-09-14-background-dll-lane-design.md).
 """

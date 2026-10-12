@@ -39,7 +39,7 @@ export async function convertIgsToObj(file: File, tolerance: number = 0.0): Prom
  *
  * The server accepts a POST with a form-encoded `token` + `fileType`,
  * validates the token, then streams back the single requested output file
- * (the STL or the IGS, not both) with its real filename set via
+ * (the OBJ or the IGS, not both) with its real filename set via
  * `Content-Disposition`. The `results.${fileType}` fallback below only
  * matters if that header is ever missing.
  * The token is single-use — it is invalidated on the server after one call.
@@ -52,7 +52,7 @@ export async function convertIgsToObj(file: File, tolerance: number = 0.0): Prom
  * Other browsers fall back to a plain anchor download into the default
  * downloads folder.
  */
-export async function downloadResults(token: string, fileType: 'stl' | 'igs'): Promise<void> {
+export async function downloadResults(token: string, fileType: 'obj' | 'igs'): Promise<void> {
   const response = await fetch(`${BASE_URL}/download-results`, {
     method: 'POST',
     body: new URLSearchParams({ token, file_type: fileType }),

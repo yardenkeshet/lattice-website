@@ -60,8 +60,10 @@ class DllInstance:
             c_char_p, POINTER(c_int), POINTER(c_double), c_int,
             POINTER(c_double), c_char_p, c_char_p,
         ]
-        self._dll.MSDLLIGES2STL.restype = c_char_p
-        self._dll.MSDLLIGES2STL.argtypes = [c_char_p, c_char_p, c_double]
+        self._dll.MSDLLIGES2OBJ.restype = c_char_p
+        self._dll.MSDLLIGES2OBJ.argtypes = [c_char_p, c_char_p]
+        self._dll.MSDLLSetPolyTolerance.restype = c_char_p
+        self._dll.MSDLLSetPolyTolerance.argtypes = [c_int]
 
         # Kept as attributes, not locals — ctypes does not keep a Python
         # reference to a CFUNCTYPE-wrapped callback alive on its own, and a
@@ -107,27 +109,39 @@ class DllInstance:
             return
         self._emit("update", self._current_sid, {"type": "progress_end", "progress": 100})
 
-    def get_tile(self, tile_type, tile_params, graded, tolerance, out_stl_file: bytes):
-        return _call(self._dll.MSDLLGetTile, tile_type, tile_params, graded, out_stl_file)
+    def get_tile(self, tile_type, tile_params, graded, tolerance, out_obj_file: bytes):
+        # `tolerance` is accepted for caller compatibility but not passed:
+        # MSDLLGetTile takes no tolerance. Tessellation fineness is global
+        # DLL state — see set_poly_tolerance().
+        return _call(self._dll.MSDLLGetTile, tile_type, tile_params, graded, out_obj_file)
 
     def from_revolution(self, srf_igs: bytes, num_tiles, graded, tile_type, tile_params,
-                         out_igs: bytes, out_stl: bytes):
+                         out_igs: bytes, out_obj: bytes):
         return _call(self._dll.MSDLLMSFromRevolution,
-                     srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
+                     srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
 
     def from_extrusion(self, srf_igs: bytes, extrude_length: float, num_tiles, graded,
-                        tile_type, tile_params, out_igs: bytes, out_stl: bytes):
+                        tile_type, tile_params, out_igs: bytes, out_obj: bytes):
         return _call(self._dll.MSDLLMSFromExtrusion,
                      srf_igs, c_double(extrude_length), num_tiles, graded,
-                     tile_type, tile_params, out_igs, out_stl)
+                     tile_type, tile_params, out_igs, out_obj)
 
     def from_ruling(self, srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
-                     out_igs: bytes, out_stl: bytes):
+                     out_igs: bytes, out_obj: bytes):
         return _call(self._dll.MSDLLMSFromRuling,
-                     srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_stl)
+                     srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
 
-    def iges2stl(self, igs_file: bytes, stl_file: bytes, tolerance) -> str | None:
-        return _call(self._dll.MSDLLIGES2STL, igs_file, stl_file, c_double(tolerance))
+    def iges2obj(self, igs_file: bytes, obj_file: bytes, tolerance=None) -> str | None:
+        # `tolerance` is accepted for caller compatibility but not passed:
+        # MSDLLIGES2OBJ takes only the two file paths. Tessellation fineness
+        # is global DLL state — see set_poly_tolerance().
+        return _call(self._dll.MSDLLIGES2OBJ, igs_file, obj_file)
+
+    def set_poly_tolerance(self, tolerance: int) -> str | None:
+        """Sets the tessellation fineness used by every later OBJ export on
+        this instance (MSDLLGetTile, MSDLLMSFrom*, MSDLLIGES2OBJ). The DLL
+        accepts integers in [2, 200] and returns an error string otherwise."""
+        return _call(self._dll.MSDLLSetPolyTolerance, c_int(tolerance))
 
 
 def prepare_background_dll_copy(source_dll_path: str, source_manifest_path: str, dest_dir: str) -> str:

@@ -576,10 +576,10 @@ export function ToolPage() {
   }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket, setErrorMsg, setQueueBusyMsg])
 
   /* ── Export ── */
-  const handleExportStl = React.useCallback(() => {
+  const handleExportObj = React.useCallback(() => {
     if (!downloadToken) return
     setErrorMsg(null)
-    downloadResults(downloadToken, 'stl').catch(() => setErrorMsg('Download failed'))
+    downloadResults(downloadToken, 'obj').catch(() => setErrorMsg('Download failed'))
   }, [downloadToken, setErrorMsg])
 
   const handleExportIgs = React.useCallback(() => {
@@ -674,7 +674,7 @@ export function ToolPage() {
               isCalculating={isCalculating}
               canExport={!!downloadToken}
               onCameraModeChange={handleCameraModeChange}
-              onExportStl={handleExportStl}
+              onExportObj={handleExportObj}
               onExportIgs={handleExportIgs}
             />
           </div>

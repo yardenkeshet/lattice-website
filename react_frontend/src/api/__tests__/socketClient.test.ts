@@ -46,7 +46,7 @@ describe('LatticeSocketClient', () => {
   // 1. calculate() emits the correct event name and payload
   it('emits "calculate" with the full payload', () => {
     const payload: CalculatePayload = {
-      filename: 'part.stl',
+      filename: 'part.obj',
       surface_b64: '',
       client_ts: 1000,
       args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3, calcMode: EXTRUSION },
@@ -72,7 +72,7 @@ describe('LatticeSocketClient', () => {
       // calculate_tile responses carry no download_token — tile previews aren't downloadable.
       const rawTile = {
         kind: 'tile_obj',
-        filename: 'MSExtrd.stl',
+        filename: 'MSExtrd.obj',
         obj_gz_b64: 'base64data',
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
       }
@@ -82,7 +82,7 @@ describe('LatticeSocketClient', () => {
       const received = handler.mock.calls[0][0]
       expect(received.kind).toBe('tile_obj')
       expect(received.obj_gz_b64).toBe('base64data')
-      expect(received.filename).toBe('MSExtrd.stl')
+      expect(received.filename).toBe('MSExtrd.obj')
     })
 
     it('delivers a ModelOBJResult for a calculate-style raw result (kind: model_obj)', () => {
@@ -91,7 +91,7 @@ describe('LatticeSocketClient', () => {
 
       const rawModel = {
         kind: 'model_obj',
-        filename: 'MSExtrd.stl',
+        filename: 'MSExtrd.obj',
         obj_gz_b64: 'base64data',
         download_token: 'tok-abc-123',
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
@@ -108,15 +108,15 @@ describe('LatticeSocketClient', () => {
       const handler = vi.fn()
       client.onResult(handler)
 
-      const rawStl = {
+      const rawObj = {
         kind: 'model_obj',
-        filename: 'MSExtrd.stl',
+        filename: 'MSExtrd.obj',
         obj_gz_b64: 'base64data',
         download_token: 'tok-1',
         saved_input_paths: ['client_data/sid1/abc_part.igs'],
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
       }
-      getHandler('result')(rawStl)
+      getHandler('result')(rawObj)
 
       const received = handler.mock.calls[0][0]
       expect(received.saved_input_paths).toEqual(['client_data/sid1/abc_part.igs'])
@@ -167,12 +167,12 @@ describe('LatticeSocketClient', () => {
     unsub()
 
     // After unsubscribing, a raw result should NOT call the handler
-    const rawStl = {
-      filename: 'x.stl',
+    const rawObj = {
+      filename: 'x.obj',
       obj_gz_b64: 'xyz',
       timings: { client_to_server_ms: null, time_processed_ms: 1, time_compress_ms: 1, time_parsed_ms: 1, overall_ms: 3 },
     }
-    getHandler('result')(rawStl)
+    getHandler('result')(rawObj)
 
     expect(handler).not.toHaveBeenCalled()
   })
@@ -233,7 +233,7 @@ describe('LatticeSocketClient', () => {
 
   it('calculate() passes a silent flag through when provided', () => {
     const payload: CalculatePayload = {
-      filename: 'part.stl',
+      filename: 'part.obj',
       surface_b64: '',
       client_ts: 1000,
       args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1: 0.5, p2: 0.4, p3: 0.3, calcMode: EXTRUSION },

@@ -84,7 +84,7 @@ def test_download_results_get_is_405():
 
 def test_download_results_invalid_token_is_404():
     client = main_module.app.test_client()
-    resp = client.post('/download-results', data={'token': 'not-a-real-token', 'file_type': 'stl'})
+    resp = client.post('/download-results', data={'token': 'not-a-real-token', 'file_type': 'obj'})
     assert resp.status_code == 404
 
 
@@ -110,12 +110,6 @@ def test_download_results_happy_path(monkeypatch, tmp_path):
     assert resp.status_code == 200
     assert resp.mimetype == 'model/obj'
     assert resp.get_data(as_text=True) == 'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'
-
-    # The React frontend's "Export STL" button still sends file_type='stl';
-    # it gets the same OBJ mesh.
-    resp = client.post('/download-results', data={'token': token, 'file_type': 'stl'})
-    assert resp.status_code == 200
-    assert resp.mimetype == 'model/obj'
     assert 'result.obj' in resp.headers['Content-Disposition']
 
 
@@ -128,4 +122,17 @@ def test_download_results_unknown_file_type_is_400(monkeypatch, tmp_path):
 
     client = main_module.app.test_client()
     resp = client.post('/download-results', data={'token': token, 'file_type': 'step'})
+    assert resp.status_code == 400
+
+
+def test_download_results_rejects_stl(monkeypatch, tmp_path):
+    """The DLL no longer produces STL — 'stl' is not a valid download type."""
+    token = 'sanity-test-token-3'
+    monkeypatch.setattr(main_module, 'LAST_RESULTS_DIR', str(tmp_path))
+    monkeypatch.setitem(main_module.DOWNLOAD_CACHE, token, {
+        'sid': 'sanity-sid', 'out_obj': 'result.obj', 'out_igs': 'result.igs',
+    })
+
+    client = main_module.app.test_client()
+    resp = client.post('/download-results', data={'token': token, 'file_type': 'stl'})
     assert resp.status_code == 400

@@ -35,7 +35,7 @@ const STEPS: HelpStep[] = [
   },
   {
     title: '7. Export',
-    body: 'Once a calculation completes, "Export Lattice" becomes available in the toolbar. Choose to download the result as an STL (mesh) or IGS (surface) file.',
+    body: 'Once a calculation completes, "Export Lattice" becomes available in the toolbar. Choose to download the result as an OBJ (mesh) or IGS (surface) file.',
   },
 ]
 

@@ -232,91 +232,6 @@ def compress_text_to_b64_gz(text: str) -> str:
     return base64.b64encode(buf.getvalue()).decode('ascii')
 
 
-def parse_ascii_stl(text):
-    triangles = []
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if line.startswith('facet normal'):
-            i += 1
-            while i < len(lines) and 'outer loop' not in lines[i]:
-                i += 1
-            verts = []
-            for _ in range(3):
-                i += 1
-                if i < len(lines):
-                    parts = lines[i].strip().split()
-                    if parts[0] == 'vertex':
-                        verts.append((float(parts[1]), float(parts[2]), float(parts[3])))
-            while i < len(lines) and 'endfacet' not in lines[i]:
-                i += 1
-            if len(verts) == 3:
-                triangles.append(verts)
-        i += 1
-    return triangles
-
-
-def write_ascii_stl(triangles, name='exported'):
-    out = [f"solid {name}"]
-    for tri in triangles:
-        (ax, ay, az), (bx, by, bz), (cx, cy, cz) = tri
-        ux, uy, uz = bx - ax, by - ay, bz - az
-        vx, vy, vz = cx - ax, cy - ay, cz - az
-        nx = uy * vz - uz * vy
-        ny = uz * vx - ux * vz
-        nz = ux * vy - uy * vx
-        out.append(f"  facet normal {nx:.6f} {ny:.6f} {nz:.6f}")
-        out.append("    outer loop")
-        for v in tri:
-            out.append(f"      vertex {v[0]:.6f} {v[1]:.6f} {v[2]:.6f}")
-        out.append("    endloop")
-        out.append("  endfacet")
-    out.append(f"endsolid {name}")
-    return "\n".join(out)
-
-
-def reduce_triangles(triangles, target_vertices):
-    if target_vertices <= 0:
-        return triangles
-    target_triangles = max(1, target_vertices // 3)
-    n = len(triangles)
-    if target_triangles >= n:
-        return triangles
-    step = n / target_triangles
-    reduced, idx = [], 0.0
-    while int(idx) < n and len(reduced) < target_triangles:
-        reduced.append(triangles[int(idx)])
-        idx += step
-    return reduced
-
-
-def twist_mesh(triangles, twist_angle_deg=45, axis='z'):
-    import numpy as np
-    verts = np.array([v for tri in triangles for v in tri])
-    axis_idx = {'x': 0, 'y': 1, 'z': 2}[axis]
-    min_val = verts[:, axis_idx].min()
-    max_val = verts[:, axis_idx].max()
-    height_norm = (verts[:, axis_idx] - min_val) / (max_val - min_val + 1e-8)
-    angle_rad = np.deg2rad(twist_angle_deg)
-    rotated_verts = []
-    for v, h in zip(verts, height_norm):
-        theta = h * angle_rad
-        if axis == 'z':
-            xr = v[0] * np.cos(theta) - v[1] * np.sin(theta)
-            yr = v[0] * np.sin(theta) + v[1] * np.cos(theta)
-            rotated_verts.append([xr, yr, v[2]])
-        elif axis == 'y':
-            xr = v[0] * np.cos(theta) - v[2] * np.sin(theta)
-            zr = v[0] * np.sin(theta) + v[2] * np.cos(theta)
-            rotated_verts.append([xr, v[1], zr])
-        elif axis == 'x':
-            yr = v[1] * np.cos(theta) - v[2] * np.sin(theta)
-            zr = v[1] * np.sin(theta) + v[2] * np.cos(theta)
-            rotated_verts.append([v[0], yr, zr])
-    return [rotated_verts[i:i + 3] for i in range(0, len(rotated_verts), 3)]
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # DLL surface-type dispatch functions
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1043,9 +958,9 @@ def handle_convert_igs_to_obj():
             with temp_igs_file(igs_bytes) as igs_path:
                 obj_path = igs_path[:-4] + '_preview.obj'
                 t_igs_start = time.time()
-                err = dll_background.iges2stl(igs_path.encode('ascii'),
-                                               obj_path.encode('ascii'),
-                                               tolerance)
+                err = dll_background.iges2obj(igs_path.encode('ascii'),
+                                              obj_path.encode('ascii'),
+                                              tolerance)
                 t_igs_ms = round((time.time() - t_igs_start) * 1000)
                 if err:
                     logger.warning(f"[IGS2OBJ] DLL warning: {err}")
@@ -1187,10 +1102,7 @@ def download_results():
     sid        = output_map['sid']
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
 
-    # 'stl' is still accepted as an alias: the React frontend's "Export STL"
-    # button sends file_type='stl', but the DLL now writes OBJ meshes, so the
-    # mesh download is always the .obj file.
-    if file_type in ('obj', 'stl'):
+    if file_type == 'obj':
         filename = output_map['out_obj']
         mimetype = 'model/obj'
     elif file_type == 'igs':

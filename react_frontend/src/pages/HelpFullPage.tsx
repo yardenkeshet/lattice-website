@@ -170,7 +170,7 @@ const STEPS: HelpStep[] = [
   },
   {
     title: '5. Export',
-    body: <>If you like, press "Export Lattice" (see 5) to export the lattice as an IGES (surfaces) or STL file, to your local machine.</>,
+    body: <>If you like, press "Export Lattice" (see 5) to export the lattice as an IGES (surfaces) or OBJ (mesh) file, to your local machine.</>,
   },
 ]
 

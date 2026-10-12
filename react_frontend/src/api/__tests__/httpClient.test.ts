@@ -29,10 +29,10 @@ describe('downloadResults()', () => {
 
   it('POSTs to the correct URL with a form-encoded token', async () => {
     fetchSpy.mockResolvedValue(
-      new Response(new Blob(['stl-content']), { status: 200 })
+      new Response(new Blob(['obj-content']), { status: 200 })
     )
 
-    await downloadResults('tok-abc-123', 'stl')
+    await downloadResults('tok-abc-123', 'obj')
 
     expect(fetchSpy).toHaveBeenCalledOnce()
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
@@ -45,20 +45,20 @@ describe('downloadResults()', () => {
   it('throws when the server returns a non-ok status', async () => {
     fetchSpy.mockResolvedValue(new Response('', { status: 400, statusText: 'Bad Request' }))
 
-    await expect(downloadResults('bad-token','stl')).rejects.toThrow('Download failed: 400 Bad Request')
+    await expect(downloadResults('bad-token','obj')).rejects.toThrow('Download failed: 400 Bad Request')
   })
 
   it('falls back to results.<fileType> when the server sends no Content-Disposition filename', async () => {
     fetchSpy.mockResolvedValue(
-      new Response(new Blob(['stl-content']), { status: 200 })
+      new Response(new Blob(['obj-content']), { status: 200 })
     )
 
     const anchorMock = { href: '', download: '', click: vi.fn() }
     vi.spyOn(document, 'createElement').mockReturnValue(anchorMock as unknown as HTMLElement)
 
-    await downloadResults('tok-xyz', 'stl')
+    await downloadResults('tok-xyz', 'obj')
 
-    expect(anchorMock.download).toBe('results.stl')
+    expect(anchorMock.download).toBe('results.obj')
     expect(anchorMock.click).toHaveBeenCalledOnce()
   })
 })

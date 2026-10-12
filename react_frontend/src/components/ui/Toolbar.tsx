@@ -10,7 +10,7 @@ export interface ToolbarProps {
   isCalculating?: boolean
   canExport?: boolean
   onCameraModeChange: (mode: 'perspective' | 'orthographic') => void
-  onExportStl: () => void
+  onExportObj: () => void
   onExportIgs: () => void
   onCalculate?: () => void
   className?: string
@@ -23,7 +23,7 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
       isCalculating = false,
       canExport = false,
       onCameraModeChange,
-      onExportStl,
+      onExportObj,
       onExportIgs,
       onCalculate,
       className,
@@ -92,9 +92,9 @@ const ToolbarInner = React.forwardRef<HTMLDivElement, ToolbarProps>(
           <div style={exportPopupStyle}>
             <Button
               variant="primary"
-              onClick={() => { setIsExportPopupOpen(false); onExportStl() }}
+              onClick={() => { setIsExportPopupOpen(false); onExportObj() }}
             >
-              Export STL
+              Export OBJ
             </Button>
             <Button
               variant="primary"
