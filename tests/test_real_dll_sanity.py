@@ -26,6 +26,11 @@ def _wait_until(predicate, timeout=30.0, interval=0.05):
     return predicate()
 
 
+def _looks_like_obj(text):
+    lines = text.splitlines()
+    return any(l.startswith('v ') for l in lines) and any(l.startswith('f ') for l in lines)
+
+
 def test_real_calculation_through_the_actual_dll_and_download():
     # Snapshot client_data state before test to verify cleanup later
     client_data_dir = os.path.join(os.getcwd(), main_module.DATA_DIR)
@@ -60,19 +65,19 @@ def test_real_calculation_through_the_actual_dll_and_download():
         assert _wait_until(got_result, timeout=30.0), "real DLL calculation did not complete in time"
 
         result = next(e for e in events if e['name'] == 'result')['args'][0]
-        assert result['kind'] == 'model_stl'
-        assert result['stl_gz_b64']
-        decoded = gzip.decompress(base64.b64decode(result['stl_gz_b64'])).decode('ascii')
-        assert 'solid' in decoded and 'endsolid' in decoded
+        assert result['kind'] == 'model_obj'
+        assert result['obj_gz_b64']
+        decoded = gzip.decompress(base64.b64decode(result['obj_gz_b64'])).decode('ascii')
+        assert _looks_like_obj(decoded)
 
         token = result['download_token']
         assert token
 
         download_client = main_module.app.test_client()
-        resp = download_client.post('/download-results', data={'token': token, 'file_type': 'stl'})
+        resp = download_client.post('/download-results', data={'token': token, 'file_type': 'obj'})
         assert resp.status_code == 200
         downloaded = resp.get_data(as_text=True)
-        assert 'solid' in downloaded and 'endsolid' in downloaded
+        assert _looks_like_obj(downloaded)
     finally:
         # Disconnecting triggers the real on_disconnect cleanup path
         # (removes client_data/<sid>/ and last_results/<token>/) — the

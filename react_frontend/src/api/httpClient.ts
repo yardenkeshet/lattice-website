@@ -5,22 +5,22 @@ import type { CalculateArgs } from './types';
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_LOCAL_URL || '';
 
 /**
- * Sends a .igs file to the server and returns the converted STL content
+ * Sends a .igs file to the server and returns the converted OBJ content
  * as a plain base64 string (no gzip wrapper).
  *
- * Expected server response: JSON { stl_b64: string }
+ * Expected server response: JSON { obj_b64: string }
  */
-export async function convertIgsToStl(file: File, tolerance: number = 0.0): Promise<string> {
+export async function convertIgsToObj(file: File, tolerance: number = 0.0): Promise<string> {
   const form = new FormData();
   form.append('file', file);
   form.append('tolerance', String(tolerance));
-  const response = await fetch(`${BASE_URL}/convert_igs_to_stl`, {
+  const response = await fetch(`${BASE_URL}/convert_igs_to_obj`, {
     method: 'POST',
     body: form,
   });
 
   if (import.meta.env.DEV) {
-    console.log("[DEV] convertIgsToStl got", response);
+    console.log("[DEV] convertIgsToObj got", response);
   }
 
   if (!response.ok) {
@@ -31,7 +31,7 @@ export async function convertIgsToStl(file: File, tolerance: number = 0.0): Prom
     throw new Error(message ?? `IGS conversion failed: ${response.status} ${response.statusText} ${response.body}`);
   }
   const data = await response.json();
-  return data.stl_b64 as string;
+  return data.obj_b64 as string;
 }
 
 /**

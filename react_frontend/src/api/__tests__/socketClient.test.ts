@@ -63,36 +63,36 @@ describe('LatticeSocketClient', () => {
     expect(mockEmit).toHaveBeenCalledWith('calculate_tile', payload)
   })
 
-  // 3. onResult() correctly discriminates TileSTLResult vs ModelSTLResult by `kind`
+  // 3. onResult() correctly discriminates TileOBJResult vs ModelOBJResult by `kind`
   describe('onResult()', () => {
-    it('delivers a TileSTLResult for a calculate_tile-style raw result (kind: tile_stl)', () => {
+    it('delivers a TileOBJResult for a calculate_tile-style raw result (kind: tile_obj)', () => {
       const handler = vi.fn()
       client.onResult(handler)
 
       // calculate_tile responses carry no download_token — tile previews aren't downloadable.
       const rawTile = {
-        kind: 'tile_stl',
+        kind: 'tile_obj',
         filename: 'MSExtrd.stl',
-        stl_gz_b64: 'base64data',
+        obj_gz_b64: 'base64data',
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
       }
       getHandler('result')(rawTile)
 
       expect(handler).toHaveBeenCalledOnce()
       const received = handler.mock.calls[0][0]
-      expect(received.kind).toBe('tile_stl')
-      expect(received.stl_gz_b64).toBe('base64data')
+      expect(received.kind).toBe('tile_obj')
+      expect(received.obj_gz_b64).toBe('base64data')
       expect(received.filename).toBe('MSExtrd.stl')
     })
 
-    it('delivers a ModelSTLResult for a calculate-style raw result (kind: model_stl)', () => {
+    it('delivers a ModelOBJResult for a calculate-style raw result (kind: model_obj)', () => {
       const handler = vi.fn()
       client.onResult(handler)
 
       const rawModel = {
-        kind: 'model_stl',
+        kind: 'model_obj',
         filename: 'MSExtrd.stl',
-        stl_gz_b64: 'base64data',
+        obj_gz_b64: 'base64data',
         download_token: 'tok-abc-123',
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
       }
@@ -100,18 +100,18 @@ describe('LatticeSocketClient', () => {
 
       expect(handler).toHaveBeenCalledOnce()
       const received = handler.mock.calls[0][0]
-      expect(received.kind).toBe('model_stl')
+      expect(received.kind).toBe('model_obj')
       expect(received.download_token).toBe('tok-abc-123')
     })
 
-    it('carries saved_input_paths through for a model_stl result', () => {
+    it('carries saved_input_paths through for a model_obj result', () => {
       const handler = vi.fn()
       client.onResult(handler)
 
       const rawStl = {
-        kind: 'model_stl',
+        kind: 'model_obj',
         filename: 'MSExtrd.stl',
-        stl_gz_b64: 'base64data',
+        obj_gz_b64: 'base64data',
         download_token: 'tok-1',
         saved_input_paths: ['client_data/sid1/abc_part.igs'],
         timings: { client_to_server_ms: 5, time_processed_ms: 100, time_compress_ms: 10, time_parsed_ms: 8, overall_ms: 123 },
@@ -169,7 +169,7 @@ describe('LatticeSocketClient', () => {
     // After unsubscribing, a raw result should NOT call the handler
     const rawStl = {
       filename: 'x.stl',
-      stl_gz_b64: 'xyz',
+      obj_gz_b64: 'xyz',
       timings: { client_to_server_ms: null, time_processed_ms: 1, time_compress_ms: 1, time_parsed_ms: 1, overall_ms: 3 },
     }
     getHandler('result')(rawStl)
@@ -254,9 +254,9 @@ describe('LatticeSocketClient', () => {
 
     // Simulate one raw 'result' event from server
     const rawResult = {
-      kind: 'model_stl',
+      kind: 'model_obj',
       filename: 'x',
-      stl_gz_b64: 'AA==',
+      obj_gz_b64: 'AA==',
       download_token: 't',
       timings: { client_to_server_ms: 1, time_processed_ms: 1, time_compress_ms: 1, time_parsed_ms: 1, overall_ms: 4 },
     }

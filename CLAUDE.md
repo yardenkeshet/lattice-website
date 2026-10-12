@@ -146,7 +146,7 @@ Every component in `components/ui/` has a `.stories.tsx` file alongside it.
 
 **`src/components/ViewerScene.tsx`** — React Three Fiber canvas. Accepts:
 - `uploadedFile` — raw `File` shown before calculation
-- `resultStlGzB64` — `base64(gzip(ASCII-STL))` from server; takes priority when set
+- `layers` — mesh layers as Blob URLs of OBJ text (server sends `base64(gzip(OBJ))`, decoded via `useObjBlobUrl`); parsed with `OBJLoader` and flattened to one geometry by `useObjGeometry`
 - `cameraMode` — `'perspective'` | `'orthographic'`
 - `zoom` — 10–500 (default 100); scroll-wheel fires `onZoomChange`
 - `onFileDrop` — called when user drags a `.stl`/`.obj`/`.3mf` file onto the canvas
@@ -155,7 +155,7 @@ Every component in `components/ui/` has a `.stories.tsx` file alongside it.
 
 | File | Exports |
 |------|---------|
-| `stl.ts` | `stlGzB64ToBlobUrl(s)` — decodes server STL payload to a Blob URL; `useStlBlobUrl(s)` — React hook that wraps it with automatic revocation |
+| `obj.ts` | `objGzB64ToBlobUrl(s)` — decodes server OBJ payload to a Blob URL; `useObjBlobUrl(s)` — React hook that wraps it with automatic revocation; `useObjGeometry(url)` — Suspense-loads an OBJ and merges it into one `BufferGeometry` |
 | `utils.ts` | General helpers (cn, etc.) |
 
 ### Typed API layer (`src/api/`)

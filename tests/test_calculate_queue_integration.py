@@ -44,7 +44,7 @@ def _install_fake_revolution(monkeypatch, delay=0.3):
     def _fake(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
         calls.append(time.time())
         time.sleep(delay)
-        return "solid fake\nendsolid fake\n", "MSRevolv.stl", "MSRevolv.igs"
+        return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRevolv.obj", "MSRevolv.igs"
 
     monkeypatch.setitem(main_module.CALC_MODE_DISPATCH, main_module.CALC_MODE_REVOLUTION, _fake)
     return calls
@@ -346,7 +346,7 @@ def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
     monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
 
     def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
-        return "solid fake\nendsolid fake\n", "MSRuled.stl", "MSRuled.igs"
+        return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRuled.obj", "MSRuled.igs"
 
     monkeypatch.setattr(main_module, 'do_Ruling', _fake_ruling)
 

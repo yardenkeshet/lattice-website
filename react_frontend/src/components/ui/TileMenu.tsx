@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
-import { useStlBlobUrl } from '../../lib/stl'
+import { useObjBlobUrl } from '../../lib/obj'
 import { type ValidationError } from '../../api/types'
 import { TileCard } from './TileCard'
 import { Slider } from './Slider'
@@ -20,10 +20,10 @@ export interface TileMenuProps {
   /** Current slider values for the selected tile type (2 or 3 numbers). */
   sliderValues: number[]
   /**
-   * base64( gzip( ASCII-STL ) ) from the server's calculateTile response.
+   * base64( gzip( OBJ ) ) from the server's calculateTile response.
    * Drives the 166px live preview.
    */
-  previewStlGzB64?: string
+  previewObjGzB64?: string
   onTileTypeChange: (type: TileType) => void
   onSliderChange: (values: number[]) => void
   /** Called on slider release or badge commit — triggers model recalculation. */
@@ -47,7 +47,7 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
     {
       tileType,
       sliderValues,
-      previewStlGzB64,
+      previewObjGzB64,
       onTileTypeChange,
       onSliderChange,
       onSliderCommit,
@@ -61,7 +61,7 @@ const TileMenuInner = React.forwardRef<HTMLDivElement, TileMenuProps>(
     },
     ref
   ) => {
-    const previewUrl = useStlBlobUrl(previewStlGzB64)
+    const previewUrl = useObjBlobUrl(previewObjGzB64)
     const defs = TILE_DEFS[tileType].sliders 
 
     const innerRadiusError =

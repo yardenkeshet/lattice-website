@@ -11,11 +11,11 @@ import { ViewerScene } from '../components/ViewerScene'
 import type { MeshLayer, ViewerSceneHandle, CameraSnapshot } from '../components/ViewerScene'
 import { getLatticeSocket } from '../api/socketClient'
 import { computeDisplayedLayers } from '../lib/displayedLayers'
-import { downloadResults, convertIgsToStl, logCalculation } from '../api/httpClient'
-import { stlTextToGzB64, useStlBlobUrl } from '../lib/stl'
+import { downloadResults, convertIgsToObj, logCalculation } from '../api/httpClient'
+import { meshTextToGzB64, useObjBlobUrl } from '../lib/obj'
 import { type CalcOverlayPhase, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
-import defaultTileUrl from '../assets/default_diagonal_tile.stl?url'
+import defaultTileUrl from '../assets/default_diagonal_tile.obj?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
   DEFAULT_TILE_TYPE, DEFAULT_CALC_MODE, DEFAULT_CAMERA_MODE,
@@ -34,22 +34,22 @@ import type { CalculateArgs, ValidationError } from '../api/types'
 /* ─── IGS conversion utility ─── */
 
 /**
- * Sends a .igs file to the server's convert_igs_to_stl endpoint for preview
+ * Sends a .igs file to the server's convert_igs_to_obj endpoint for preview
  * purposes, and also returns the original IGS bytes (base64) so the caller
  * can resend them at Calculate time — the backend no longer persists
  * uploaded files between requests.
  */
-async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ stlFile: File; igsB64: string }> {
-  const [stlB64, igsB64, ...rest] = await Promise.all([convertIgsToStl(file, tolerance), fileToBase64(file)])
+async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ objFile: File; igsB64: string }> {
+  const [objB64, igsB64, ...rest] = await Promise.all([convertIgsToObj(file, tolerance), fileToBase64(file)])
   if (import.meta.env.DEV) {
     console.log("rest:", rest)
   }
-  const binary = atob(stlB64)
+  const binary = atob(objB64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  const stlName = file.name.replace(/\.igs$/i, '.stl')
-  const stlFile = new File([bytes], stlName, { type: 'application/octet-stream' })
-  return { stlFile, igsB64 }
+  const objName = file.name.replace(/\.igs$/i, '.obj')
+  const objFile = new File([bytes], objName, { type: 'application/octet-stream' })
+  return { objFile, igsB64 }
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -163,11 +163,11 @@ export function ToolPage() {
   React.useEffect(() => () => { if (uploadedBlobUrl2) URL.revokeObjectURL(uploadedBlobUrl2) }, [uploadedBlobUrl2])
 
   /* ── Blob URL for calculation result (gz+b64 → Blob URL) ── */
-  const resultBlobUrl = useStlBlobUrl(resultGzB64)
+  const resultBlobUrl = useObjBlobUrl(resultGzB64)
 
   /* ── Macro shape preview state ── */
   const [macroShapeGzB64, setMacroShapeGzB64] = React.useState<string | null>(null)
-  const macroShapeBlobUrl = useStlBlobUrl(macroShapeGzB64)
+  const macroShapeBlobUrl = useObjBlobUrl(macroShapeGzB64)
   const pendingMacroCountRef   = React.useRef(0)
   const uploadedIgsB64Ref      = React.useRef<string | null>(null)
   React.useEffect(() => { uploadedIgsB64Ref.current = uploadedIgsB64 }, [uploadedIgsB64])
@@ -228,8 +228,8 @@ export function ToolPage() {
     fetch(defaultTileUrl)
       .then(r => r.text())
       .then(text => {
-        setTilePreviewGzB64(stlTextToGzB64(text))
-        setResultGzB64(stlTextToGzB64(text))
+        setTilePreviewGzB64(meshTextToGzB64(text))
+        setResultGzB64(meshTextToGzB64(text))
       })
       .catch(() => {/* preview stays null; first slider commit will populate it */})
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,30 +241,30 @@ export function ToolPage() {
       if (import.meta.env.DEV) {
         console.log("[DEV] socket: onResult: ", payload)
       }
-      if (payload.kind === 'tile_stl') {
+      if (payload.kind === 'tile_obj') {
         // Tile preview from calculate_tile — update mini-preview, and the main
         // viewer only when it has nothing else to show (no uploaded file or
         // calculation result, and not in ruling mode)
-        setTilePreviewGzB64(payload.stl_gz_b64)
+        setTilePreviewGzB64(payload.obj_gz_b64)
         if (calcModeRef.current !== RULING && !uploadedFileRef.current && !downloadTokenRef.current) {
-          setResultGzB64(payload.stl_gz_b64)
+          setResultGzB64(payload.obj_gz_b64)
           if (pendingResetKey.current !== null) {
             setViewerResetKey(pendingResetKey.current)
             pendingResetKey.current = null
           }
         }
       } else {
-        // model_stl — either a macro shape preview or a real calculation result
+        // model_obj — either a macro shape preview or a real calculation result
         if (pendingMacroCountRef.current > 0) {
           pendingMacroCountRef.current -= 1
-          if (payload.stl_gz_b64) {
-            setMacroShapeGzB64(payload.stl_gz_b64)
+          if (payload.obj_gz_b64) {
+            setMacroShapeGzB64(payload.obj_gz_b64)
           }
           // else: more responses still expected — intermediate response discarded silently
         } else {
           setIsCalculating(false)
           setOverlayPhase('calculating')
-          setResultGzB64(payload.stl_gz_b64)
+          setResultGzB64(payload.obj_gz_b64)
           setDownloadToken(payload.download_token)
           if (payload.args_echo) {
             pendingSnapshotRef.current = {
@@ -398,7 +398,7 @@ export function ToolPage() {
   /* ── Tessellation tolerance commit → re-convert surfaces + recalc tile, no Effect needed:
      this only ever fires from the Tolerance slider's onValueCommit (LatticeMenu.tsx),
      so the work belongs in the handler, not in an Effect reacting to the resulting state.
-     The surface re-conversion (HTTP, hits the DLL's IGS→STL path) and the tile
+     The surface re-conversion (HTTP, hits the DLL's IGS→OBJ path) and the tile
      recalculation (socket, hits the DLL's tile path) must not run concurrently —
      the DLL isn't thread-safe, so overlapping calls corrupt each other's output.
      Wait for the conversions to fully settle before firing calculateTile. ── */
@@ -409,8 +409,8 @@ export function ToolPage() {
     if (originalIgsFile) {
       conversions.push(
         convertIgsFile(originalIgsFile, v)
-          .then(({ stlFile, igsB64 }) => {
-            setUploadedFile(stlFile)
+          .then(({ objFile, igsB64 }) => {
+            setUploadedFile(objFile)
             setUploadedIgsB64(igsB64)
           })
           .catch(() => {/* ignore re-conversion failures silently */})
@@ -419,8 +419,8 @@ export function ToolPage() {
     if (originalIgsFile2) {
       conversions.push(
         convertIgsFile(originalIgsFile2, v)
-          .then(({ stlFile, igsB64 }) => {
-            setUploadedFile2(stlFile)
+          .then(({ objFile, igsB64 }) => {
+            setUploadedFile2(objFile)
             setUploadedIgsB64_2(igsB64)
           })
           .catch(() => {})
@@ -501,11 +501,11 @@ export function ToolPage() {
     try {
       const results = await Promise.all(files.map(f => convertIgsFile(f, igsConversionTolerance)))
       setOriginalIgsFile(files[0])
-      setUploadedFile(results[0].stlFile)
+      setUploadedFile(results[0].objFile)
       setUploadedIgsB64(results[0].igsB64)
       if (required === 2) {
         setOriginalIgsFile2(files[1])
-        setUploadedFile2(results[1].stlFile)
+        setUploadedFile2(results[1].objFile)
         setUploadedIgsB64_2(results[1].igsB64)
       }
     } catch (err) { setErrorMsg(err instanceof Error ? err.message : 'Failed to convert IGS file') }
@@ -733,7 +733,7 @@ export function ToolPage() {
           <TileMenu
             tileType={tileType}
             sliderValues={tileSliderValues}
-            previewStlGzB64={tilePreviewGzB64 ?? undefined}
+            previewObjGzB64={tilePreviewGzB64 ?? undefined}
             onTileTypeChange={handleTileTypeChange}
             onSliderChange={handleTileSliderChange}
             onSliderCommit={handleTileSliderCommit}

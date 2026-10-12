@@ -213,15 +213,15 @@ calc_logger.propagate = False
 # Utility functions
 # ──────────────────────────────────────────────────────────────────────────────
 
-def read_ascii_stl_file(path):
+def read_obj_file(path):
     try:
         with open(path, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        logger.warning(f"STL file not found: {path}")
+        logger.warning(f"OBJ file not found: {path}")
         return None
     except Exception as exc:
-        logger.exception(f"Error reading STL file {path}: {exc}")
+        logger.exception(f"Error reading OBJ file {path}: {exc}")
         return None
 
 
@@ -369,54 +369,54 @@ DOWNLOAD_CACHE = {}
 
 def do_revolution(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
-    out_stl = os.path.join(out_folder, "MSRevolv.stl").encode('ascii')
+    out_obj = os.path.join(out_folder, "MSRevolv.obj").encode('ascii')
     dll_error = dll_instance.from_revolution(
         igs_path.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
-        out_igs, out_stl,
+        out_igs, out_obj,
     )
     if dll_error:
         raise RuntimeError(dll_error)
-    stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-    return stl_content, "MSRevolv.stl", "MSRevolv.igs"
+    obj_content = read_obj_file(out_obj.decode('ascii'))
+    return obj_content, "MSRevolv.obj", "MSRevolv.igs"
 
 
 def do_extrusion(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
-    out_stl = os.path.join(out_folder, "MSExtrd.stl").encode('ascii')
+    out_obj = os.path.join(out_folder, "MSExtrd.obj").encode('ascii')
     dll_error = dll_instance.from_extrusion(
         igs_path.encode('ascii'),
         extrude_length,
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
-        out_igs, out_stl,
+        out_igs, out_obj,
     )
     if dll_error:
         raise RuntimeError(dll_error)
 
-    stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-    return stl_content, "MSExtrd.stl", "MSExtrd.igs"
+    obj_content = read_obj_file(out_obj.decode('ascii'))
+    return obj_content, "MSExtrd.obj", "MSExtrd.igs"
 
 
 def do_Ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
-    out_stl = os.path.join(out_folder, "MSRuled.stl").encode('ascii')
+    out_obj = os.path.join(out_folder, "MSRuled.obj").encode('ascii')
 
     dll_error = dll_instance.from_ruling(
         igs_path.encode('ascii'), igs_path2.encode('ascii'),
         num_tiles, grading_params,
         tile_type_int,
         tile_params,
-        out_igs, out_stl,
+        out_igs, out_obj,
     )
     if dll_error:
         raise RuntimeError(dll_error)
 
-    stl_content = read_ascii_stl_file(out_stl.decode('ascii'))
-    return stl_content, "MSRuled.stl", "MSRuled.igs"
+    obj_content = read_obj_file(out_obj.decode('ascii'))
+    return obj_content, "MSRuled.obj", "MSRuled.igs"
 
 
 CALC_MODE_DISPATCH = {
@@ -432,27 +432,27 @@ def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, 
         logger.error(f"[TILE] Unknown tile type: {tile_type_str}", extra=_log_extra(sid))
         return
 
-    stl_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.stl")
+    obj_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.obj")
     
     # Actual calculation
-    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, tolerance, stl_tile_path.encode('utf-8'))
+    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, tolerance, obj_tile_path.encode('utf-8'))
     
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
         return
 
     t_processed = time.time()
-    if not os.path.exists(stl_tile_path):
-        logger.error(f"[TILE] STL not found: {stl_tile_path}", extra=_log_extra(sid))
+    if not os.path.exists(obj_tile_path):
+        logger.error(f"[TILE] OBJ not found: {obj_tile_path}", extra=_log_extra(sid))
         emit('error', {'msg': 'Tile generation produced no output'})
         return
 
     try:
-        stl_content = read_ascii_stl_file(stl_tile_path)
+        obj_content = read_obj_file(obj_tile_path)
         try:
             buf = BytesIO()
             with gzip.GzipFile(fileobj=buf, mode='wb') as gz:
-                gz.write(stl_content.encode('utf-8'))
+                gz.write(obj_content.encode('utf-8'))
             compressed = buf.getvalue()
         except Exception:
             logger.exception("Tile compression failed", extra=_log_extra(sid))
@@ -476,16 +476,16 @@ def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, 
             extra=_log_extra(sid),
         )
         emit('result', {
-            'filename': 'tile.stl',
-            'kind': 'tile_stl',
-            'stl_gz_b64': compressed_b64,
+            'filename': 'tile.obj',
+            'kind': 'tile_obj',
+            'obj_gz_b64': compressed_b64,
             'timings': timings,
         })
     finally:
         try:
-            os.remove(stl_tile_path)
+            os.remove(obj_tile_path)
         except OSError:
-            logger.warning(f"[TMP] failed to remove temp file: {stl_tile_path}")
+            logger.warning(f"[TMP] failed to remove temp file: {obj_tile_path}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -821,18 +821,18 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
         with temp_igs_file(igs_bytes) as igs_path:
             if calc_mode == CALC_MODE_RULING:
                 with temp_igs_file(igs_bytes2) as igs_path2:
-                    stl_content, out_stl_name, out_igs_name = do_Ruling(
+                    obj_content, out_obj_name, out_igs_name = do_Ruling(
                         dll_instance, out_folder, igs_path, igs_path2,
                         curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     )
             elif calc_mode == CALC_MODE_EXTRUSION:
-                stl_content, out_stl_name, out_igs_name = do_extrusion(
+                obj_content, out_obj_name, out_igs_name = do_extrusion(
                     dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
                     extrude_length,
                 )
             else:
                 dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
-                stl_content, out_stl_name, out_igs_name = dispatch_fn(
+                obj_content, out_obj_name, out_igs_name = dispatch_fn(
                     dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
                 )
     except FileNotFoundError as exc:
@@ -850,14 +850,14 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     t_dll_end = time.time()
     logger.debug(f"[CALC] Native engine finished in {round((t_dll_end - t_dll_start) * 1000)}ms.", extra=_log_extra(sid))
 
-    if not stl_content:
+    if not obj_content:
         logger.error("[CALC] The native engine returned successfully but produced no geometry.", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
 
     return {
-        'stl_content': stl_content, 'out_stl_name': out_stl_name, 'out_igs_name': out_igs_name,
+        'obj_content': obj_content, 'out_obj_name': out_obj_name, 'out_igs_name': out_igs_name,
         'out_folder': out_folder, 'new_token': new_token,
         't_dll_start': t_dll_start, 't_dll_end': t_dll_end,
     }
@@ -876,8 +876,8 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         t_received         = payload['t_received']
         saved_input_paths  = payload.get('saved_input_paths', [])
 
-        stl_content  = dll_result['stl_content']
-        out_stl_name = dll_result['out_stl_name']
+        obj_content  = dll_result['obj_content']
+        out_obj_name = dll_result['out_obj_name']
         out_igs_name = dll_result['out_igs_name']
         out_folder   = dll_result['out_folder']
         new_token    = dll_result['new_token']
@@ -896,7 +896,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         logger.debug("[CALC] Compressing the result for transfer…", extra=_log_extra(sid))
         try:
             t_comp_start = time.time()
-            compressed_b64 = compress_text_to_b64_gz(stl_content)
+            compressed_b64 = compress_text_to_b64_gz(obj_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
             socketio.emit('update', {'type': 'progress_sending'}, room=sid)
@@ -918,7 +918,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             return
 
         # Success — register the new result and retire the previous one for this session.
-        DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_stl': out_stl_name, 'out_igs': out_igs_name}
+        DOWNLOAD_CACHE[new_token] = {'sid': sid, 'out_obj': out_obj_name, 'out_igs': out_igs_name}
         old_token = client_state.get(sid, {}).get('current_token')
         if old_token and old_token != new_token:
             DOWNLOAD_CACHE.pop(old_token, None)
@@ -935,9 +935,9 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         }
 
         socketio.emit('result', {
-            'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.stl',
-            'kind':             'model_stl',
-            'stl_gz_b64':       compressed_b64,
+            'filename_reduced': os.path.splitext(os.path.basename(filename))[0] + '_reduced.obj',
+            'kind':             'model_obj',
+            'obj_gz_b64':       compressed_b64,
             'timings':          timings,
             'args_echo':        args,
             'filename':         filename,
@@ -1017,9 +1017,9 @@ def handle_calculate_tile(data):
         emit('error', {'msg': f'Bad tile request: {exc}'})
 
 
-@app.route('/convert_igs_to_stl', methods=['POST'])
-def handle_convert_igs_to_stl():
-    logger.debug("[IGS2STL] request received", extra=_http_log_extra())
+@app.route('/convert_igs_to_obj', methods=['POST'])
+def handle_convert_igs_to_obj():
+    logger.debug("[IGS2OBJ] request received", extra=_http_log_extra())
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -1035,43 +1035,43 @@ def handle_convert_igs_to_stl():
     # sid is deliberately left untouched — its progress callbacks' `if not
     # self._current_sid: return` guard makes that a safe no-op.
     if not dll_background_lane.acquire_blocking(timeout=30.0):
-        logger.warning("[IGS2STL] DLL busy — timed out waiting for the background lane")
+        logger.warning("[IGS2OBJ] DLL busy — timed out waiting for the background lane")
         return jsonify({'error': 'Server busy, please try again shortly'}), 503
 
     try:
         try:
             with temp_igs_file(igs_bytes) as igs_path:
-                stl_path = igs_path[:-4] + '_preview.stl'
+                obj_path = igs_path[:-4] + '_preview.obj'
                 t_igs_start = time.time()
                 err = dll_background.iges2stl(igs_path.encode('ascii'),
-                                               stl_path.encode('ascii'),
+                                               obj_path.encode('ascii'),
                                                tolerance)
                 t_igs_ms = round((time.time() - t_igs_start) * 1000)
                 if err:
-                    logger.warning(f"[IGS2STL] DLL warning: {err}")
+                    logger.warning(f"[IGS2OBJ] DLL warning: {err}")
                     return jsonify({'error': err or 'IGS conversion failed', 'message' : err or 'IGS conversion failed'}), 500
-                if not os.path.exists(stl_path):
-                    logger.warning(f"[IGS2STL] DLL warning: no file, {err}")
+                if not os.path.exists(obj_path):
+                    logger.warning(f"[IGS2OBJ] DLL warning: no file, {err}")
                     return jsonify({'error': err or 'IGS conversion produced no output'}), 500
 
                 try:
-                    with open(stl_path, 'rb') as f:
-                        stl_content = f.read()
+                    with open(obj_path, 'rb') as f:
+                        obj_content = f.read()
                 finally:
                     try:
-                        os.remove(stl_path)
+                        os.remove(obj_path)
                     except OSError:
-                        logger.warning(f"[TMP] failed to remove temp file: {stl_path}")
+                        logger.warning(f"[TMP] failed to remove temp file: {obj_path}")
 
-            b64_str = base64.b64encode(stl_content).decode('utf-8')
-            logger.info(f"[IGS2STL] {len(stl_content) // 1024}KB  {t_igs_ms}ms")
-            response = {'stl_b64': b64_str}
+            b64_str = base64.b64encode(obj_content).decode('utf-8')
+            logger.info(f"[IGS2OBJ] {len(obj_content) // 1024}KB  {t_igs_ms}ms")
+            response = {'obj_b64': b64_str}
             if err:
                 response['warning'] = err
             return jsonify(response)
 
         except Exception as exc:
-            logger.exception(f"[IGS2STL] {exc}")
+            logger.exception(f"[IGS2OBJ] {exc}")
             return jsonify({'error': f'Internal server error: {exc}'}), 500
     finally:
         dll_background_lane.release()
@@ -1187,9 +1187,12 @@ def download_results():
     sid        = output_map['sid']
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, token)
 
-    if file_type == 'stl':
-        filename = output_map['out_stl']
-        mimetype = 'model/stl'
+    # 'stl' is still accepted as an alias: the React frontend's "Export STL"
+    # button sends file_type='stl', but the DLL now writes OBJ meshes, so the
+    # mesh download is always the .obj file.
+    if file_type in ('obj', 'stl'):
+        filename = output_map['out_obj']
+        mimetype = 'model/obj'
     elif file_type == 'igs':
         filename = output_map['out_igs']
         mimetype = 'application/octet-stream'

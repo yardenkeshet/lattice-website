@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Canvas, useLoader, useThree } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Center } from '@react-three/drei'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { useObjGeometry } from '../../lib/obj'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from '../../lib/utils'
 import * as THREE from 'three'
@@ -10,10 +10,10 @@ import { ShadedMaterial } from '../ShadedMaterial'
 import { DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../../lib/parameters'
 
 /* ─── Error boundary ───
-   A malformed/truncated STL (e.g. from a server-side race writing the temp
-   file) throws inside STLLoader's Suspense resource. Without this boundary
+   A malformed/truncated OBJ (e.g. from a server-side race writing the temp
+   file) throws inside OBJLoader's Suspense resource. Without this boundary
    the error escapes the Canvas and unmounts the whole React tree. */
-class STLErrorBoundary extends React.Component<
+class MeshErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { hasError: boolean }
 > {
@@ -28,7 +28,7 @@ class STLErrorBoundary extends React.Component<
 
 export interface TileCardProps {
   /**
-   * URL or path to the STL file to display.
+   * URL or path to the OBJ file to display.
    * When undefined, renders a placeholder geometry (useful for Storybook).
    */
   modelUrl?: string
@@ -184,18 +184,18 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
                 />
               )}
 
-              <STLErrorBoundary key={modelUrl} fallback={
+              <MeshErrorBoundary key={modelUrl} fallback={
                 <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
               }>
                 <React.Suspense fallback={modelUrl ? null : (
                   <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
                 )}>
                   {modelUrl
-                    ? <STLModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
+                    ? <MeshModel url={modelUrl} color={meshColor} fitKey={cameraResetKey} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
                     : <PlaceholderMesh color={meshColor} shadingMode={shadingMode} specularGray={specularGray} shininess={shininess} />
                   }
                 </React.Suspense>
-              </STLErrorBoundary>
+              </MeshErrorBoundary>
             </Canvas>
           )
         }
@@ -213,9 +213,9 @@ const TileCard = React.forwardRef<HTMLDivElement, TileCardProps>(
 
 TileCard.displayName = 'TileCard'
 
-/* ─── STL model loader ─── */
+/* ─── OBJ model loader ─── */
 
-interface STLModelProps {
+interface MeshModelProps {
   url: string
   color: string
   fitKey?: string
@@ -224,11 +224,11 @@ interface STLModelProps {
   shininess?: number
 }
 
-function STLModel({
+function MeshModel({
   url, color, fitKey,
   shadingMode = DEFAULT_SHADING_MODE, specularGray = DEFAULT_SPECULAR_GRAY, shininess = DEFAULT_SHININESS,
-}: STLModelProps) {
-  const geometry = useLoader(STLLoader, url)
+}: MeshModelProps) {
+  const geometry = useObjGeometry(url)
   const ref = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
   const controls               = useThree(s => s.controls) as any

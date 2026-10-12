@@ -1,4 +1,4 @@
-"""Finding 1 (whole-branch review): /convert_igs_to_stl must go through
+"""Finding 1 (whole-branch review): /convert_igs_to_obj must go through
 CalcQueueManager's DLL slot like calculate/calculate_tile do, and must
 release that slot on every exit path."""
 import io
@@ -11,14 +11,14 @@ import main as main_module
 def _post(client, **overrides):
     data = {'file': (io.BytesIO(b'dummy igs bytes'), 'part.igs')}
     data.update(overrides.pop('extra_form', {}))
-    return client.post('/convert_igs_to_stl', data=data, content_type='multipart/form-data')
+    return client.post('/convert_igs_to_obj', data=data, content_type='multipart/form-data')
 
 
-def _fake_dll_success(stl_bytes=b'solid fake\nendsolid fake\n'):
-    def _fake(igs_file, stl_file, tolerance):
-        stl_path = stl_file.decode('ascii')
-        with open(stl_path, 'wb') as f:
-            f.write(stl_bytes)
+def _fake_dll_success(obj_bytes=b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'):
+    def _fake(igs_file, obj_file, tolerance):
+        obj_path = obj_file.decode('ascii')
+        with open(obj_path, 'wb') as f:
+            f.write(obj_bytes)
         return None
     return _fake
 
@@ -30,14 +30,14 @@ def test_success_releases_dll_slot(monkeypatch):
     resp = _post(client)
 
     assert resp.status_code == 200
-    assert 'stl_b64' in resp.get_json()
+    assert 'obj_b64' in resp.get_json()
     # Slot must be free again — provably released, not just "probably".
     assert main_module.dll_background_lane.try_acquire() is True
     main_module.dll_background_lane.release()
 
 
 def test_dll_error_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, stl_file, tolerance):
+    def _fake(igs_file, obj_file, tolerance):
         return "DLL said no"
     monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
@@ -50,8 +50,8 @@ def test_dll_error_releases_dll_slot(monkeypatch):
 
 
 def test_missing_output_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, stl_file, tolerance):
-        return None  # "succeeds" but never writes stl_file
+    def _fake(igs_file, obj_file, tolerance):
+        return None  # "succeeds" but never writes obj_file
     monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
 
@@ -63,7 +63,7 @@ def test_missing_output_releases_dll_slot(monkeypatch):
 
 
 def test_internal_exception_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, stl_file, tolerance):
+    def _fake(igs_file, obj_file, tolerance):
         raise RuntimeError('boom')
     monkeypatch.setattr(main_module.dll_background, 'iges2stl', _fake)
     client = main_module.app.test_client()
@@ -121,4 +121,4 @@ def test_entry_is_logged_at_debug_level(monkeypatch, caplog):
     with caplog.at_level(_logging.DEBUG, logger='lattice'):
         _post(client)
 
-    assert any('[IGS2STL] request received' in r.message for r in caplog.records)
+    assert any('[IGS2OBJ] request received' in r.message for r in caplog.records)

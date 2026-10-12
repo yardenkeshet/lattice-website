@@ -3,8 +3,8 @@ import type {
   CalculatePayload,
   CalculateTilePayload,
   ResultPayload,
-  TileSTLResult,
-  ModelSTLResult,
+  TileOBJResult,
+  ModelOBJResult,
   ErrorPayload,
   UpdatePayload,
   LogLine,
@@ -17,11 +17,11 @@ import type {
 interface RawResult {
   kind?: string;
   filename?: string;
-  stl_gz_b64?: string;
-  timings?: TileSTLResult['timings'];
-  args_echo?: ModelSTLResult['args_echo'];
+  obj_gz_b64?: string;
+  timings?: TileOBJResult['timings'];
+  args_echo?: ModelOBJResult['args_echo'];
   download_token?: string;
-  saved_input_paths?: ModelSTLResult['saved_input_paths'];
+  saved_input_paths?: ModelOBJResult['saved_input_paths'];
 }
 
 interface RawError {
@@ -92,10 +92,10 @@ export class LatticeSocketClient {
   }
 
   /**
-   * Unified result handler — receives TileSTLResult and ModelSTLResult.
+   * Unified result handler — receives TileOBJResult and ModelOBJResult.
    * Use the `kind` discriminant to branch:
-   *   if (payload.kind === 'tile_stl') { ... }
-   *   if (payload.kind === 'model_stl') { ... }
+   *   if (payload.kind === 'tile_obj') { ... }
+   *   if (payload.kind === 'model_obj') { ... }
    */
   onResult(handler: ResultHandler): () => void {
     this.resultHandlers.add(handler);
@@ -139,20 +139,20 @@ export class LatticeSocketClient {
   private resultHandlers = new Set<ResultHandler>();
 
   private handleRawResult(raw: RawResult): void {
-    const payload: ResultPayload = raw.kind === 'model_stl'
+    const payload: ResultPayload = raw.kind === 'model_obj'
       ? {
-          kind: 'model_stl',
+          kind: 'model_obj',
           filename: raw.filename ?? '',
-          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          obj_gz_b64: raw.obj_gz_b64 ?? '',
           download_token: raw.download_token ?? '',
           timings: raw.timings!,
           args_echo: raw.args_echo,
           saved_input_paths: raw.saved_input_paths,
         }
       : {
-          kind: 'tile_stl',
+          kind: 'tile_obj',
           filename: raw.filename ?? '',
-          stl_gz_b64: raw.stl_gz_b64 ?? '',
+          obj_gz_b64: raw.obj_gz_b64 ?? '',
           timings: raw.timings!,
         };
 

@@ -47,15 +47,15 @@ Downloads the result files for a completed calculation as a ZIP archive.
 
 **Response**  
 - `200 application/zip` — `results.zip` containing two files:
-  - `<name>.stl` — output lattice mesh (ASCII STL)
+  - `<name>.obj` — output lattice mesh (OBJ)
   - `<name>.igs` — output IGES surface file
 - `302` redirect to `/` if the token is missing, invalid, or already consumed.
 
 > **Token is single-use.** It is removed from the server cache on first redemption.  
 > The zip filenames vary by operation:
-> - CROSS → `MSRevolv.stl` / `MSRevolv.igs`
-> - DIAGONAL → `MSExtrd.stl` / `MSExtrd.igs`
-> - CROSS_DIAGONAL → `MSRuled.stl` / `MSRuled.igs`
+> - CROSS → `MSRevolv.obj` / `MSRevolv.igs`
+> - DIAGONAL → `MSExtrd.obj` / `MSExtrd.igs`
+> - CROSS_DIAGONAL → `MSRuled.obj` / `MSRuled.igs`
 
 ---
 
@@ -91,9 +91,9 @@ Triggers a full lattice generation from an uploaded STL surface.
 
 | `tileType` value  | DLL function called        | Output filenames              |
 |-------------------|----------------------------|-------------------------------|
-| `"cross"`         | `MSDLLMSFromRevolution`    | `MSRevolv.stl`, `MSRevolv.igs` |
-| `"diagonal"`      | `MSDLLMSFromExtrusion`     | `MSExtrd.stl`, `MSExtrd.igs`  |
-| `"cross_diagonal"`| `MSDLLMSFromRuling`        | `MSRuled.stl`, `MSRuled.igs`  |
+| `"cross"`         | `MSDLLMSFromRevolution`    | `MSRevolv.obj`, `MSRevolv.igs` |
+| `"diagonal"`      | `MSDLLMSFromExtrusion`     | `MSExtrd.obj`, `MSExtrd.igs`  |
+| `"cross_diagonal"`| `MSDLLMSFromRuling`        | `MSRuled.obj`, `MSRuled.igs`  |
 
 > Note: `nt1`/`nt2`/`nt3` and `g1`/`g2` are extracted but the current DLL calls
 > use hardcoded internal values — these parameters are wired up but not yet forwarded.
@@ -116,7 +116,7 @@ Generates a standalone tile preview (no surface input needed).
 }
 ```
 
-**Server responds with one `result` emission** containing the tile STL.
+**Server responds with one `result` emission** containing the tile OBJ.
 
 ---
 
@@ -125,7 +125,7 @@ Generates a standalone tile preview (no surface input needed).
 #### `result`
 Sent by the server after both `calculate` and `calculate_tile`.
 
-> **`calculate` emits `result` exactly once**, with a payload that carries both the STL
+> **`calculate` emits `result` exactly once**, with a payload that carries both the OBJ mesh
 > mesh data and the download token together.
 >
 > **React frontend:** normalized by `LatticeSocketClient` into a `ResultPayload`
@@ -134,11 +134,11 @@ Sent by the server after both `calculate` and `calculate_tile`.
 > shape-checking needed. TypeScript types: `STLResult`, `TokenResult`, `ResultPayload`
 > in `react_frontend/src/api/types.ts`.
 
-**`calculate` emission (STL data and download token together):**
+**`calculate` emission (OBJ preview data and download token together):**
 ```jsonc
 {
-  "filename": "mypart_reduced.stl",
-  "stl_gz_b64": "<base64(gzip(ascii-stl))>",  // gzip-compressed ASCII STL, base64-encoded
+  "filename": "mypart_reduced.obj",
+  "obj_gz_b64": "<base64(gzip(obj))>",  // gzip-compressed OBJ text, base64-encoded
   "download_token": "550e8400-e29b-41d4-a716-446655440000",  // UUID v4
   "timings": {
     "client_to_server_ms": 42.1,   // round-trip send time (null if client_ts not provided)
@@ -155,8 +155,8 @@ Sent by the server after both `calculate` and `calculate_tile`.
 **`calculate_tile` emission:**
 ```jsonc
 {
-  "filename": "<path to tile stl on server>",
-  "stl_gz_b64": "<base64(gzip(ascii-stl))>",
+  "filename": "<path to tile obj on server>",
+  "obj_gz_b64": "<base64(gzip(obj))>",
   "timings": {
     "client_to_server_ms": 0,
     "time_processed_ms": 310.5,

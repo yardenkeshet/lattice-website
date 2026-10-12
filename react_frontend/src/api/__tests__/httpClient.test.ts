@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { downloadResults, logCalculation } from '../httpClient'
+import { convertIgsToObj, downloadResults, logCalculation } from '../httpClient'
 import type { CalculateArgs } from '../types'
 
 /* ─── Tests ─── */
@@ -60,6 +60,39 @@ describe('downloadResults()', () => {
 
     expect(anchorMock.download).toBe('results.stl')
     expect(anchorMock.click).toHaveBeenCalledOnce()
+  })
+})
+
+describe('convertIgsToObj()', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('POSTs the file + tolerance to /convert_igs_to_obj and returns obj_b64', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"obj_b64":"b2JqLWJ5dGVz"}', { status: 200 }))
+
+    const file = new File(['igs-bytes'], 'part.igs')
+    const result = await convertIgsToObj(file, 0.5)
+
+    expect(result).toBe('b2JqLWJ5dGVz')
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(url).toMatch(/\/convert_igs_to_obj$/)
+    expect(init.method).toBe('POST')
+    const form = init.body as FormData
+    expect((form.get('file') as File).name).toBe('part.igs')
+    expect(form.get('tolerance')).toBe('0.5')
+  })
+
+  it('throws with the server-provided error message on a non-ok status', async () => {
+    fetchSpy.mockResolvedValue(new Response('{"error":"bad surface"}', { status: 400 }))
+
+    await expect(convertIgsToObj(new File(['x'], 'bad.igs'))).rejects.toThrow('bad surface')
   })
 })
 

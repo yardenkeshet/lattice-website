@@ -1,13 +1,13 @@
 import * as React from 'react'
-import { Canvas, useThree, useLoader } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import * as THREE from 'three'
 import {
   perspectiveFitDistance, orthographicFitZoom,
   orthoZoomForPerspectiveDistance, perspectiveDistanceForOrthoZoom,
 } from '../lib/cameraFit'
 import { ShadedMaterial } from './ShadedMaterial'
+import { useObjGeometry } from '../lib/obj'
 import { ACCEPTED_FILE_EXT, DEFAULT_SHADING_MODE, DEFAULT_SPECULAR_GRAY, DEFAULT_SHININESS, type ShadingMode } from '../lib/parameters'
 
 /* ─── Public API ─── */
@@ -96,7 +96,7 @@ const SCROLL_ZOOM_STEP = 10
 const SCROLL_ZOOM_MIN  = 10
 const SCROLL_ZOOM_MAX  = 500
 
-class STLErrorBoundary extends React.Component<
+class MeshErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
 > {
@@ -185,14 +185,14 @@ function ViewerSceneFn({
     return () => el.removeEventListener('wheel', handler)
   }, [onZoomChange])
 
-  // Called by STLMesh after a perspective auto-fit.
+  // Called by MeshModel after a perspective auto-fit.
   const handleFitDistance = React.useCallback((d: number) => {
     setBaseZ(d)
     onZoomChange?.(100)
     onAutoFitComplete?.(canvasElRef.current)
   }, [onZoomChange, onAutoFitComplete])
 
-  // Called by STLMesh after an orthographic auto-fit.
+  // Called by MeshModel after an orthographic auto-fit.
   const handleFitOrthoZoom = React.useCallback((z: number) => {
     setBaseOrthoZoom(z)
     onZoomChange?.(100)
@@ -322,9 +322,9 @@ function ViewerSceneFn({
             // CameraToggleRestore's comment).
             const fitKey = isFitLayer && !pendingCameraSnapshot ? cameraResetKey : undefined
             return (
-              <STLErrorBoundary key={layer.blobUrl}>
+              <MeshErrorBoundary key={layer.blobUrl}>
                 <React.Suspense fallback={null}>
-                  <STLMesh
+                  <MeshModel
                     url={layer.blobUrl}
                     fitKey={fitKey}
                     onFitDistance={isFitLayer ? handleFitDistance : undefined}
@@ -338,7 +338,7 @@ function ViewerSceneFn({
                     shininess={shininess}
                   />
                 </React.Suspense>
-              </STLErrorBoundary>
+              </MeshErrorBoundary>
             )
           })
         })()}
@@ -347,7 +347,7 @@ function ViewerSceneFn({
 
         {/* Last child so its layout effect runs after OrbitControls has
             registered itself, giving the restored position/target/zoom
-            final say. STLMesh's own auto-fit is suppressed for this mount
+            final say. MeshModel's own auto-fit is suppressed for this mount
             (see fitKey below) rather than merely out-ordered — letting it
             run and reapplying afterward isn't enough, since its onFitDistance/
             onFitOrthoZoom callbacks update baseZ/baseOrthoZoom state, which
@@ -480,7 +480,7 @@ function CameraZoom({
 
 /* ─── Layers invalidator ───
    Forces a repaint whenever the layer set itself changes, independent of any
-   individual STLMesh's own effects — so a removed layer can't leave a stale
+   individual MeshModel's own effects — so a removed layer can't leave a stale
    frame on screen under frameloop="demand". */
 
 function LayersInvalidator({ layers }: { layers: MeshLayer[] }) {
@@ -494,9 +494,9 @@ function LayersInvalidator({ layers }: { layers: MeshLayer[] }) {
   return null
 }
 
-/* ─── STL mesh loader ─── */
+/* ─── OBJ mesh loader ─── */
 
-interface STLMeshProps {
+interface MeshModelProps {
   url: string
   fitKey?: string
   onFitDistance?:  (d: number) => void
@@ -510,11 +510,11 @@ interface STLMeshProps {
   shininess?: number
 }
 
-function STLMesh({
+function MeshModel({
   url, fitKey, onFitDistance, onFitOrthoZoom, meshColor, opacity = 1, externalNorm, onNormalized,
   shadingMode = DEFAULT_SHADING_MODE, specularGray = DEFAULT_SPECULAR_GRAY, shininess = DEFAULT_SHININESS,
-}: STLMeshProps) {
-  const geometry = useLoader(STLLoader, url)
+}: MeshModelProps) {
+  const geometry = useObjGeometry(url)
   const meshRef = React.useRef<THREE.Mesh>(null)
   const { camera, invalidate } = useThree()
   const controls               = useThree(s => s.controls) as any

@@ -45,8 +45,8 @@ export interface CalculateTilePayload {
 
 // ─── result event (server → client) ──────────────────────────────────────────
 //
-// calculate_tile  → one TileSTLResult  (kind: 'tile_stl')
-// calculate       → one ModelSTLResult (kind: 'model_stl', carries STL + download_token)
+// calculate_tile  → one TileOBJResult  (kind: 'tile_obj')
+// calculate       → one ModelOBJResult (kind: 'model_obj', carries OBJ + download_token)
 
 export interface Timings {
   /** null when client_ts was not provided in the request */
@@ -58,20 +58,20 @@ export interface Timings {
 }
 
 /** Emitted by calculate_tile — tile preview geometry only. */
-export interface TileSTLResult {
-  kind: 'tile_stl';
+export interface TileOBJResult {
+  kind: 'tile_obj';
   filename: string;
-  /** base64( gzip( ASCII-STL ) ) */
-  stl_gz_b64: string;
+  /** base64( gzip( OBJ ) ) */
+  obj_gz_b64: string;
   timings: Timings;
 }
 
 /** Emitted by calculate — full lattice result with download token. */
-export interface ModelSTLResult {
-  kind: 'model_stl';
+export interface ModelOBJResult {
+  kind: 'model_obj';
   filename: string;
-  /** base64( gzip( ASCII-STL ) ) */
-  stl_gz_b64: string;
+  /** base64( gzip( OBJ ) ) */
+  obj_gz_b64: string;
   download_token: string;
   timings: Timings;
   args_echo?: CalculateArgs;
@@ -79,7 +79,7 @@ export interface ModelSTLResult {
   saved_input_paths?: string[];
 }
 
-export type ResultPayload = TileSTLResult | ModelSTLResult;
+export type ResultPayload = TileOBJResult | ModelOBJResult;
 
 // ─── queue_status / queue_rejected events (server → client) ─────────────────
 //

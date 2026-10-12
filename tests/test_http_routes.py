@@ -92,8 +92,8 @@ def test_download_results_happy_path(monkeypatch, tmp_path):
     token = 'sanity-test-token'
     out_folder = tmp_path / token
     out_folder.mkdir()
-    stl_path = out_folder / 'result.stl'
-    stl_path.write_bytes(b'solid sanity\nendsolid sanity\n')
+    obj_path = out_folder / 'result.obj'
+    obj_path.write_bytes(b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')
 
     # os.path.join(os.getcwd(), LAST_RESULTS_DIR, token) resets to the
     # absolute tmp_path once LAST_RESULTS_DIR itself is absolute — this is
@@ -102,23 +102,30 @@ def test_download_results_happy_path(monkeypatch, tmp_path):
     # route to tmp_path without needing to also patch os.getcwd().
     monkeypatch.setattr(main_module, 'LAST_RESULTS_DIR', str(tmp_path))
     monkeypatch.setitem(main_module.DOWNLOAD_CACHE, token, {
-        'sid': 'sanity-sid', 'out_stl': 'result.stl', 'out_igs': 'result.igs',
+        'sid': 'sanity-sid', 'out_obj': 'result.obj', 'out_igs': 'result.igs',
     })
 
     client = main_module.app.test_client()
+    resp = client.post('/download-results', data={'token': token, 'file_type': 'obj'})
+    assert resp.status_code == 200
+    assert resp.mimetype == 'model/obj'
+    assert resp.get_data(as_text=True) == 'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'
+
+    # The React frontend's "Export STL" button still sends file_type='stl';
+    # it gets the same OBJ mesh.
     resp = client.post('/download-results', data={'token': token, 'file_type': 'stl'})
     assert resp.status_code == 200
-    assert resp.mimetype == 'model/stl'
-    assert resp.get_data(as_text=True) == 'solid sanity\nendsolid sanity\n'
+    assert resp.mimetype == 'model/obj'
+    assert 'result.obj' in resp.headers['Content-Disposition']
 
 
 def test_download_results_unknown_file_type_is_400(monkeypatch, tmp_path):
     token = 'sanity-test-token-2'
     monkeypatch.setattr(main_module, 'LAST_RESULTS_DIR', str(tmp_path))
     monkeypatch.setitem(main_module.DOWNLOAD_CACHE, token, {
-        'sid': 'sanity-sid', 'out_stl': 'result.stl', 'out_igs': 'result.igs',
+        'sid': 'sanity-sid', 'out_obj': 'result.obj', 'out_igs': 'result.igs',
     })
 
     client = main_module.app.test_client()
-    resp = client.post('/download-results', data={'token': token, 'file_type': 'obj'})
+    resp = client.post('/download-results', data={'token': token, 'file_type': 'step'})
     assert resp.status_code == 400
