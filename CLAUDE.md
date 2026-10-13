@@ -12,7 +12,7 @@ Serves on `http://localhost:5003` by default (set `BACKEND_PORT` in the root `.e
 
 Use the `.venv` virtual environment (Python 3.13). Install dependencies:
 ```bash
-pip install flask flask-socketio numpy python-dotenv
+pip install flask flask-socketio simple-websocket numpy python-dotenv
 ```
 
 ## Testing

@@ -24,6 +24,7 @@ from dll_lane import BackgroundDllLane
 from flask import Flask, render_template, send_file, jsonify, request
 from flask_socketio import SocketIO, emit
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tile-type constants and map
@@ -56,6 +57,9 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 _ap = argparse.ArgumentParser(description='Lattice website backend', add_help=True)
 _ap.add_argument('--port', type=int, default=int(os.environ.get('BACKEND_PORT', 5003)),
                  help='Backend listen port (default: BACKEND_PORT from .env, else 5003)')
+_ap.add_argument('--host', default=os.environ.get('BACKEND_HOST', '0.0.0.0'),
+                 help='Backend bind address (default: BACKEND_HOST from .env, else 0.0.0.0). '
+                      'Use 127.0.0.1 behind nginx so the port is reachable only through the proxy.')
 _ap.add_argument('--frontend-port', type=int, default=5173, help='Frontend dev server port for CORS (default: 5173)')
 _cli_args, _ = _ap.parse_known_args()
 
@@ -79,6 +83,13 @@ socketio = SocketIO(
     ping_interval=25,
     ping_timeout=120,
 )
+
+# Behind nginx, REMOTE_ADDR is always 127.0.0.1 — trust one hop of
+# X-Forwarded-For/-Proto/-Host so logs show the real client IP. Applied after
+# SocketIO() so it wraps the Socket.IO middleware too (socket handlers read
+# request.environ['REMOTE_ADDR']). Without a proxy the headers are absent and
+# this is a no-op.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
 @app.errorhandler(Exception)
@@ -1109,6 +1120,10 @@ def download_results():
 
 if __name__ == '__main__':
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    port = _cli_args.port
-    logger.info(f"Server starting on http://localhost:{port}")
-    socketio.run(app, host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    host, port = _cli_args.host, _cli_args.port
+    logger.info(f"Server starting on http://{host}:{port}")
+    # allow_unsafe_werkzeug: Flask-SocketIO refuses to start Werkzeug when
+    # stdin isn't a TTY (scheduled task, service wrapper, nohup...). We run it
+    # deliberately behind nginx, which is the production-facing server.
+    socketio.run(app, host=host, port=port, debug=False, use_reloader=False,
+                 allow_unsafe_werkzeug=True)
