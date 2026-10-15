@@ -15,7 +15,21 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: ['lattice.cs.technion.ac.il']
+    allowedHosts: ['lattice.cs.technion.ac.il'],
+    
+    hmr: {
+    	protocol: 'wss',
+    	host: 'lattice.cs.technion.ac.il',
+    	clientPort: 443,
+    },
+
+    proxy: {
+      '/socket.io/': {
+        target: 'http://127.0.0.1:5003',
+        changeOrigin: true,
+        ws: true, // Required for WebSockets and Socket.io polling upgrades
+      },
+    },
   },
   test: {
     projects: [
