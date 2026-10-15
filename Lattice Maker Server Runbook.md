@@ -1,8 +1,8 @@
-# Lattice Maker Server Runbook
+# 🧩 Lattice Maker Server Runbook
 
 Oct 15, 2026 · @yaniv
 
-## Overview
+## 🧭 Overview
 
 Lattice Maker (<https://lattice.cs.technion.ac.il>) runs as two processes behind nginx. nginx serves the built React app as static files and forwards Socket.IO and API calls to the Flask backend on port 5003. The Vite dev server (`npm run dev`) is **not** part of production.
 
@@ -28,7 +28,7 @@ What nginx sends where, for `lattice.cs.technion.ac.il`:
 
 The source code is on GitHub: `https://github.com/yardenkeshet/lattice-website.git`. Production runs the `main` branch.
 
-## Everyday operations
+## ▶️ Everyday operations
 
 The site is up when nginx is running and `python main.py` is running. Nothing else needs to stay open. Use a normal CMD window for these commands.
 
@@ -63,7 +63,7 @@ You should see two `nginx.exe` processes and listeners on ports 443 and 5003.
 
 **Stop or reload nginx** (run from `C:\SitesHub\nginx-1.28.2`): `nginx -s reload` applies config changes without dropping the site; `nginx -s stop` stops it. Reload or stop affects the CDML site too.
 
-## After changing something
+## 🔄 After changing something
 
 What you must redo depends on what changed. Pull the code first (`git pull` in `lattice-website`).
 
@@ -80,7 +80,7 @@ Two rules for the frontend build:
 - Keep `VITE_BACKEND_URL` blank in `react_frontend/.env.production`. Blank means the browser talks to the same address that served the page, and nginx forwards it. A `localhost` value would point each visitor at their own computer.
 - If `npm run build` fails, the old `dist` folder may be left half-written. Fix the error and build again before telling users the site is updated.
 
-## When the site is down
+## 🚨 When the site is down
 
 The symptom usually tells you which part failed. Work down this list.
 
@@ -95,18 +95,18 @@ The symptom usually tells you which part failed. Work down this list.
 | Browser certificate warning | Certificate expired or wrong file | Replace the files in `lattice_p`, then reload nginx |
 | `start nginx` does nothing, `bind() ... failed` in error.log | Another program holds port 443 or 80 | `netstat -ano \| findstr :443`, then `tasklist /fi "pid eq <PID>"` to see who; `taskkill /f /im nginx.exe` clears stuck nginx copies |
 
-Quick end-to-end check from the server itself (Git Bash or PowerShell with curl):
+Quick end-to-end check from the server itself, in CMD or PowerShell. Type `curl.exe`, not `curl`: in PowerShell plain `curl` is an alias for Invoke-WebRequest and fails.
 
 ```
-curl -sk -o NUL -w "%{http_code}" https://lattice.cs.technion.ac.il/
-curl -sk -o NUL -w "%{http_code}" "https://lattice.cs.technion.ac.il/socket.io/?EIO=4&transport=polling"
+curl.exe -sk -o NUL -w "%{http_code}" https://lattice.cs.technion.ac.il/
+curl.exe -sk -o NUL -w "%{http_code}" "https://lattice.cs.technion.ac.il/socket.io/?EIO=4&transport=polling"
 ```
 
 Both should print `200`.
 
 After a reboot nothing starts by itself. Start nginx and the backend as in Everyday operations.
 
-## Setting up a new server
+## 🖥️ Setting up a new server
 
 A new Windows server needs four installs, a clone, a build and an nginx block. The DNS name `lattice.cs.technion.ac.il` must point at the new machine, and ports 80 and 443 must be open in its firewall.
 
@@ -127,8 +127,7 @@ A new Windows server needs four installs, a clone, a build and an nginx block. T
 
    ```
    python -m venv .venv
-   .venv\Scripts\activate
-   pip install -r requirements.txt
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
 
    `gershon\MSDLL64.dll` comes with the repo; no C++ build is needed.
@@ -149,21 +148,26 @@ A new Windows server needs four installs, a clone, a build and an nginx block. T
    Check `react_frontend\.env.production` has `VITE_BACKEND_URL=` blank.
 6. **Certificate**: copy `cert.pem` and `key_nopass.key` to `C:\SitesHub\prodution\lattice_p`. The key must have no passphrase, because nginx on Windows cannot prompt for one.
 7. **nginx**: paste the reference server block (next section) inside the `http { }` block of `C:\SitesHub\nginx-1.28.2\conf\nginx.conf`. Fix the `root` path if the repo lives elsewhere.
-8. **Start and test**
+8. **Start nginx**
 
    ```
    cd C:\SitesHub\nginx-1.28.2
    nginx -t
    start nginx
+   ```
+9. **Start the backend (python main.py)** in its own window and leave it open:
+
+   ```
    cd C:\SitesHub\prodution\LatticeMaker\lattice-website
-   .venv\Scripts\python main.py
+   .\.venv\Scripts\python.exe main.py --host 127.0.0.1
    ```
 
-   Then run the curl checks from When the site is down, and do one real calculation on the Tool page.
+   No venv on this machine? Use `python main.py --host 127.0.0.1` instead. The site does not work until this is running.
+10. **Test**: run the curl checks from When the site is down, then do one real calculation on the Tool page.
 
 Optional: to survive reboots without someone logging in, register nginx and the backend as Windows services (for example with NSSM) or as Task Scheduler tasks set to "At startup".
 
-## Reference nginx config
+## 📄 Reference nginx config
 
 This is the server block live on 2026-10-15 in `C:\SitesHub\nginx-1.28.2\conf\nginx.conf`. The previous version is saved as `nginx.conf.bak-2026-10-15`.
 
@@ -233,7 +237,7 @@ server {
 }
 ```
 
-## nginx commands
+## ⌨️ nginx commands
 
 Run these from `C:\SitesHub\nginx-1.28.2`. The `-s` commands only work while nginx is running.
 
@@ -255,7 +259,7 @@ Run these from `C:\SitesHub\nginx-1.28.2`. The `-s` commands only work while ngi
 | Error log | `logs\error.log` |
 | PID file | `logs\nginx.pid` |
 
-## CDML site
+## 🌐 CDML site
 
 The same nginx also serves <https://cdml-public.technion.ac.il>. It forwards everything to a Python app on port 8444, so reloading or stopping nginx affects both sites.
 
@@ -266,7 +270,7 @@ The same nginx also serves <https://cdml-public.technion.ac.il>. It forwards eve
 | Port | 8444 (nginx proxies 443 to it) |
 | Certificate | `Cert_cdml.pem` and `private_nopass_cdml.pem` in the same folder |
 
-## Logs
+## 📜 Logs
 
 The backend log is the first place to look when calculations fail.
 
@@ -283,7 +287,7 @@ Desktop viewers for large logs:
 - **Tailviewer** (Windows app): [kittyfisto.github.io/Tailviewer](https://kittyfisto.github.io/Tailviewer/)
 - **Log Voyager** (in the browser, opens a local file): [logvoyager.cc](https://www.logvoyager.cc/)
 
-## Windows helpers
+## 🛠️ Windows helpers
 
 | Command | What it shows |
 | --- | --- |

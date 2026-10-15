@@ -43,3 +43,23 @@ gershon/data/
 # Editors
 .idea/
 .cursor/
+
+# SSL / TLS certificates and private keys — never commit (applies to the whole repo)
+*.pem
+*.key
+*.crt
+*.cer
+*.csr
+*.der
+*.pfx
+*.p12
+*.p7b
+*.p7c
+*.jks
+*.keystore
+*.truststore
+*.srl
+*.ovpn
+**/ssl/
+**/certs/
+**/private/
