@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
 import { Footer } from '../components/ui/Footer'
+import { Button } from '../components/ui/Button'
 
 interface HelpStep {
   title: string
@@ -67,6 +68,10 @@ const stepsListStyle: React.CSSProperties = {
   gap: 20,
 }
 
+const goToToolRowStyle: React.CSSProperties = {
+  margin: '0 0 var(--space-md)',
+}
+
 const stepTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   fontSize: 15,
@@ -96,6 +101,12 @@ export function HelpPage() {
           This page walks you through using the Lattice Maker tool, from uploading a surface
           to exporting a finished lattice structure.
         </p>
+
+        <div style={goToToolRowStyle}>
+          <Button variant="primary" onClick={() => navigate('/tool')}>
+            Open Lattice Maker →
+          </Button>
+        </div>
 
         <div style={stepsListStyle}>
           {STEPS.map(step => (

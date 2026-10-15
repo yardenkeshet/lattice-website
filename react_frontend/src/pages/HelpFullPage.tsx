@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Banner } from '../components/ui/Banner'
 import { Footer } from '../components/ui/Footer'
+import { Button } from '../components/ui/Button'
 import annotatedScreenshot from '../assets/help/lattice-maker-annotated.png'
 
 interface HelpStep {
@@ -69,6 +70,10 @@ const stepsListStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 20,
+}
+
+const goToToolRowStyle: React.CSSProperties = {
+  margin: '0 0 var(--space-md)',
 }
 
 const stepTitleStyle: React.CSSProperties = {
@@ -199,6 +204,12 @@ export function HelpFullPage() {
           parametric axis, with input and output as B-rep B-spline geometry imported and exported
           as surface geometry in the IGES file format.
         </p>
+
+        <div style={goToToolRowStyle}>
+          <Button variant="primary" onClick={() => navigate('/tool')}>
+            Open Lattice Maker →
+          </Button>
+        </div>
 
         <div style={contentRowStyle}>
           <div style={textColStyle}>
