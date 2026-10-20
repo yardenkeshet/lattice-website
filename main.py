@@ -10,6 +10,7 @@ import threading
 import uuid
 import contextlib
 import logging
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
 from flask_cors import CORS
@@ -430,6 +431,67 @@ def get_initial_log_content(file_path, num_lines=150):
         return [f"Error: Log file '{file_path}' not found."]
     except Exception as exc:
         return [f"An error occurred reading initial log: {exc}"]
+
+
+LOG_HISTORY_MAX_LINES = 20000
+
+
+def _rotated_log_paths(base_path):
+    """Files backing one logical log, oldest to newest: RotatingFileHandler
+    rolls the active file to `base_path.1` and shifts older backups up
+    (`.1` -> `.2`, etc.), so `.1` is the newest backup and the highest
+    numbered one present is the oldest. `base_path` itself (the file
+    currently being written) is always the newest and comes last. A log
+    with no rotation (e.g. calc_log, a plain FileHandler) just yields
+    `[base_path]`."""
+    backups = []
+    n = 1
+    while os.path.exists(f"{base_path}.{n}"):
+        backups.append(f"{base_path}.{n}")
+        n += 1
+    paths = list(reversed(backups))
+    if os.path.exists(base_path):
+        paths.append(base_path)
+    return paths
+
+
+def _parse_log_ts(ts_str):
+    try:
+        return datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')
+    except (ValueError, TypeError):
+        return None
+
+
+def read_log_history(base_path, since_seconds=None, limit=LOG_HISTORY_MAX_LINES):
+    """Read raw log lines from base_path and its rotated backups (oldest
+    file first), optionally kept only from the last `since_seconds`
+    (None = no time filter). Returns at most `limit` lines — the most
+    recent ones, if more than that were found — so a big "all available"
+    request can't load an unbounded amount of log into memory."""
+    cutoff = datetime.now() - timedelta(seconds=since_seconds) if since_seconds else None
+
+    lines = []
+    for path in _rotated_log_paths(base_path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    if cutoff is not None:
+                        try:
+                            ts = _parse_log_ts(json.loads(line).get('ts', ''))
+                        except (ValueError, AttributeError):
+                            ts = None
+                        if ts is not None and ts < cutoff:
+                            continue
+                    lines.append(line)
+        except OSError:
+            continue
+
+    if limit is not None and len(lines) > limit:
+        lines = lines[-limit:]
+    return lines
 
 
 def follow_log(file_name, socketio_instance):
@@ -1075,6 +1137,42 @@ def view_log():
 @app.route('/viewfulllog')
 def view_full_log():
     return render_template('full_log_view.html', log_file=LOG_FILE_NAME)
+
+
+LOG_HISTORY_FILES = {
+    'main': LOG_FILE_NAME,
+    'calc': CALC_LOG_FILE,
+}
+
+
+@app.route('/log-history')
+def log_history():
+    """Backs the log viewer's history filter. ?file=main|calc picks which
+    log (the backend's own, or the calculation-history log); ?since=<secs>
+    limits it to the last that many seconds, or ?since=all / omitted for
+    everything on disk (still capped — see read_log_history).
+
+    Deliberately does not log a "request received" line like the other
+    routes do: the log viewer calls this twice per history-window change
+    (main + calc), and logging about a request to *view the log* would
+    just add more noise to the log you're trying to read."""
+    file_key = request.args.get('file', 'main')
+    base_path = LOG_HISTORY_FILES.get(file_key)
+    if base_path is None:
+        return jsonify({'error': f'Unknown file: {file_key!r}. Expected one of {list(LOG_HISTORY_FILES)}.'}), 400
+
+    since_param = request.args.get('since', '').strip()
+    since_seconds = None
+    if since_param and since_param != 'all':
+        try:
+            since_seconds = int(since_param)
+            if since_seconds <= 0:
+                raise ValueError
+        except ValueError:
+            return jsonify({'error': f'Invalid since value: {since_param!r} (expected a positive integer of seconds, or "all")'}), 400
+
+    lines = read_log_history(base_path, since_seconds=since_seconds)
+    return jsonify({'lines': lines})
 
 
 @app.route('/download-results', methods=['POST'])

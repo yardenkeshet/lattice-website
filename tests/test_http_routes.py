@@ -1,10 +1,17 @@
 """Coverage for the backend HTTP routes that had zero tests before this
 plan: /, /viewlog, /viewfulllog, /calc-log-image/<name>, /download-results.
 Every other route and SocketIO handler already has coverage elsewhere in
-this directory."""
+this directory. /log-history and its read_log_history/_rotated_log_paths
+helpers (the log viewer's history filter) are covered at the bottom."""
+import json
 import os
+from datetime import datetime, timedelta
 
 import main as main_module
+
+
+def _log_line(ts, msg='hello', level='INFO'):
+    return json.dumps({'ts': ts, 'level': level, 'msg': msg})
 
 
 def test_index_is_a_health_check():
@@ -136,3 +143,143 @@ def test_download_results_rejects_stl(monkeypatch, tmp_path):
     client = main_module.app.test_client()
     resp = client.post('/download-results', data={'token': token, 'file_type': 'stl'})
     assert resp.status_code == 400
+
+
+# ─── /log-history and its helpers ───
+
+def _ts(dt):
+    return dt.strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+
+
+def test_rotated_log_paths_orders_oldest_backup_first(tmp_path):
+    base = tmp_path / 'app.log'
+    base.write_text('current\n')
+    (tmp_path / 'app.log.1').write_text('newest backup\n')
+    (tmp_path / 'app.log.2').write_text('older backup\n')
+    (tmp_path / 'app.log.3').write_text('oldest backup\n')
+
+    paths = main_module._rotated_log_paths(str(base))
+
+    assert paths == [
+        str(tmp_path / 'app.log.3'),
+        str(tmp_path / 'app.log.2'),
+        str(tmp_path / 'app.log.1'),
+        str(base),
+    ]
+
+
+def test_rotated_log_paths_with_no_backups_is_just_the_base_file(tmp_path):
+    base = tmp_path / 'calc.jsonl'
+    base.write_text('one line\n')
+    assert main_module._rotated_log_paths(str(base)) == [str(base)]
+
+
+def test_rotated_log_paths_missing_file_is_empty(tmp_path):
+    assert main_module._rotated_log_paths(str(tmp_path / 'does-not-exist.log')) == []
+
+
+def test_read_log_history_reads_backups_oldest_to_newest(tmp_path):
+    base = tmp_path / 'app.log'
+    now = datetime.now()
+    base.write_text(_log_line(_ts(now), 'from current') + '\n')
+    (tmp_path / 'app.log.1').write_text(_log_line(_ts(now - timedelta(minutes=1)), 'from .1') + '\n')
+
+    lines = main_module.read_log_history(str(base))
+
+    assert [json.loads(l)['msg'] for l in lines] == ['from .1', 'from current']
+
+
+def test_read_log_history_since_seconds_excludes_older_lines(tmp_path):
+    base = tmp_path / 'app.log'
+    now = datetime.now()
+    old = _log_line(_ts(now - timedelta(hours=2)), 'old')
+    recent = _log_line(_ts(now - timedelta(seconds=5)), 'recent')
+    base.write_text(old + '\n' + recent + '\n')
+
+    lines = main_module.read_log_history(str(base), since_seconds=3600)
+
+    assert [json.loads(l)['msg'] for l in lines] == ['recent']
+
+
+def test_read_log_history_since_none_returns_everything(tmp_path):
+    base = tmp_path / 'app.log'
+    now = datetime.now()
+    base.write_text(
+        _log_line(_ts(now - timedelta(days=30)), 'ancient') + '\n'
+        + _log_line(_ts(now), 'fresh') + '\n'
+    )
+
+    lines = main_module.read_log_history(str(base), since_seconds=None)
+
+    assert [json.loads(l)['msg'] for l in lines] == ['ancient', 'fresh']
+
+
+def test_read_log_history_caps_to_the_most_recent_lines(tmp_path):
+    base = tmp_path / 'app.log'
+    now = datetime.now()
+    content = ''.join(
+        _log_line(_ts(now - timedelta(seconds=10 - i)), f'line{i}') + '\n' for i in range(10)
+    )
+    base.write_text(content)
+
+    lines = main_module.read_log_history(str(base), limit=3)
+
+    assert [json.loads(l)['msg'] for l in lines] == ['line7', 'line8', 'line9']
+
+
+def test_read_log_history_missing_file_is_empty(tmp_path):
+    assert main_module.read_log_history(str(tmp_path / 'nope.log')) == []
+
+
+def test_log_history_unknown_file_is_400():
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=bogus')
+    assert resp.status_code == 400
+
+
+def test_log_history_invalid_since_is_400():
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=main&since=not-a-number')
+    assert resp.status_code == 400
+
+
+def test_log_history_non_positive_since_is_400():
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=main&since=0')
+    assert resp.status_code == 400
+
+
+def test_log_history_returns_lines_for_main(monkeypatch, tmp_path):
+    base = tmp_path / 'app.log'
+    base.write_text(_log_line(_ts(datetime.now()), 'from main') + '\n')
+    monkeypatch.setitem(main_module.LOG_HISTORY_FILES, 'main', str(base))
+
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=main')
+    assert resp.status_code == 200
+    lines = resp.get_json()['lines']
+    assert [json.loads(l)['msg'] for l in lines] == ['from main']
+
+
+def test_log_history_returns_lines_for_calc(monkeypatch, tmp_path):
+    base = tmp_path / 'calc.jsonl'
+    base.write_text(_log_line(_ts(datetime.now()), 'from calc') + '\n')
+    monkeypatch.setitem(main_module.LOG_HISTORY_FILES, 'calc', str(base))
+
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=calc')
+    assert resp.status_code == 200
+    lines = resp.get_json()['lines']
+    assert [json.loads(l)['msg'] for l in lines] == ['from calc']
+
+
+def test_log_history_since_all_is_the_same_as_omitting_since(monkeypatch, tmp_path):
+    base = tmp_path / 'app.log'
+    base.write_text(_log_line(_ts(datetime.now() - timedelta(days=10)), 'ancient') + '\n')
+    monkeypatch.setitem(main_module.LOG_HISTORY_FILES, 'main', str(base))
+
+    client = main_module.app.test_client()
+    resp = client.get('/log-history?file=main&since=all')
+    assert resp.status_code == 200
+    lines = resp.get_json()['lines']
+    assert [json.loads(l)['msg'] for l in lines] == ['ancient']

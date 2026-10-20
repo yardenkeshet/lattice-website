@@ -32,7 +32,14 @@ function initLogViewer(config) {
     }
 
     function timeStr(ts) {
-        return ts ? ts.split(' ')[1].split(',')[0] : '';
+        // "YYYY-MM-DD HH:MM:SS,mmm" -> "MM-DD HH:MM:SS". Keeping the date
+        // matters once the history filter can pull in entries from
+        // previous days, not just the current live session.
+        if (!ts) return '';
+        var parts = ts.split(' ');
+        var date = parts[0] ? parts[0].slice(5) : '';
+        var time = parts[1] ? parts[1].split(',')[0] : '';
+        return date ? (date + ' ' + time) : time;
     }
 
     function esc(s) {
@@ -145,6 +152,46 @@ function initLogViewer(config) {
     document.getElementById('sort').onchange = render;
     document.getElementById('group').onchange = render;
 
+    function parseLine(raw) {
+        try {
+            return JSON.parse(raw);
+        } catch(e) {
+            return { msg: raw, level: 'INFO', ts: '' };
+        }
+    }
+
+    // History filter: "Since page opened" is the normal live view (just
+    // reload to get back to it); anything else fetches that window from
+    // /log-history (main log + calc-history log, merged and sorted by
+    // timestamp since the two are fetched — and otherwise ordered —
+    // separately) and replaces what's on screen. The live socket keeps
+    // running underneath, so new lines still stream in afterwards.
+    var historyEl = document.getElementById('history');
+    if (historyEl) {
+        historyEl.onchange = function() {
+            var since = historyEl.value;
+            if (!since) { location.reload(); return; }
+            loadHistory(since);
+        };
+    }
+
+    function loadHistory(since) {
+        var out = document.getElementById('log-output');
+        out.innerHTML = '<p style="padding:12px;color:#4b5263;">Loading history…</p>';
+        var sinceQ = 'since=' + encodeURIComponent(since);
+        Promise.all([
+            fetch('/log-history?file=main&' + sinceQ).then(function(r){ return r.json(); }),
+            fetch('/log-history?file=calc&' + sinceQ).then(function(r){ return r.json(); }),
+        ]).then(function(results) {
+            var lines = (results[0].lines || []).concat(results[1].lines || []);
+            allEntries = lines.map(parseLine);
+            allEntries.sort(function(a, b) { return (a.ts || '').localeCompare(b.ts || ''); });
+            render();
+        }).catch(function(err) {
+            out.innerHTML = '<div class="empty">Failed to load history: ' + esc(String(err)) + '</div>';
+        });
+    }
+
     var socket = io();
 
     socket.on('connect', function() {
@@ -153,13 +200,7 @@ function initLogViewer(config) {
     });
 
     socket.on('log_update', function(msg) {
-        var entry;
-        try {
-            entry = JSON.parse(msg.data);
-        } catch(e) {
-            entry = { msg: msg.data, level: 'INFO', ts: '' };
-        }
-        allEntries.push(entry);
+        allEntries.push(parseLine(msg.data));
         render();
     });
 
