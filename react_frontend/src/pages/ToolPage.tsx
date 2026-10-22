@@ -629,7 +629,7 @@ export function ToolPage() {
 
   return (
     <>
-      <div ref={appContentRef} style={isNarrow ? { ...pageStyle, ...narrowPageStyle } : pageStyle}>
+      <div ref={appContentRef} style={pageStyle}>
       <Banner onClick={() => navigate('/')}/>
 
       {/* ── Workspace ── */}
@@ -763,14 +763,16 @@ export function ToolPage() {
 const pageStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  // A hard ceiling, not just a floor: the page (and everything that takes
-  // flex:1 of it, down to the viewer) can never be taller than the
-  // viewport. Side panels that don't fit scroll internally instead (see
-  // LatticeMenu/TileMenu's own overflowY:auto + maxHeight:100%, which
-  // only actually applies once an ancestor gives them a bounded height —
-  // this is that ancestor).
-  height: '100vh',
-  overflow: 'hidden',
+  // A floor, not a hard ceiling: the page is free to grow taller and let
+  // the browser scroll it when content genuinely needs more room than the
+  // viewport has (e.g. a short window, or the side panels' own content).
+  // The viewer itself is kept from ballooning not by capping the whole
+  // page, but by workspaceStyle/leftPanelStyle/rightPanelStyle's
+  // minHeight:0 below, which lets the side panels actually use their own
+  // overflowY:auto + maxHeight:100% (see LatticeMenu/TileMenu) instead of
+  // stretching the row — that stretching, not page-level overflow, was
+  // what let the viewer grow and fail to shrink back after a zoom change.
+  minHeight: '100vh',
   backgroundColor: 'var(--bg-primary)',
 }
 
@@ -820,18 +822,6 @@ const rightPanelStyle: React.CSSProperties = {
 }
 
 /* Narrow-screen overrides (merged over the base styles when isNarrow) */
-
-// The wide-screen pageStyle below caps the whole page at the viewport
-// height (overflow:hidden) so the center panel can never be stretched
-// taller than the screen — side panels scroll internally instead. In
-// narrow/stacked mode there's no "internally" to scroll into (everything
-// is one column), so the page needs to scroll as a whole like it used to;
-// revert to that here.
-const narrowPageStyle: React.CSSProperties = {
-  height: 'auto',
-  minHeight: '100vh',
-  overflow: 'visible',
-}
 
 // Narrow layout: LatticeMenu and TileMenu share the first row (wrapping onto
 // separate rows if even that is too tight), and the full-width 3D scene
