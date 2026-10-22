@@ -89,6 +89,34 @@ export function ToolPage() {
   const viewerSceneRef = React.useRef<ViewerSceneHandle>(null)
   const [pendingCameraSnapshot, setPendingCameraSnapshot] = React.useState<CameraSnapshot | null>(null)
 
+  /* ── Force-remount the viewer's Canvas after the window settles from a
+     resize (in particular, a browser zoom change). react-three-fiber
+     tracks its container's size via ResizeObserver and sometimes gets
+     stuck on a stale/incorrect measurement after a zoom change — observed
+     as the canvas's own inline height ballooning and never correcting
+     itself, even though the surrounding CSS box is the right size. A full
+     remount forces a clean re-measurement; pendingCameraSnapshot (the same
+     mechanism the perspective/orthographic toggle already uses) makes it
+     invisible — same camera position, freshly correct canvas size.
+     Debounced so we remount once after zooming settles, not on every
+     intermediate tick while the user is still actively zooming. */
+  const [viewerRemountNonce, setViewerRemountNonce] = React.useState(0)
+  React.useEffect(() => {
+    let timeoutId: number | undefined
+    const handleResize = () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      timeoutId = window.setTimeout(() => {
+        setPendingCameraSnapshot(viewerSceneRef.current?.getCameraSnapshot() ?? null)
+        setViewerRemountNonce(n => n + 1)
+      }, 300)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    }
+  }, [])
+
   /* ── Tile state ── */
   const [tileType, setTileType]           = React.useState<TileType>(DEFAULT_TILE_TYPE)
   const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues(DEFAULT_TILE_TYPE))
@@ -715,6 +743,7 @@ export function ToolPage() {
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
               pendingCameraSnapshot={pendingCameraSnapshot}
+              remountNonce={viewerRemountNonce}
               onFileDrop={handleViewerFileDrop}
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}
@@ -763,12 +792,23 @@ export function ToolPage() {
 const pageStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
+  // A floor, not a hard ceiling: the page is free to grow taller and let
+  // the browser scroll it when content genuinely needs more room than the
+  // viewport has (e.g. a short window, or the side panels' own content).
+  // The viewer itself is kept from ballooning not by capping the whole
+  // page, but by workspaceStyle/leftPanelStyle/rightPanelStyle's
+  // minHeight:0 below, which lets the side panels actually use their own
+  // overflowY:auto + maxHeight:100% (see LatticeMenu/TileMenu) instead of
+  // stretching the row — that stretching, not page-level overflow, was
+  // what let the viewer grow and fail to shrink back after a zoom change.
   minHeight: '100vh',
   backgroundColor: 'var(--bg-primary)',
 }
 
 const workspaceStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
+  overflow: 'hidden',
   display: 'flex',
   gap: 0,
   backgroundColor: '#e3e3e3',
@@ -778,8 +818,8 @@ const workspaceStyle: React.CSSProperties = {
 
 const leftPanelStyle: React.CSSProperties = {
   flexShrink: 0,
+  minHeight: 0,
   padding: '20px 0 20px 20px',
-  alignSelf: 'flex-start',
 }
 
 const centerStyle: React.CSSProperties = {
@@ -790,6 +830,7 @@ const centerStyle: React.CSSProperties = {
   padding: 20,
   minWidth: 0,
   minHeight: 0,
+  overflow: 'hidden',
   // maxHeight: 395,
 }
 
@@ -807,6 +848,7 @@ const viewerStyle: React.CSSProperties = {
 
 const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
+  minHeight: 0,
   padding: '20px 20px 20px 0',
 }
 
