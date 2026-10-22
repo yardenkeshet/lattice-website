@@ -39,10 +39,17 @@ CALC_MODE_EXTRUSION  = 'extrusion'
 CALC_MODE_REVOLUTION = 'revolution'
 CALC_MODE_RULING     = 'ruling'
 
+CALC_MODE_FILES_REQUIRED = {
+    CALC_MODE_EXTRUSION: 1,
+    CALC_MODE_REVOLUTION: 1,
+    CALC_MODE_RULING: 2
+}
+
 TILE_TYPE_MAP = {
     "cross":          MSDLL_TILE_CROSS,
     "diagonal":       MSDLL_TILE_DIAGONAL,
     "cross_diagonal": MSDLL_TILE_CROSS_DIAGONAL,
+    # "cross_diagonalx": MSDLL_TILE_CROSS_DIAGONAL
 }
 
 VALID_CALC_MODES = {
@@ -145,7 +152,8 @@ dll_background = DllInstance(_background_dll_path, emit=_emit_queue_event)
 assert_distinct_dll_instances(dll_main, dll_background)
 dll_background_lane = BackgroundDllLane()
 
-LOGFILE               = 'lattice.log'
+
+LOGFILE               = os.path.join(_BASE_DIR, 'lattice.log')
 DATA_DIR              = 'client_data'
 LAST_RESULTS_DIR      = 'last_results'
 LOG_FILE_NAME         = LOGFILE
@@ -199,14 +207,19 @@ fmt = _JsonFormatter() if _use_json else _TextFormatter('%(asctime)s %(levelname
 
 logger = logging.getLogger('lattice')
 logger.setLevel(logging.DEBUG)
-fh = RotatingFileHandler(LOGFILE, maxBytes=5 * 1024 * 1024, backupCount=3)
+# Size cap: once lattice.log reaches LOG_MAX_BYTES it rolls to lattice.log.1
+# (older backups shift up) and the oldest backup beyond LOG_BACKUP_COUNT is
+# overwritten. Appends otherwise — restarts never truncate it.
+LOG_MAX_BYTES    = 5 * 1024 * 1024
+LOG_BACKUP_COUNT = 3
+fh = RotatingFileHandler(LOGFILE, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding='utf-8')
 fh.setFormatter(fmt)
 logger.addHandler(fh)
 ch = logging.StreamHandler()
 ch.setFormatter(fmt)
 logger.addHandler(ch)
 
-CALC_LOG_DIR        = 'calc_log'
+CALC_LOG_DIR        = os.path.join(_BASE_DIR, 'calc_log')
 CALC_LOG_IMAGES_DIR = os.path.join(CALC_LOG_DIR, 'images')
 CALC_LOG_FILE       = os.path.join(CALC_LOG_DIR, 'log.jsonl')
 os.makedirs(CALC_LOG_IMAGES_DIR, exist_ok=True)
@@ -292,7 +305,11 @@ def _save_original_upload(sid: str, filename: str, raw_bytes: bytes) -> str:
 DOWNLOAD_CACHE = {}
 
 
-def do_revolution(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+# All do_* functions share one signature so CALC_MODE_DISPATCH can call any of
+# them the same way; each ignores the inputs its mode doesn't use (igs_path2 is
+# only set for ruling, extrude_length only matters for extrusion).
+
+def do_revolution(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSRevolv.obj").encode('ascii')
     dll_error = dll_instance.from_revolution(
@@ -308,7 +325,7 @@ def do_revolution(dll_instance, out_folder, igs_path, num_tiles, tile_params, gr
     return obj_content, "MSRevolv.obj", "MSRevolv.igs"
 
 
-def do_extrusion(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int, extrude_length=10.0):
+def do_extrusion(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSExtrd.obj").encode('ascii')
     dll_error = dll_instance.from_extrusion(
@@ -326,7 +343,7 @@ def do_extrusion(dll_instance, out_folder, igs_path, num_tiles, tile_params, gra
     return obj_content, "MSExtrd.obj", "MSExtrd.igs"
 
 
-def do_Ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+def do_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSRuled.obj").encode('ascii')
 
@@ -344,8 +361,47 @@ def do_Ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_par
     return obj_content, "MSRuled.obj", "MSRuled.igs"
 
 
+# Tile shape parameters arrive as an arbitrary-length list. The DLL takes a
+# plain double* and reads as many values as the tile type needs, so a list
+# shorter than that would make it read past the end of the array: pad short
+# lists with zeros up to the number of values that tile type reads
+# (TILE_PARAM_COUNTS; MIN_TILE_PARAMS for unlisted types). When adding a tile
+# type to TILE_TYPE_MAP, add its param count here too.
+DEFAULT_TILE_PARAMS = [0.2, 0.0, 0.4]
+MIN_TILE_PARAMS     = 3
+TILE_PARAM_COUNTS = {
+    "cross":          3,
+    "diagonal":       3,
+    "cross_diagonal": 3,
+}
+
+
+def parse_tile_params(raw, tile_type=None) -> list:
+    """Client tile params (None = defaults) -> list of floats, padded to the
+    count `tile_type` reads (MIN_TILE_PARAMS if unknown). Never truncates.
+    Raises TypeError/ValueError on anything that isn't a list of numbers."""
+    if raw is None:
+        raw = DEFAULT_TILE_PARAMS
+    if not isinstance(raw, (list, tuple)):
+        raise TypeError(f"tile params must be a list of numbers, got {type(raw).__name__}")
+    params = [float(v) for v in raw]
+    required = TILE_PARAM_COUNTS.get(tile_type, MIN_TILE_PARAMS)
+    return params + [0.0] * (required - len(params))
+
+
+def tile_params_array(params):
+    """ctypes double[] sized to the params, for the DLL's double* TileParams."""
+    return (c_double * len(params))(*params)
+
+
+def format_tile_params(params) -> str:
+    return '(' + ', '.join(f'{v:.2f}' for v in params) + ')'
+
+
 CALC_MODE_DISPATCH = {
+    CALC_MODE_EXTRUSION:  do_extrusion,
     CALC_MODE_REVOLUTION: do_revolution,
+    CALC_MODE_RULING:     do_ruling,
 }
 
 
@@ -393,8 +449,9 @@ def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, 
             'overall_ms': (t_done - t_recv) * 1000.0,
         }
         logger.info(
-            f"[TILE] {tile_type_str}"
-            f"  p=({tile_params[0]:.2f},{tile_params[1]:.2f},{tile_params[2]:.2f})"
+            f"[TILE] {tile_type_str} "
+            f"MSDLLGetTile: "
+            f"  p={format_tile_params(tile_params)}"
             f"  g=({graded[0]:.2f},{graded[1]:.2f})"
             f"  t=({tolerance:.2f})"
             f"  {timings['overall_ms']:.0f}ms",
@@ -433,9 +490,6 @@ def get_initial_log_content(file_path, num_lines=150):
         return [f"An error occurred reading initial log: {exc}"]
 
 
-LOG_HISTORY_MAX_LINES = 20000
-
-
 def _rotated_log_paths(base_path):
     """Files backing one logical log, oldest to newest: RotatingFileHandler
     rolls the active file to `base_path.1` and shifts older backups up
@@ -462,12 +516,12 @@ def _parse_log_ts(ts_str):
         return None
 
 
-def read_log_history(base_path, since_seconds=None, limit=LOG_HISTORY_MAX_LINES):
+def read_log_history(base_path, since_seconds=None, limit=None):
     """Read raw log lines from base_path and its rotated backups (oldest
     file first), optionally kept only from the last `since_seconds`
-    (None = no time filter). Returns at most `limit` lines — the most
-    recent ones, if more than that were found — so a big "all available"
-    request can't load an unbounded amount of log into memory."""
+    (None = no time filter). `limit` (None = no limit) keeps only the most
+    recent that many lines; by default everything still on disk is
+    returned — the rotation size cap already bounds how much that is."""
     cutoff = datetime.now() - timedelta(seconds=since_seconds) if since_seconds else None
 
     lines = []
@@ -495,17 +549,43 @@ def read_log_history(base_path, since_seconds=None, limit=LOG_HISTORY_MAX_LINES)
 
 
 def follow_log(file_name, socketio_instance):
+    """Tail file_name, emitting each new complete line as a log_update.
+
+    Reopens the file on every poll instead of holding it open: on Windows an
+    open handle blocks RotatingFileHandler's rollover rename, so every write
+    past the size cap failed and its record was dropped. A file that was
+    replaced (rotated) or shrank since the last poll is read from the start."""
     try:
-        with open(file_name, 'r') as f:
-            f.seek(0, os.SEEK_END)
-            while not thread_stop_event:
-                line = f.readline()
-                if not line:
-                    socketio_instance.sleep(0.1)
-                    continue
-                socketio_instance.emit('log_update', {'data': line.strip()})
+        st = os.stat(file_name)
     except FileNotFoundError:
         socketio_instance.emit('log_error', {'data': f"Log file '{file_name}' not found."})
+        return
+    ident, pos = (st.st_dev, st.st_ino), st.st_size
+
+    try:
+        while not thread_stop_event:
+            try:
+                st = os.stat(file_name)
+            except FileNotFoundError:
+                # Mid-rotation: the old file is renamed, the new one not yet created.
+                ident, pos = None, 0
+                socketio_instance.sleep(0.1)
+                continue
+            if (st.st_dev, st.st_ino) != ident or st.st_size < pos:
+                ident, pos = (st.st_dev, st.st_ino), 0
+            if st.st_size > pos:
+                with open(file_name, 'rb') as f:
+                    f.seek(pos)
+                    chunk = f.read(st.st_size - pos)
+                # Only consume whole lines; a half-written last line waits for the next poll.
+                end = chunk.rfind(b'\n')
+                if end != -1:
+                    pos += end + 1
+                    for raw in chunk[:end].split(b'\n'):
+                        line = raw.decode('utf-8', errors='replace').strip()
+                        if line:
+                            socketio_instance.emit('log_update', {'data': line})
+            socketio_instance.sleep(0.1)
     except Exception as exc:
         logger.exception(f"Log follower error: {exc}")
 
@@ -532,16 +612,22 @@ def on_connect():
     }
     logger.info(f'Client connected  ip={ip_address}', extra=_log_extra(sid))
 
-    for line in get_initial_log_content(LOG_FILE_NAME):
-        emit('log_update', {'data': line})
+    # The log viewer connects with ?seed=0 when it loads a history window
+    # over HTTP instead, so the recent-lines seed isn't shown twice.
+    seed = request.args.get('seed') != '0'
+
+    if seed:
+        for line in get_initial_log_content(LOG_FILE_NAME):
+            emit('log_update', {'data': line})
 
     if log_thread is None:
         log_thread = socketio.start_background_task(
             target=follow_log, file_name=LOG_FILE_NAME, socketio_instance=socketio
         )
 
-    for line in get_initial_log_content(CALC_LOG_FILE):
-        emit('log_update', {'data': line})
+    if seed:
+        for line in get_initial_log_content(CALC_LOG_FILE):
+            emit('log_update', {'data': line})
 
     if calc_log_thread is None:
         calc_log_thread = socketio.start_background_task(
@@ -620,6 +706,24 @@ def on_disconnect(reason=None):
     clean_session(sid, token)
 
 
+def _log_calc_step(silent: bool, msg: str, sid) -> None:
+    """One step of a calculation's happy path. Silent macro previews fire on
+    every upload / extrude-length change, so they log at DEBUG under their
+    own tag instead of cluttering INFO."""
+    if silent:
+        logger.debug(f"[CALC preview] {msg}", extra=_log_extra(sid))
+    else:
+        logger.info(f"[CALC] {msg}", extra=_log_extra(sid))
+
+
+def _data_relpath(path: str) -> str:
+    """A saved-upload path relative to DATA_DIR, for shorter log lines."""
+    try:
+        return os.path.relpath(path, DATA_DIR)
+    except ValueError:  # different drive on Windows
+        return path
+
+
 @socketio.on('calculate')
 def handle_calculate(data):
     sid = request.sid
@@ -640,26 +744,24 @@ def handle_calculate(data):
         nt3 = int(args.get('nt3', 2))
         g1  = float(args.get('g1', 0.2))
         g2  = float(args.get('g2', 1.5))
-        p1  = float(args.get('p1', 0.2))
-        p2  = float(args.get('p2', 0.0))
-        p3  = float(args.get('p3', 0.4))
+        tile_params = parse_tile_params(args.get('tileParams'), tile_type)
         extrude_length = float(args.get('extrudeLength', 10.0))
     except (TypeError, ValueError) as exc:
-        logger.exception(f"[CALC] Rejected the request — one of the tile/grading numbers wasn't valid: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request ({calc_mode} mode) — one of the tile/grading numbers wasn't valid: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
         return
 
     tile_type_int = TILE_TYPE_MAP.get(tile_type)
 
-    logger.info(
-        f"[CALC] Received a calculation request for \"{filename}\" from {_client_ip(sid)} — "
-        f"{calc_mode} mode, {tile_type} tiles, grid {nt1}×{nt2}×{nt3}, "
-        f"grading ({g1}, {g2}), tile shape ({p1:.2f}, {p2:.2f}, {p3:.2f}).",
-        extra=_log_extra(sid),
+    _log_calc_step(
+        silent,
+        f"Request \"{filename}\" from {_client_ip(sid)} — {calc_mode}, {tile_type}, "
+        f"tiles {nt1}×{nt2}×{nt3}, g=({g1}, {g2}), p={format_tile_params(tile_params)}",
+        sid,
     )
 
     if tile_type_int is None:
-        logger.error(f"[CALC] Rejected the request — {tile_type!r} isn't a tile type this server recognizes.", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request ({calc_mode} mode) — {tile_type!r} isn't a tile type this server recognizes.", extra=_log_extra(sid))
         emit('error', {'msg': f'Unknown tileType: {tile_type}'})
         return
 
@@ -669,26 +771,26 @@ def handle_calculate(data):
         return
 
     if not surface_b64:
-        logger.error("[CALC] Rejected the request — no surface file was included.", extra=_log_extra(sid))
+        logger.error(f"[CALC] Rejected the request ({calc_mode} mode) — no surface file was included.", extra=_log_extra(sid))
         emit('error', {'msg': 'No surface file provided'})
         return
     try:
         igs_bytes = base64.b64decode(surface_b64)
     except (ValueError, TypeError) as exc:
-        logger.exception(f"[CALC] Rejected the request — the surface file data couldn't be decoded: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Rejected the request ({calc_mode} mode) — the surface file data couldn't be decoded: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid surface data: {exc}'})
         return
 
     igs_bytes2 = None
-    if calc_mode == CALC_MODE_RULING:
+    if calc_mode == CALC_MODE_RULING or CALC_MODE_FILES_REQUIRED.get(calc_mode, 0) > 1:
         if not surface2_b64:
-            logger.error("[CALC] Rejected the request — Ruling mode needs a second surface file, which wasn't provided.", extra=_log_extra(sid))
+            logger.error(f"[CALC] Rejected the request ({calc_mode} mode) — this mode needs an additional surface file, which wasn't provided.", extra=_log_extra(sid))
             emit('error', {'msg': 'Ruling mode requires a second surface file'})
             return
         try:
             igs_bytes2 = base64.b64decode(surface2_b64)
         except (ValueError, TypeError) as exc:
-            logger.exception(f"[CALC] Rejected the request — the second surface file's data couldn't be decoded: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Rejected the request ({calc_mode} mode) — a surface file's data couldn't be decoded: {exc}", extra=_log_extra(sid))
             emit('error', {'msg': f'Invalid second surface data: {exc}'})
             return
 
@@ -696,11 +798,11 @@ def handle_calculate(data):
         'client_ts': client_ts, 'filename': filename, 'args': args,
         'calc_mode': calc_mode, 'tile_type_int': tile_type_int,
         'nt1': nt1, 'nt2': nt2, 'nt3': nt3, 'g1': g1, 'g2': g2,
-        'p1': p1, 'p2': p2, 'p3': p3, 'extrude_length': extrude_length,
+        'tile_params': tile_params, 'extrude_length': extrude_length,
         'igs_bytes': igs_bytes, 'igs_bytes2': igs_bytes2,
-        't_received': t_received,
+        't_received': t_received, 'silent': silent,
     }
-
+    logger.debug(f"[CALC] Enqueueing request ({calc_mode} mode, tile={tile_type}), parameters: {payload}", extra=_log_extra(sid))
     if silent:
         if not dll_background_lane.try_acquire():
             # Background lane busy — drop this preview. A newer trigger
@@ -714,7 +816,7 @@ def handle_calculate(data):
             ).start()
         except Exception as exc:
             dll_background_lane.release()
-            logger.exception(f"[CALC] failed to start silent-calculate thread: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] failed to start silent-calculate thread ({calc_mode} mode): {exc}", extra=_log_extra(sid))
         return
 
     # Only a real (non-silent) calculation's inputs are worth keeping —
@@ -734,7 +836,7 @@ def handle_calculate(data):
             filename2 = f"{base}_surface2{ext or '.igs'}"
             saved_input_paths.append(_save_original_upload(sid, filename2, igs_bytes2))
     except OSError as exc:
-        logger.warning(f"[CALC] Couldn't save a copy of the uploaded file for the audit trail (continuing anyway): {exc}", extra=_log_extra(sid))
+        logger.warning(f"[CALC] Couldn't save a copy of the uploaded file for the audit trail ({calc_mode} mode, continuing anyway): {exc}", extra=_log_extra(sid))
     payload['saved_input_paths'] = saved_input_paths
 
     accepted = queue_manager.enqueue(sid, payload, silent=False)
@@ -761,16 +863,15 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     tile_type_int  = p['tile_type_int']
     nt1, nt2, nt3  = p['nt1'], p['nt2'], p['nt3']
     g1, g2         = p['g1'], p['g2']
-    p1, p2, p3     = p['p1'], p['p2'], p['p3']
+    tile_params    = p['tile_params']
     extrude_length = p['extrude_length']
     igs_bytes      = p['igs_bytes']
     igs_bytes2     = p['igs_bytes2']
 
     curr_num_tiles   = (c_int * 3)(nt1, nt2, nt3)
     curr_graded      = (c_double * 2)(g1, g2)
-    curr_tile_params = (c_double * 3)(p1, p2, p3)
-    inputs_desc = f"{len(igs_bytes)} bytes" if igs_bytes2 is None else f"{len(igs_bytes)}+{len(igs_bytes2)} bytes"
-    logger.debug(f"[CALC] Handing the surface ({inputs_desc}) to the native lattice engine…", extra=_log_extra(sid))
+    curr_tile_params = tile_params_array(tile_params)
+    inputs_desc = f"{len(igs_bytes)} B" if igs_bytes2 is None else f"{len(igs_bytes)}+{len(igs_bytes2)} B"
 
     new_token  = str(uuid.uuid4())
     out_folder = os.path.join(os.getcwd(), LAST_RESULTS_DIR, new_token)
@@ -779,45 +880,37 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     t_dll_start = time.time()
     dll_instance.set_current_sid(sid)
     try:
-        logger.info(
-            f"[CALC] Invoking the native engine for \"{filename}\" ({calc_mode} mode). "
-            f"Original file(s): {p.get('saved_input_paths', [])}",
-            extra=_log_extra(sid),
+        dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
+        saved = p.get('saved_input_paths')
+        _log_calc_step(
+            p.get('silent', False),
+            f"Engine start ({dispatch_fn.__name__}), input {inputs_desc}"
+            + (f", saved as {', '.join(_data_relpath(s) for s in saved)}" if saved else ""),
+            sid,
         )
-        with temp_igs_file(igs_bytes) as igs_path:
-            if calc_mode == CALC_MODE_RULING:
-                with temp_igs_file(igs_bytes2) as igs_path2:
-                    obj_content, out_obj_name, out_igs_name = do_Ruling(
-                        dll_instance, out_folder, igs_path, igs_path2,
-                        curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
-                    )
-            elif calc_mode == CALC_MODE_EXTRUSION:
-                obj_content, out_obj_name, out_igs_name = do_extrusion(
-                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int,
-                    extrude_length,
-                )
-            else:
-                dispatch_fn = CALC_MODE_DISPATCH[calc_mode]
-                obj_content, out_obj_name, out_igs_name = dispatch_fn(
-                    dll_instance, out_folder, igs_path, curr_num_tiles, curr_tile_params, curr_graded, tile_type_int
-                )
+        # Second surface (ruling only) gets its own temp file; other modes get None.
+        second_surface = temp_igs_file(igs_bytes2) if igs_bytes2 is not None else contextlib.nullcontext()
+        with temp_igs_file(igs_bytes) as igs_path, second_surface as igs_path2:
+            obj_content, out_obj_name, out_igs_name = dispatch_fn(
+                dll_instance, out_folder, igs_path, igs_path2,
+                curr_num_tiles, curr_tile_params, curr_graded, tile_type_int, extrude_length,
+            )
     except FileNotFoundError as exc:
-        logger.exception(f"[CALC] The native engine finished but didn't produce the expected output file: {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine finished but didn't produce the expected output file ({calc_mode} mode): {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'DLL did not produce output file: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     except Exception as exc:
-        logger.exception(f"[CALC] The native engine raised an error while processing \"{filename}\": {exc}", extra=_log_extra(sid))
+        logger.exception(f"[CALC] The native engine raised an error while processing \"{filename}\" ({calc_mode} mode): {exc}", extra=_log_extra(sid))
         socketio.emit('error', {'msg': f'Processing error: {exc}'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
     finally:
         dll_instance.set_current_sid(None)
     t_dll_end = time.time()
-    logger.debug(f"[CALC] Native engine finished in {round((t_dll_end - t_dll_start) * 1000)}ms.", extra=_log_extra(sid))
 
     if not obj_content:
-        logger.error("[CALC] The native engine returned successfully but produced no geometry.", extra=_log_extra(sid))
+        logger.error(f"[CALC] The native engine returned successfully but produced no geometry ({calc_mode} mode).", extra=_log_extra(sid))
         socketio.emit('error', {'msg': 'No output produced by DLL'}, room=sid)
         shutil.rmtree(out_folder, ignore_errors=True)
         return None
@@ -835,6 +928,8 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
     never touches the DLL — safe to run on its own thread, in parallel
     with the *next* DLL call on either lane. Must use explicit room=sid
     emits (no implicit request context on a spawned thread)."""
+    # Read before the try so the catch-all handler below can log it too.
+    calc_mode = payload.get('calc_mode')
     try:
         client_ts          = payload['client_ts']
         filename           = payload['filename']
@@ -855,20 +950,18 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # Nothing will ever redeem this token — discard the result rather
         # than leaking a last_results/<token>/ folder and a DOWNLOAD_CACHE entry.
         if sid not in connected_clients:
-            logger.info("[CALC] The browser disconnected while this was still running — discarding the result, nobody's left to receive it.", extra=_log_extra(sid))
+            logger.info(f"[CALC] The browser disconnected while this was still running ({calc_mode} mode) — discarding the result, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
-        logger.debug("[CALC] Compressing the result for transfer…", extra=_log_extra(sid))
         try:
             t_comp_start = time.time()
             compressed_b64 = compress_text_to_b64_gz(obj_content)
             t_comp_end = time.time()
             comp_kb = len(base64.b64decode(compressed_b64)) / 1024
             socketio.emit('update', {'type': 'progress_sending'}, room=sid)
-            logger.debug(f"[CALC] Compressed down to {comp_kb:.0f} KB.", extra=_log_extra(sid))
         except Exception as exc:
-            logger.exception(f"[CALC] Compressing the result failed: {exc}", extra=_log_extra(sid))
+            logger.exception(f"[CALC] Compressing the result failed ({calc_mode} mode): {exc}", extra=_log_extra(sid))
             socketio.emit('error', {'msg': 'Compression failed'}, room=sid)
             shutil.rmtree(out_folder, ignore_errors=True)
             return
@@ -879,7 +972,7 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
         # we'd leak a DOWNLOAD_CACHE entry and a last_results/<token>/
         # folder that nothing will ever redeem.
         if sid not in connected_clients:
-            logger.info("[CALC] The browser disconnected while compressing the result — discarding it, nobody's left to receive it.", extra=_log_extra(sid))
+            logger.info(f"[CALC] The browser disconnected while compressing the result ({calc_mode} mode) — discarding it, nobody's left to receive it.", extra=_log_extra(sid))
             shutil.rmtree(out_folder, ignore_errors=True)
             return
 
@@ -911,17 +1004,17 @@ def _finish_calculate(payload: dict, sid: str, dll_result: dict) -> None:
             'saved_input_paths': saved_input_paths,
         }, room=sid)
 
-        logger.info(
-            f"[CALC] Done — sent \"{filename}\" back to the browser "
-            f"({comp_kb:.0f} KB, {timings['overall_ms']}ms total: "
-            f"{timings['time_dll_ms']}ms engine + {timings['time_compress_ms']}ms compression, "
-            f"token={new_token}). Original file(s): {saved_input_paths}",
-            extra=_log_extra(sid),
+        _log_calc_step(
+            payload.get('silent', False),
+            f"Done \"{filename}\" — {comp_kb:.0f} KB in {timings['overall_ms']}ms "
+            f"(engine {timings['time_dll_ms']}ms + compress {timings['time_compress_ms']}ms), "
+            f"token={new_token}",
+            sid,
         )
     except Exception:
         # This runs on its own thread — an uncaught exception here would
         # otherwise vanish silently instead of failing the request visibly.
-        logger.exception("[CALC] Something went wrong wrapping up this calculation that wasn't caught anywhere else — see the traceback below.", extra=_log_extra(sid))
+        logger.exception(f"[CALC] Something went wrong wrapping up this calculation ({calc_mode} mode) that wasn't caught anywhere else — see the traceback below.", extra=_log_extra(sid))
 
 
 def _run_calculate_job(job: Job) -> None:
@@ -956,11 +1049,9 @@ queue_manager.start()
 
 @socketio.on('calculate_tile')
 def handle_calculate_tile(data):
-    logger.debug("[CALCULATE_TILE] request received", extra=_log_extra(request.sid))
     try:
-        p1, p2, p3 = data['values']
         tile_type   = data['type']
-        tile_params = (c_double * 3)(p1, p2, p3)
+        tile_params = tile_params_array(parse_tile_params(data['values'], tile_type))
         graded1, graded2   = data.get('graded', [1, 1])
         graded  = (c_double * 2)(graded1, graded2)
         tolerance = float(data.get('tolerance', 0.0))
@@ -985,7 +1076,6 @@ def handle_calculate_tile(data):
 
 @app.route('/convert_igs_to_obj', methods=['POST'])
 def handle_convert_igs_to_obj():
-    logger.debug("[IGS2OBJ] request received", extra=_http_log_extra())
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -1072,7 +1162,6 @@ def _validate_saved_input_paths(raw_paths) -> list:
 
 @app.route('/log-calculation', methods=['POST'])
 def handle_log_calculation():
-    logger.debug("[CALC_LOG] request received", extra=_http_log_extra())
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -1099,8 +1188,8 @@ def handle_log_calculation():
         f"  tile={args.get('tileType')}  mode={args.get('calcMode')}"
         f"  tiles=({args.get('nt1')},{args.get('nt2')},{args.get('nt3')})"
         f"  g=({args.get('g1')},{args.get('g2')})"
-        f"  p=({args.get('p1')},{args.get('p2')},{args.get('p3')})"
-        f"  inputs={saved_input_paths}",
+        f"  p={args.get('tileParams')}"
+        f"  inputs={[_data_relpath(s) for s in saved_input_paths]}",
         extra={
             'calc_filename': filename, 'calc_args': args, 'image': f'images/{image_name}',
         },
@@ -1131,12 +1220,12 @@ def index():
 
 @app.route('/viewlog')
 def view_log():
-    return render_template('log_view.html', log_file=LOG_FILE_NAME)
+    return render_template('log_view.html', log_file=os.path.basename(LOG_FILE_NAME))
 
 
 @app.route('/viewfulllog')
 def view_full_log():
-    return render_template('full_log_view.html', log_file=LOG_FILE_NAME)
+    return render_template('full_log_view.html', log_file=os.path.basename(LOG_FILE_NAME))
 
 
 LOG_HISTORY_FILES = {
@@ -1150,10 +1239,10 @@ def log_history():
     """Backs the log viewer's history filter. ?file=main|calc picks which
     log (the backend's own, or the calculation-history log); ?since=<secs>
     limits it to the last that many seconds, or ?since=all / omitted for
-    everything on disk (still capped — see read_log_history).
+    everything still on disk (current file + rotated backups).
 
-    Deliberately does not log a "request received" line like the other
-    routes do: the log viewer calls this twice per history-window change
+    Deliberately does not log a "request received" line like
+    /download-results does: the log viewer calls this twice per history-window change
     (main + calc), and logging about a request to *view the log* would
     just add more noise to the log you're trying to read."""
     file_key = request.args.get('file', 'main')

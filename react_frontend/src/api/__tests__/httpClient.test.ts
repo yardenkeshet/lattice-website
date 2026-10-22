@@ -109,7 +109,7 @@ describe('logCalculation()', () => {
 
   const args: CalculateArgs = {
     tileType: 'cross', calcMode: 'revolution',
-    nt1: 2, nt2: 2, nt3: 2, g1: 0.2, g2: 1.5, p1: 0.2, p2: 0, p3: 0.4,
+    nt1: 2, nt2: 2, nt3: 2, g1: 0.2, g2: 1.5, tileParams: [0.2, 0, 0.4],
   }
 
   it('POSTs the image and metadata as multipart form data', async () => {

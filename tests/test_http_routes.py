@@ -4,6 +4,8 @@ Every other route and SocketIO handler already has coverage elsewhere in
 this directory. /log-history and its read_log_history/_rotated_log_paths
 helpers (the log viewer's history filter) are covered at the bottom."""
 import json
+import threading
+import time
 import os
 from datetime import datetime, timedelta
 
@@ -283,3 +285,69 @@ def test_log_history_since_all_is_the_same_as_omitting_since(monkeypatch, tmp_pa
     assert resp.status_code == 200
     lines = resp.get_json()['lines']
     assert [json.loads(l)['msg'] for l in lines] == ['ancient']
+
+
+def test_read_log_history_has_no_line_cap_by_default(tmp_path):
+    base = tmp_path / 'app.log'
+    ts = _ts(datetime.now())
+    base.write_text(''.join(_log_line(ts, f'line{i}') + '\n' for i in range(25000)))
+
+    lines = main_module.read_log_history(str(base))
+
+    assert len(lines) == 25000
+
+
+def test_log_file_path_is_absolute_so_cwd_does_not_matter():
+    assert os.path.isabs(main_module.LOGFILE)
+    assert os.path.basename(main_module.LOGFILE) == 'lattice.log'
+    assert os.path.isabs(main_module.CALC_LOG_FILE)
+
+
+def test_viewlog_offers_a_seven_day_history_window():
+    body = main_module.app.test_client().get('/viewlog').get_data(as_text=True)
+    assert '<option value="604800">' in body
+
+
+class _FakeSocketIO:
+    def __init__(self):
+        self.lines = []
+
+    def emit(self, event, payload):
+        if event == 'log_update':
+            self.lines.append(payload['data'])
+
+    def sleep(self, seconds):
+        time.sleep(seconds)
+
+
+def _wait_for(predicate, timeout=5.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_follow_log_streams_new_lines_and_survives_rotation(monkeypatch, tmp_path):
+    # Simulates RotatingFileHandler's rollover (rename the live file away,
+    # start a fresh one). On Windows the rename itself fails if the tailer
+    # holds the file open — which is what used to break log rotation.
+    monkeypatch.setattr(main_module, 'thread_stop_event', False)
+    path = tmp_path / 'app.log'
+    path.write_text('already there\n')
+    sio = _FakeSocketIO()
+    t = threading.Thread(target=main_module.follow_log, args=(str(path), sio), daemon=True)
+    t.start()
+    try:
+        time.sleep(0.3)
+        with open(path, 'a') as f:
+            f.write('first\n')
+        assert _wait_for(lambda: sio.lines == ['first'])
+
+        os.rename(path, tmp_path / 'app.log.1')
+        path.write_text('after rotation\n')
+        assert _wait_for(lambda: sio.lines == ['first', 'after rotation'])
+    finally:
+        monkeypatch.setattr(main_module, 'thread_stop_event', True)
+        t.join(timeout=2)

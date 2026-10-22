@@ -49,7 +49,8 @@ describe('LatticeSocketClient', () => {
       filename: 'part.obj',
       surface_b64: '',
       client_ts: 1000,
-      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1:0.5, p2:0.4, p3:0.3, calcMode: EXTRUSION },
+      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, 
+              g1: 0.5, g2: 0.5, tileParams: [0.5, 0.4, 0.3], calcMode: EXTRUSION },
       tolerance: 0
     }
     client.calculate(payload)
@@ -236,7 +237,8 @@ describe('LatticeSocketClient', () => {
       filename: 'part.obj',
       surface_b64: '',
       client_ts: 1000,
-      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, p1: 0.5, p2: 0.4, p3: 0.3, calcMode: EXTRUSION },
+      args: { tileType: 'cross', nt1: 10, nt2: 10, nt3: 1, g1: 0.5, g2: 0.5, 
+              tileParams: [0.5, 0.4, 0.3], calcMode: EXTRUSION },
       tolerance: 0,
       silent: true,
     }

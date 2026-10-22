@@ -155,6 +155,8 @@ const containerStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 11,
   width: '100%',
+  // Lets the pill groups wrap onto extra rows on narrow (phone) screens.
+  flexWrap: 'wrap',
 }
 
 const sideStyle: React.CSSProperties = {

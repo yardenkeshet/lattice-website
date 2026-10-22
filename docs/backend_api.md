@@ -82,7 +82,8 @@ Triggers a full lattice generation from an uploaded STL surface.
     "nt2": 20,                       // tile count Z (integer)
     "nt3": 1,                        // scale/spacing (integer, cast from float)
     "g1": 2.0,                       // grading amplitude (float)
-    "g2": 0.2                        // grading frequency (float)
+    "g2": 0.2,                       // grading frequency (float)
+    "tileParams": [0.2, 0.0, 0.4]    // tile shape parameters, any length; defaults to [0.2, 0.0, 0.4], padded with 0s to at least 3
   }
 }
 ```
@@ -112,7 +113,7 @@ Generates a standalone tile preview (no surface input needed).
 ```jsonc
 {
   "type": "diagonal",          // "cross" | "diagonal" | "cross_diagonal"
-  "values": [0.2, 0.1, 0.4]   // [p1, p2, p3] — tile shape parameters
+  "values": [0.2, 0.1, 0.4]   // tile shape parameters, any length (padded with 0s to at least 3)
 }
 ```
 

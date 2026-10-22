@@ -22,7 +22,7 @@ What nginx sends where, for `lattice.cs.technion.ac.il`:
 | URL path | Goes to |
 | --- | --- |
 | `/socket.io/` | Flask on 127.0.0.1:5003 (WebSocket upgrade) |
-| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/viewlog`, `/viewfulllog`, `/static` | Flask on 127.0.0.1:5003 |
+| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/log-history`, `/viewlog`, `/viewfulllog`, `/static` | Flask on 127.0.0.1:5003 |
 | `/assets/...` | files in `dist/assets` (cached 1 year; names are hashed) |
 | everything else (`/`, `/tool`, ...) | files in `dist`, falling back to `dist/index.html` so React routing works |
 
@@ -216,7 +216,7 @@ server {
     }
 
     # Flask HTTP routes (see main.py)
-    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|viewlog|viewfulllog|static)(/|$) {
+    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|log-history|viewlog|viewfulllog|static)(/|$) {
         proxy_pass http://127.0.0.1:5003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -276,7 +276,7 @@ The backend log is the first place to look when calculations fail.
 
 | Log | Location | How to view |
 | --- | --- | --- |
-| Backend (rotating, 5 MB x 3) | `lattice-website\lattice.log` | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (live tail) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
+| Backend (rotating, 5 MB x 3, kept across restarts; oldest part overwritten at the cap) | `lattice-website\lattice.log` (+ `.1`-`.3` backups) | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (opens on the last 7 days, then streams live) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
 | Calculation history | `lattice-website\calc_log\log.jsonl` and `calc_log\images` | Any text viewer |
 | nginx errors | `C:\SitesHub\nginx-1.28.2\logs\error.log` | Any text viewer |
 | nginx requests | `C:\SitesHub\nginx-1.28.2\logs\access.log` | Any text viewer |

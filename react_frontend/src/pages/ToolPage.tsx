@@ -15,6 +15,7 @@ import { downloadResults, convertIgsToObj, logCalculation } from '../api/httpCli
 import { meshTextToGzB64, useObjBlobUrl } from '../lib/obj'
 import { type CalcOverlayPhase, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
+import { useMediaQuery } from '../lib/useMediaQuery'
 import defaultTileUrl from '../assets/default_diagonal_tile.obj?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -68,6 +69,8 @@ function fileToBase64(file: File): Promise<string> {
 
 export function ToolPage() {
   const navigate = useNavigate()
+  // Below this width the three panels stack vertically (phones / narrow tablets).
+  const isNarrow = useMediaQuery('(max-width: 900px)')
   const socket = getLatticeSocket()
 
   /* ── UI state ── */
@@ -352,7 +355,7 @@ export function ToolPage() {
         calcMode,
         nt1: 0, nt2: 0, nt3: 0,
         g1, g2,
-        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
+        tileParams: tileSliderValues,
         extrudeLength,
       },
       tolerance: igsConversionTolerance,
@@ -379,7 +382,7 @@ export function ToolPage() {
           calcMode: calcModeRef.current,
           nt1: 0, nt2: 0, nt3: 0,
           g1, g2,
-          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
+          tileParams: tileSliderValues,
           extrudeLength,
         },
         tolerance: igsConversionTolerance,
@@ -426,9 +429,8 @@ export function ToolPage() {
           .catch(() => {})
       )
     }
-    const padded: [number, number, number] = [tileSliderValues[0] ?? 0, tileSliderValues[1] ?? 0, tileSliderValues[2] ?? 0]
     Promise.all(conversions).then(() => {
-      socket.calculateTile({ type: tileType, values: padded, tolerance: v })
+      socket.calculateTile({ type: tileType, values: tileSliderValues, tolerance: v })
     })
   }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket, setErrorMsg])
 
@@ -436,9 +438,8 @@ export function ToolPage() {
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     setErrorMsg(null)
     pendingResetKey.current = null
-    const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
     socket.calculateTile({ type: tileType,
-      values: padded, tolerance: igsConversionTolerance })
+      values, tolerance: igsConversionTolerance })
   }, [socket, tileType, igsConversionTolerance, setErrorMsg])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
@@ -447,8 +448,7 @@ export function ToolPage() {
     setTileType(type)
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
-    const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type, values: padded,
+    socket.calculateTile({ type, values: defaults,
       tolerance: igsConversionTolerance })
   }, [socket, igsConversionTolerance, setErrorMsg])
 
@@ -569,7 +569,7 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0, extrudeLength },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, tileParams: tileSliderValues, extrudeLength },
       tolerance: igsConversionTolerance
     }
     socket.calculate(calculateArgs)
@@ -633,10 +633,10 @@ export function ToolPage() {
       <Banner onClick={() => navigate('/')}/>
 
       {/* ── Workspace ── */}
-      <div style={workspaceStyle}>
+      <div style={isNarrow ? { ...workspaceStyle, ...narrowWorkspaceStyle } : workspaceStyle}>
 
         {/* Left: LatticeMenu */}
-        <div style={leftPanelStyle}>
+        <div style={isNarrow ? { ...leftPanelStyle, ...narrowLeftPanelStyle } : leftPanelStyle}>
           <LatticeMenu
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
@@ -666,8 +666,8 @@ export function ToolPage() {
         </div>
 
         {/* Centre: Toolbar + ViewerScene */}
-        <div style={centerStyle}>
-          <div style={toolbarRowStyle}>
+        <div style={isNarrow ? { ...centerStyle, ...narrowCenterStyle } : centerStyle}>
+          <div style={isNarrow ? { ...toolbarRowStyle, flexWrap: 'wrap' } : toolbarRowStyle}>
             <Toolbar
               onCalculate={handleCalculate}
               cameraMode={cameraMode}
@@ -708,7 +708,7 @@ export function ToolPage() {
             </div>
           )}
 
-          <div style={viewerStyle}>
+          <div style={isNarrow ? { ...viewerStyle, ...narrowViewerStyle } : viewerStyle}>
             <ViewerScene
               ref={viewerSceneRef}
               layers={displayedLayers}
@@ -729,7 +729,7 @@ export function ToolPage() {
         </div>
 
         {/* Right: TileMenu (always visible) */}
-        <div style={rightPanelStyle}>
+        <div style={isNarrow ? { ...rightPanelStyle, ...narrowRightPanelStyle } : rightPanelStyle}>
           <TileMenu
             tileType={tileType}
             sliderValues={tileSliderValues}
@@ -817,6 +817,46 @@ const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
   minHeight: 0,
   padding: '20px 20px 20px 0',
+}
+
+/* Narrow-screen overrides (merged over the base styles when isNarrow) */
+
+// Narrow layout: LatticeMenu and TileMenu share the first row (wrapping onto
+// separate rows if even that is too tight), and the full-width 3D scene
+// always drops to the row below them.
+const narrowWorkspaceStyle: React.CSSProperties = {
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
+}
+
+const narrowLeftPanelStyle: React.CSSProperties = {
+  order: 0,
+  padding: '12px 6px 0 12px',
+  alignSelf: 'flex-start',
+}
+
+const narrowCenterStyle: React.CSSProperties = {
+  order: 2,
+  // Must override the base `flex: 1` (basis 0), which otherwise lets the
+  // scene squeeze into the menus' row; a 100% basis forces its own row.
+  flex: '0 0 100%',
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: 12,
+}
+
+// In column mode there is no flex height to fill, so give the canvas an explicit one.
+const narrowViewerStyle: React.CSSProperties = {
+  flex: 'none',
+  height: '60vh',
+  minHeight: 300,
+}
+
+const narrowRightPanelStyle: React.CSSProperties = {
+  order: 1,
+  padding: '12px 12px 0 6px',
+  alignSelf: 'flex-start',
 }
 
 const errorStyle: React.CSSProperties = {

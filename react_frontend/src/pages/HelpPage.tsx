@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button'
 
 interface HelpStep {
   title: string
-  body: string
+  body: React.ReactNode
 }
 
 const STEPS: HelpStep[] = [
@@ -37,6 +37,15 @@ const STEPS: HelpStep[] = [
   {
     title: '7. Export',
     body: 'Once a calculation completes, "Export Lattice" becomes available in the toolbar. Choose to download the result as an OBJ (mesh) or IGS (surface) file.',
+  },
+  {
+    title: 'For further help',
+    body: (
+      <>
+        If you encounter any issues or have questions about using the Lattice Maker, please contact us at{' '}
+        <a href="mailto:lattice@cs.technion.ac.il" style={{ color: 'var(--action-primary)' }}>lattice@cs.technion.ac.il</a>.
+      </>
+    ),
   },
 ]
 

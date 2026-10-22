@@ -55,7 +55,9 @@ def test_save_original_upload_rejects_path_traversal_in_filename():
         assert f.read() == raw
 
 
-def test_log_calculation_rejects_forged_saved_input_paths(tmp_path):
+def test_log_calculation_rejects_forged_saved_input_paths(monkeypatch, tmp_path):
+    # Keep the snapshot out of the real calc_log/images.
+    monkeypatch.setattr(main_module, 'CALC_LOG_IMAGES_DIR', str(tmp_path))
     client = main_module.app.test_client()
     image = (io.BytesIO(b'fake png bytes'), 'snap.png')
     metadata = json.dumps({

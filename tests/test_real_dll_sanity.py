@@ -46,7 +46,7 @@ def test_real_calculation_through_the_actual_dll_and_download():
         'args': {
             'tileType': 'diagonal', 'calcMode': 'extrusion',
             'nt1': 1, 'nt2': 1, 'nt3': 10,
-            'g1': 0.2, 'g2': 1.5, 'p1': 0.25, 'p2': 0.25, 'p3': 0.3,
+            'g1': 0.2, 'g2': 1.5, 'tileParams': [0.25, 0.25, 0.3],
             'extrudeLength': 10.0,
         },
     }
