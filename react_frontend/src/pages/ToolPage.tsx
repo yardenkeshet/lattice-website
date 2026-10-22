@@ -779,6 +779,7 @@ const pageStyle: React.CSSProperties = {
 const workspaceStyle: React.CSSProperties = {
   flex: 1,
   minHeight: 0,
+  overflow: 'hidden',
   display: 'flex',
   gap: 0,
   backgroundColor: '#e3e3e3',
@@ -800,6 +801,7 @@ const centerStyle: React.CSSProperties = {
   padding: 20,
   minWidth: 0,
   minHeight: 0,
+  overflow: 'hidden',
   // maxHeight: 395,
 }
 
