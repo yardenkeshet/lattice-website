@@ -288,7 +288,7 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
             <Divider />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Tooltip content="The colors of the foreground objects (tiles, lattice, etc.) in the graphics display.">
-                <span>Foreground Color:</span>
+                <span>Mesh Color:</span>
               </Tooltip>
               <ColorPicker disableAlpha value={modelColor} onChange={setModelColor} />
             </div>

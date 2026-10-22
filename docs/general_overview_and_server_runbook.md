@@ -31,7 +31,7 @@ What nginx sends where, for `lattice.cs.technion.ac.il`:
 | URL path | Goes to |
 | --- | --- |
 | `/socket.io/` | Flask on 127.0.0.1:5003 (WebSocket upgrade) |
-| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/viewlog`, `/viewfulllog`, `/static` | Flask on 127.0.0.1:5003 |
+| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/viewlog`, `/static` | Flask on 127.0.0.1:5003 |
 | `/assets/...` | files in `dist/assets` (cached 1 year; names are hashed) |
 | everything else (`/`, `/tool`, ...) | files in `dist`, falling back to `dist/index.html` so React routing works |
 
@@ -230,7 +230,7 @@ server {
     }
 
     # Flask HTTP routes (see main.py)
-    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|viewlog|viewfulllog|static)(/|$) {
+    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|viewlog|static)(/|$) {
         proxy_pass http://127.0.0.1:5003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -290,8 +290,8 @@ The backend log is the first place to look when calculations fail.
 
 | Log | Location | How to view |
 | --- | --- | --- |
-| Backend (rotating, 5 MB x 3, kept across restarts; oldest part overwritten at the cap) | `lattice-website\lattice.log` (+ `.1`-`.3` backups) | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (opens on the last 7 days, then streams live) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
-| Calculation history | `lattice-website\calc_log\log.jsonl` and `calc_log\images` | Any text viewer, or the same `/viewlog` / `/viewfulllog` pages (merged in) |
+| Backend (rotating, 5 MB x 3, kept across restarts; oldest part overwritten at the cap) | `lattice-website\lattice.log` (+ `.1`-`.3` backups) | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (opens on the last 7 days, then streams live) |
+| Calculation history | `lattice-website\calc_log\log.jsonl` and `calc_log\images` | Any text viewer, or the same `/viewlog` page (merged in) |
 | nginx errors | `C:\SitesHub\nginx-1.28.2\logs\error.log` | Any text viewer |
 | nginx requests | `C:\SitesHub\nginx-1.28.2\logs\access.log` | Any text viewer |
 
@@ -301,14 +301,11 @@ Desktop viewers for large logs:
 - **Tailviewer** (Windows app): [kittyfisto.github.io/Tailviewer](https://kittyfisto.github.io/Tailviewer/)
 - **Log Voyager** (in the browser, opens a local file): [logvoyager.cc](https://www.logvoyager.cc/)
 
-### In-browser log viewer — `/viewlog` and `/viewfulllog`
+### In-browser log viewer — `/viewlog`
 
-With the backend running (production or local — `python main.py` on `:5003`), open:
+With the backend running (production or local — `python main.py` on `:5003`), open **`/viewlog`**. It shows the last 150 lines, then streams new lines in real time over the same Socket.IO connection the lattice tool uses. Every level (including `DEBUG`) is shown by default. Each entry starts collapsed to one line (calc snapshots and exception tracebacks hidden); click an entry to expand or collapse it. Use the level buttons to hide what you don't need.
 
-- **`/viewlog`** — "Live" view. Shows the last 150 lines, then streams new lines in real time over the same Socket.IO connection the lattice tool uses. Defaults to hiding `DEBUG` lines and collapsing exception tracebacks, since it's meant for watching things as they happen.
-- **`/viewfulllog`** — "Full Detail" view. Same live stream, just defaulted to show every level (including `DEBUG`) and expand exception tracebacks — use it when digging into exactly what happened around a specific failure.
-
-Both pages link to each other ("Full detail →" / "← Surface view"). From the Tool page, **Ctrl+Shift+L** is a hidden shortcut straight to `/viewlog` (see `isLogViewerShortcut` in `react_frontend/src/lib/logViewerShortcut.ts`).
+From the Tool page, **Ctrl+Shift+L** is a hidden shortcut straight to `/viewlog` (see `isLogViewerShortcut` in `react_frontend/src/lib/logViewerShortcut.ts`).
 
 **What the lines mean.** Every log line is one JSON object (`{"ts", "level", "msg", ...}`, see `_JsonFormatter` in `main.py`), rendered by the viewer as a timestamp, a colored level badge, and the message. Two kinds of lines carry extra context:
 
@@ -320,7 +317,7 @@ A successful calculation logs three `[CALC]` info lines: `Request` (file, client
 
 ### Logs during local development
 
-Nothing about the logs is production-only — running `python main.py` locally writes the same `lattice.log` and `calc_log/` next to it in the repo root, and `/viewlog` / `/viewfulllog` work the same way at `http://localhost:5003/viewlog`. This is usually the fastest way to see what the backend did with a given upload while developing, without reading `lattice.log` directly.
+Nothing about the logs is production-only — running `python main.py` locally writes the same `lattice.log` and `calc_log/` next to it in the repo root, and `/viewlog` works the same way at `http://localhost:5003/viewlog`. This is usually the fastest way to see what the backend did with a given upload while developing, without reading `lattice.log` directly.
 
 ## Testing
 
@@ -347,7 +344,7 @@ Backend (`tests/`), pytest:
 | `test_convert_igs_to_obj_queue.py` | `/convert_igs_to_obj` goes through the same DLL-slot queue as `calculate`/`calculate_tile` and always releases it |
 | `test_dll_instance.py` | `DllInstance` — tile generation, DLL errors surfaced without raising, two independently-loaded instances get distinct handles, progress-emit gating by sid |
 | `test_dll_lane.py` | `BackgroundDllLane` locking primitive on its own — exclusivity, blocking acquire, timeout |
-| `test_http_routes.py` | HTTP routes: `/`, `/viewlog`, `/viewfulllog`, `/calc-log-image/<name>`, `/download-results` |
+| `test_http_routes.py` | HTTP routes: `/`, `/viewlog`, `/calc-log-image/<name>`, `/download-results` |
 | `test_logging_safety_net.py` | Logging itself — `extra=` fields reach the JSON formatter, uncaught exceptions in HTTP and Socket.IO handlers get logged (and HTTP ones still return 500), normal 404/405s aren't hijacked by the error handler |
 | `test_real_dll_sanity.py` | The one test that does **not** monkeypatch the DLL — exercises the real `gershon/MSDLL64.dll`, the real queue, and a real download end to end |
 | `test_upload_persistence.py` | Saved-upload audit trail — exact bytes written, no filename collisions, path-traversal rejected, forged `saved_input_paths` rejected |
@@ -373,7 +370,7 @@ End-to-end (`react_frontend/e2e/`), Playwright, against the real running app:
 | `app-loads.spec.ts` | Home page and Tool page load with no console errors |
 | `error-path.spec.ts` | Clicking "Make Lattice" without an uploaded file shows a visible error |
 | `happy-path.spec.ts` | Full real pipeline: upload a surface, calculate, export — the slow one, see above |
-| `log-viewer.spec.ts` | `/viewlog` and `/viewfulllog` render and cross-navigate correctly |
+| `log-viewer.spec.ts` | `/viewlog` renders the full-detail log viewer |
 
 ## Adding new tile types and calculation modes
 

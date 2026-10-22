@@ -1,5 +1,5 @@
 """Coverage for the backend HTTP routes that had zero tests before this
-plan: /, /viewlog, /viewfulllog, /calc-log-image/<name>, /download-results.
+plan: /, /viewlog, /calc-log-image/<name>, /download-results.
 Every other route and SocketIO handler already has coverage elsewhere in
 this directory. /log-history and its read_log_history/_rotated_log_paths
 helpers (the log viewer's history filter) are covered at the bottom."""
@@ -23,23 +23,19 @@ def test_index_is_a_health_check():
     assert resp.get_json() == {'service': 'lattice-backend', 'status': 'ok'}
 
 
-def test_viewlog_renders_shared_script_with_surface_level_defaults():
+def test_viewlog_renders_shared_script_with_full_detail_defaults():
     client = main_module.app.test_client()
     resp = client.get('/viewlog')
     assert resp.status_code == 200
     assert resp.content_type.startswith('text/html')
     body = resp.get_data(as_text=True)
     assert 'initLogViewer(' in body
-    assert "defaultLevels: ['INFO', 'WARNING', 'ERROR']" in body
-
-
-def test_viewfulllog_renders_shared_script_with_full_detail_defaults():
-    client = main_module.app.test_client()
-    resp = client.get('/viewfulllog')
-    assert resp.status_code == 200
-    body = resp.get_data(as_text=True)
-    assert 'initLogViewer(' in body
     assert "defaultLevels: ['INFO', 'DEBUG', 'WARNING', 'ERROR']" in body
+
+
+def test_viewfulllog_is_gone():
+    client = main_module.app.test_client()
+    assert client.get('/viewfulllog').status_code == 404
 
 
 def test_calc_log_image_404s_for_missing_file():
