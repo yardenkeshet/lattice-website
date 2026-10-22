@@ -77,7 +77,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `LOGFILE` | `lattice.log` | Rotating log (5 MB max) |
+| `LOGFILE` | `lattice.log` (next to `main.py`) | Rotating log, 5 MB × 3 backups; survives restarts, oldest part overwritten at the cap |
 | `DATA_DIR` | `client_data/` | Uploaded STL + JSON metadata per client |
 | `LAST_RESULTS_DIR` | `last_results/` | Per-session output STL files |
 | Port | `BACKEND_PORT` in `.env` (default `5003`; `--port` overrides) | Flask listen port |

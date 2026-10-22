@@ -79,7 +79,7 @@ function initLogViewer(config) {
         var excBlock = e.exc
             ? (config.excBlocksExpandedByDefault
                 ? '<pre class="exc-block">' + esc(e.exc) + '</pre>'
-                : '<details><summary style="cursor:pointer;color:#e06c75;font-size:11px;margin:3px 0 0 90px;">Exception</summary><pre class="exc-block">' + esc(e.exc) + '</pre></details>')
+                : '<details><summary style="cursor:pointer;color:#ffffff;font-size:11px;margin:3px 0 0 90px;">Exception</summary><pre class="exc-block">' + esc(e.exc) + '</pre></details>')
             : '';
         return '<div class="log-entry ' + lc + '">'
             + '<div class="log-line">'
@@ -177,7 +177,7 @@ function initLogViewer(config) {
 
     function loadHistory(since) {
         var out = document.getElementById('log-output');
-        out.innerHTML = '<p style="padding:12px;color:#4b5263;">Loading history…</p>';
+        out.innerHTML = '<p style="padding:12px;color:#ffffff;">Loading history…</p>';
         var sinceQ = 'since=' + encodeURIComponent(since);
         Promise.all([
             fetch('/log-history?file=main&' + sinceQ).then(function(r){ return r.json(); }),
@@ -196,7 +196,7 @@ function initLogViewer(config) {
 
     socket.on('connect', function() {
         allEntries = [];
-        document.getElementById('log-output').innerHTML = '<p style="padding:12px;color:#4b5263;">Connected. Streaming…</p>';
+        document.getElementById('log-output').innerHTML = '<p style="padding:12px;color:#ffffff;">Connected. Streaming…</p>';
     });
 
     socket.on('log_update', function(msg) {

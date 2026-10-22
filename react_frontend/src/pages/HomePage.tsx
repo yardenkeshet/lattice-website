@@ -59,7 +59,7 @@ const ctaTitleStyle: React.CSSProperties = {
 const ctaSubtitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   fontSize: 13,
-  color: 'rgba(255,255,255,0.7)',
+  color: 'var(--text-on-brand)',
   margin: 0,
 }
 
@@ -67,7 +67,7 @@ const ctaSubtitleStyle: React.CSSProperties = {
 const hyperlinkStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   fontSize: 20,
-  color: 'rgba(255,255,255,0.7)',
+  color: 'var(--text-on-brand)',
   margin: 0,
   textDecoration: 'underline'
 }
@@ -102,7 +102,7 @@ export function HomePage() {
           Upload your surface file and generate a parametric lattice in seconds.
         </p>
         <p style={ctaSubtitleStyle}>
-          Go to the <a href="/help/full" style={hyperlinkStyle} >help page</a> or hover over an item to see helpful tips.
+          Hover over an item to see helpful tips or go to the <a href="/help/full" style={hyperlinkStyle} >help page</a>.
         </p>
         <button
           type="button"
@@ -112,11 +112,10 @@ export function HomePage() {
           Open Lattice Maker →
         </button>
           <p style={ctaSubtitleStyle}>
-          {"Created using LatticeMaker, "}
-          <a href="mailto:https://lattice.cs.technion.ac.il">
+          {"Created using LatticeMaker, Gershon Elber, Technion at "}
+          <a href="mailto:https://lattice.cs.technion.ac.il" style={hyperlinkStyle}>
           https://lattice.cs.technion.ac.il
           </a>
-          {", Gershon Elber, Technion"}
         </p>
       </div>
 
@@ -132,10 +131,8 @@ export function HomePage() {
         <p style={paragraphStyle}>
           Use of lattices created using this interface is free of charge, including for
           commercial purposes. Please acknowledge as follows: "Created using{' '}
-          <em>LatticeMaker</em>,{' '}
-          <a href="https://lattice.cs.technion.ac.il" target="_blank" rel="noopener noreferrer" style={bodyLinkStyle}>
-            https://lattice.cs.technion.ac.il
-          </a>, Gershon Elber, Technion".
+          <em>LatticeMaker</em> <a href="https://lattice.cs.technion.ac.il" target="_blank" rel="noopener noreferrer" style={bodyLinkStyle}>
+          https://lattice.cs.technion.ac.il</a>, Gershon Elber, Technion".
         </p>
       </div>
 

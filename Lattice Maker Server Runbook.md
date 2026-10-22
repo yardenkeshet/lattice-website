@@ -276,7 +276,7 @@ The backend log is the first place to look when calculations fail.
 
 | Log | Location | How to view |
 | --- | --- | --- |
-| Backend (rotating, 5 MB x 3) | `lattice-website\lattice.log` | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (live tail) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
+| Backend (rotating, 5 MB x 3, kept across restarts; oldest part overwritten at the cap) | `lattice-website\lattice.log` (+ `.1`-`.3` backups) | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (opens on the last 7 days, then streams live) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
 | Calculation history | `lattice-website\calc_log\log.jsonl` and `calc_log\images` | Any text viewer |
 | nginx errors | `C:\SitesHub\nginx-1.28.2\logs\error.log` | Any text viewer |
 | nginx requests | `C:\SitesHub\nginx-1.28.2\logs\access.log` | Any text viewer |

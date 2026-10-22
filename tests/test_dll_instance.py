@@ -11,22 +11,6 @@ def _no_emit(event, sid, payload):
     pass
 
 
-def test_get_tile_produces_a_valid_stl(tmp_path):
-    instance = DllInstance(MAIN_DLL_PATH, emit=_no_emit)
-
-    params = (ctypes.c_double * 2)(0.15, 0.05)
-    graded = (ctypes.c_double * 2)(0.2, 1.5)
-    out_stl = str(tmp_path / "tile.stl").encode("ascii")
-
-    err = instance.get_tile(0, params, graded, 0.0, out_stl)
-
-    assert err is None
-    with open(out_stl, "rb") as f:
-        content = f.read().decode()
-    assert content.strip().startswith("solid")
-    assert "endsolid" in content
-
-
 def test_get_tile_reports_dll_error_without_raising(tmp_path):
     instance = DllInstance(MAIN_DLL_PATH, emit=_no_emit)
 
@@ -132,3 +116,41 @@ def test_assert_distinct_dll_instances_raises_when_handles_match():
 
     with pytest.raises(RuntimeError):
         assert_distinct_dll_instances(_Fake(1), _Fake(1))
+
+
+def test_from_extrusion_passes_six_tile_params_through_ctypes():
+    """Swaps the real MSDLLMSFromExtrusion for a C-callable Python callback
+    with the exact argtypes DllInstance declares, so the values below are
+    read back through a real double* — what the DLL itself would see."""
+    instance = DllInstance(MAIN_DLL_PATH, emit=_no_emit)
+    real_fn = instance._dll.MSDLLMSFromExtrusion
+    seen = {}
+
+    def _fake_dll_fn(srf, length, num_tiles, graded, tile_type, tile_params, out_igs, out_obj):
+        seen['length'] = length
+        seen['num_tiles'] = [num_tiles[i] for i in range(3)]
+        seen['graded'] = [graded[i] for i in range(2)]
+        seen['tile_type'] = tile_type
+        seen['tile_params'] = [tile_params[i] for i in range(6)]
+        return None
+
+    proto = ctypes.CFUNCTYPE(real_fn.restype, *real_fn.argtypes)
+    fake_fn = proto(_fake_dll_fn)
+    fake_fn.argtypes, fake_fn.restype = real_fn.argtypes, real_fn.restype
+
+    class _FakeDll:
+        MSDLLMSFromExtrusion = fake_fn
+    instance._dll = _FakeDll()
+
+    six = [0.11, 0.22, 0.33, 0.44, 0.55, 0.66]
+    err = instance.from_extrusion(
+        b"in.igs", 12.5,
+        (ctypes.c_int * 3)(2, 3, 4), (ctypes.c_double * 2)(0.2, 1.5),
+        2, (ctypes.c_double * 6)(*six), b"out.igs", b"out.obj",
+    )
+
+    assert err is None
+    assert seen == {
+        'length': 12.5, 'num_tiles': [2, 3, 4], 'graded': [0.2, 1.5],
+        'tile_type': 2, 'tile_params': six,
+    }

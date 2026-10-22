@@ -29,7 +29,7 @@ def _calc_payload():
         'args': {
             'tileType': 'cross', 'calcMode': 'revolution',
             'nt1': 2, 'nt2': 2, 'nt3': 2, 'g1': 0.2, 'g2': 1.5,
-            'p1': 0.2, 'p2': 0.0, 'p3': 0.4,
+            'tileParams': [0.2, 0.0, 0.4],
         },
     }
 
@@ -41,7 +41,7 @@ def _install_fake_revolution(monkeypatch, delay=0.3):
     dict already captured the original function reference at import time."""
     calls = []
 
-    def _fake(dll_instance, out_folder, igs_path, num_tiles, tile_params, grading_params, tile_type_int):
+    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
         calls.append(time.time())
         time.sleep(delay)
         return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRevolv.obj", "MSRevolv.igs"
@@ -334,21 +334,20 @@ def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp
     assert saved[0].read_bytes() == b'dummy igs bytes'
 
     saved_path_str = str(saved[0])
-    start_lines = [r.message for r in caplog.records if '[CALC] Invoking the native engine' in r.message]
-    done_lines = [r.message for r in caplog.records if '[CALC] Done —' in r.message]
-    assert start_lines, "no 'Invoking the native engine' line was logged"
-    assert done_lines, "no 'Done —' line was logged"
-    assert any('Original file(s):' in m and os.path.basename(saved_path_str) in m for m in start_lines)
-    assert any('Original file(s):' in m and os.path.basename(saved_path_str) in m for m in done_lines)
+    start_lines = [r.message for r in caplog.records if '[CALC] Engine start' in r.message]
+    done_lines = [r.message for r in caplog.records if '[CALC] Done' in r.message]
+    assert start_lines, "no 'Engine start' line was logged"
+    assert done_lines, "no 'Done' line was logged"
+    assert any('saved as' in m and os.path.basename(saved_path_str) in m for m in start_lines)
 
 
 def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
     monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
 
-    def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int):
+    def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
         return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRuled.obj", "MSRuled.igs"
 
-    monkeypatch.setattr(main_module, 'do_Ruling', _fake_ruling)
+    monkeypatch.setitem(main_module.CALC_MODE_DISPATCH, main_module.CALC_MODE_RULING, _fake_ruling)
 
     c1 = main_module.socketio.test_client(main_module.app)
     c1.get_received()
@@ -370,24 +369,15 @@ def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
     assert saved_secondary[0].read_bytes() == b'second surface bytes'
 
 
-def test_calculate_tile_entry_is_logged_at_debug_level(caplog):
-    c1 = main_module.socketio.test_client(main_module.app)
-    c1.get_received()
-
-    with caplog.at_level(logging.DEBUG, logger='lattice'):
-        c1.emit('calculate_tile', {'type': 'cross', 'values': [0.2, 0.2, 0.4]})
-        time.sleep(0.05)
-
-    assert any('[CALCULATE_TILE] request received' in r.message for r in caplog.records)
-
-
-def test_calculate_logs_internal_steps_at_debug_level(monkeypatch, caplog):
+def test_silent_calculate_logs_only_at_debug_level(monkeypatch, caplog):
     _install_fake_revolution(monkeypatch, delay=0.02)
     c1 = main_module.socketio.test_client(main_module.app)
     c1.get_received()
 
     with caplog.at_level(logging.DEBUG, logger='lattice'):
-        c1.emit('calculate', _calc_payload())
+        payload = _calc_payload()
+        payload['silent'] = True
+        c1.emit('calculate', payload)
 
         def got_result():
             events = c1.get_received()
@@ -395,8 +385,74 @@ def test_calculate_logs_internal_steps_at_debug_level(monkeypatch, caplog):
 
         assert _wait_until(got_result, timeout=5.0)
 
-    messages = [r.message for r in caplog.records]
-    assert any('[CALC] Handing the surface' in m for m in messages)
-    assert any('[CALC] Native engine finished in' in m for m in messages)
-    assert any('[CALC] Compressing the result for transfer' in m for m in messages)
-    assert any('[CALC] Compressed down to' in m for m in messages)
+    calc_records = [r for r in caplog.records if r.message.startswith('[CALC')]
+    preview = [r for r in calc_records if r.message.startswith('[CALC preview]')]
+    assert any('Done' in r.message for r in preview)
+    assert all(r.levelno == logging.DEBUG for r in preview)
+    assert not any(r.levelno >= logging.INFO for r in calc_records)
+
+
+def test_parse_tile_params_accepts_any_length_and_pads_short_lists():
+    assert main_module.parse_tile_params([0.1, 0.2, 0.3, 0.4, 0.5]) == [0.1, 0.2, 0.3, 0.4, 0.5]
+    assert main_module.parse_tile_params([0.1]) == [0.1, 0.0, 0.0]
+    assert main_module.parse_tile_params(None) == main_module.DEFAULT_TILE_PARAMS
+    assert len(main_module.tile_params_array([1.0, 2.0, 3.0, 4.0])) == 4
+
+
+def test_parse_tile_params_rejects_non_lists():
+    import pytest
+    for bad in (0.3, 'abc', ['x']):
+        with pytest.raises((TypeError, ValueError)):
+            main_module.parse_tile_params(bad)
+
+
+SIX_TILE_PARAMS = [0.11, 0.22, 0.33, 0.44, 0.55, 0.66]
+
+
+@pytest.mark.parametrize('calc_mode', ['extrusion', 'revolution', 'ruling'])
+def test_calculate_forwards_six_tile_params_in_order(monkeypatch, calc_mode):
+    """A tile type whose DLL code reads 6 TileParams must get all 6, in
+    order, as the double[] handed to the MSDLLMSFrom* call."""
+    received = []
+
+    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+        received.append(list(tile_params))
+        return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "out.obj", "out.igs"
+
+    monkeypatch.setitem(main_module.CALC_MODE_DISPATCH, calc_mode, _fake)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    payload = _calc_payload()
+    payload['args']['calcMode'] = calc_mode
+    payload['args']['tileParams'] = SIX_TILE_PARAMS
+    if calc_mode == 'ruling':
+        payload['surface2_b64'] = base64.b64encode(b'second surface bytes').decode('ascii')
+    c1.emit('calculate', payload)
+
+    assert _wait_until(lambda: any(e['name'] == 'result' for e in c1.get_received()), timeout=5.0)
+    assert received == [SIX_TILE_PARAMS]
+
+
+def test_calculate_tile_forwards_six_tile_params(monkeypatch):
+    received = []
+
+    def _fake_calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
+        received.append(list(tile_params))
+
+    monkeypatch.setattr(main_module, 'calculate_tile', _fake_calculate_tile)
+
+    c1 = main_module.socketio.test_client(main_module.app)
+    c1.get_received()
+    c1.emit('calculate_tile', {'type': 'cross', 'values': SIX_TILE_PARAMS})
+
+    assert _wait_until(lambda: received, timeout=2.0)
+    assert received == [SIX_TILE_PARAMS]
+
+
+def test_short_list_is_padded_to_tile_type_count(monkeypatch):
+    """A tile reading 6 params must never get a shorter array (the DLL
+    would read past its end) — short lists are zero-padded to its count."""
+    monkeypatch.setitem(main_module.TILE_PARAM_COUNTS, 'six_param_tile', 6)
+    assert main_module.parse_tile_params([0.1, 0.2], 'six_param_tile') == [0.1, 0.2, 0.0, 0.0, 0.0, 0.0]
+    assert main_module.parse_tile_params(SIX_TILE_PARAMS, 'six_param_tile') == SIX_TILE_PARAMS

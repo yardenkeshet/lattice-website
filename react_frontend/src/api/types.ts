@@ -6,9 +6,8 @@ export interface CalculateArgs {
   nt1: number;
   nt2: number;
   nt3: number;
-  p1: number;
-  p2: number;
-  p3: number;
+  /** Tile shape parameters, any length (one per slider of the chosen tile type). */
+  tileParams: number[];
   g1: number;
   g2: number;
   extrudeLength?: number;  // extrusion mode only; backend defaults to 10.0 when absent
@@ -38,8 +37,8 @@ export interface CalculatePayload {
 
 export interface CalculateTilePayload {
   type: TileType;
-  /** [p1, p2, p3] — tile shape parameters */
-  values: [number, number, number];
+  /** Tile shape parameters, any length (one per slider of the chosen tile type). */
+  values: number[];
   tolerance: number;
 }
 

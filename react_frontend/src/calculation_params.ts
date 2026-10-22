@@ -47,6 +47,16 @@ export const TILE_DEFS: Record<string, TileDef> = {
             { label: 'Diagonal Relative Radius', min: 0.01, max: 2.0, defaultValue: 0.5, step: 0.01 },
         ],
     },
+    // [CROSS_DIAGONAL +"x"]: {
+    //     label: 'Cross Diagonalx',
+    //     imageUrl: crossDiagonalImg,
+    //     sliders: [
+    //         { label: 'Cross Radius', min: 0.01, max: 0.4, defaultValue: 0.2, step: 0.01 },
+    //         { label: 'Diagonal Relative Radius', min: 0.01, max: 2.0, defaultValue: 0.5, step: 0.01 },
+    //         { label: 'Diagonal Relative Radiusx', min: 0.01, max: 2.0, defaultValue: 0.5, step: 0.01 },
+    //         { label: 'Diagonal Relative Radiusy', min: 0.01, max: 2.0, defaultValue: 0.5, step: 0.01 },
+    //     ],
+    // },
 }
 
 export type TileType = keyof typeof TILE_DEFS

@@ -355,7 +355,7 @@ export function ToolPage() {
         calcMode,
         nt1: 0, nt2: 0, nt3: 0,
         g1, g2,
-        p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
+        tileParams: tileSliderValues,
         extrudeLength,
       },
       tolerance: igsConversionTolerance,
@@ -382,7 +382,7 @@ export function ToolPage() {
           calcMode: calcModeRef.current,
           nt1: 0, nt2: 0, nt3: 0,
           g1, g2,
-          p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0,
+          tileParams: tileSliderValues,
           extrudeLength,
         },
         tolerance: igsConversionTolerance,
@@ -429,9 +429,8 @@ export function ToolPage() {
           .catch(() => {})
       )
     }
-    const padded: [number, number, number] = [tileSliderValues[0] ?? 0, tileSliderValues[1] ?? 0, tileSliderValues[2] ?? 0]
     Promise.all(conversions).then(() => {
-      socket.calculateTile({ type: tileType, values: padded, tolerance: v })
+      socket.calculateTile({ type: tileType, values: tileSliderValues, tolerance: v })
     })
   }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket, setErrorMsg])
 
@@ -439,9 +438,8 @@ export function ToolPage() {
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
     setErrorMsg(null)
     pendingResetKey.current = null
-    const padded: [number, number, number] = [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0]
     socket.calculateTile({ type: tileType,
-      values: padded, tolerance: igsConversionTolerance })
+      values, tolerance: igsConversionTolerance })
   }, [socket, tileType, igsConversionTolerance, setErrorMsg])
 
   const handleTileTypeChange = React.useCallback((type: TileType) => {
@@ -450,8 +448,7 @@ export function ToolPage() {
     setTileType(type)
     const defaults = defaultSliderValues(type)
     setTileSliderValues(defaults)
-    const padded: [number, number, number] = [defaults[0] ?? 0, defaults[1] ?? 0, defaults[2] ?? 0]
-    socket.calculateTile({ type, values: padded,
+    socket.calculateTile({ type, values: defaults,
       tolerance: igsConversionTolerance })
   }, [socket, igsConversionTolerance, setErrorMsg])
 
@@ -572,7 +569,7 @@ export function ToolPage() {
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
-      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, p1: tileSliderValues[0], p2: tileSliderValues[1], p3: tileSliderValues[2] ?? 0, extrudeLength },
+      args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, tileParams: tileSliderValues, extrudeLength },
       tolerance: igsConversionTolerance
     }
     socket.calculate(calculateArgs)
@@ -815,17 +812,26 @@ const rightPanelStyle: React.CSSProperties = {
 
 /* Narrow-screen overrides (merged over the base styles when isNarrow) */
 
+// Narrow layout: LatticeMenu and TileMenu share the first row (wrapping onto
+// separate rows if even that is too tight), and the full-width 3D scene
+// always drops to the row below them.
 const narrowWorkspaceStyle: React.CSSProperties = {
-  flexDirection: 'column',
-  alignItems: 'center',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
 }
 
 const narrowLeftPanelStyle: React.CSSProperties = {
-  padding: '12px 12px 0',
-  alignSelf: 'center',
+  order: 0,
+  padding: '12px 6px 0 12px',
+  alignSelf: 'flex-start',
 }
 
 const narrowCenterStyle: React.CSSProperties = {
+  order: 2,
+  // Must override the base `flex: 1` (basis 0), which otherwise lets the
+  // scene squeeze into the menus' row; a 100% basis forces its own row.
+  flex: '0 0 100%',
   width: '100%',
   boxSizing: 'border-box',
   padding: 12,
@@ -839,8 +845,9 @@ const narrowViewerStyle: React.CSSProperties = {
 }
 
 const narrowRightPanelStyle: React.CSSProperties = {
-  padding: '0 12px 12px',
-  alignSelf: 'center',
+  order: 1,
+  padding: '12px 12px 0 6px',
+  alignSelf: 'flex-start',
 }
 
 const errorStyle: React.CSSProperties = {

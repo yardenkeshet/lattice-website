@@ -290,7 +290,7 @@ The backend log is the first place to look when calculations fail.
 
 | Log | Location | How to view |
 | --- | --- | --- |
-| Backend (rotating, 5 MB x 3) | `lattice-website\lattice.log` | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (live tail) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
+| Backend (rotating, 5 MB x 3, kept across restarts; oldest part overwritten at the cap) | `lattice-website\lattice.log` (+ `.1`-`.3` backups) | Browser: [/viewlog](https://lattice.cs.technion.ac.il/viewlog) (opens on the last 7 days, then streams live) or [/viewfulllog](https://lattice.cs.technion.ac.il/viewfulllog) |
 | Calculation history | `lattice-website\calc_log\log.jsonl` and `calc_log\images` | Any text viewer, or the same `/viewlog` / `/viewfulllog` pages (merged in) |
 | nginx errors | `C:\SitesHub\nginx-1.28.2\logs\error.log` | Any text viewer |
 | nginx requests | `C:\SitesHub\nginx-1.28.2\logs\access.log` | Any text viewer |
@@ -316,7 +316,7 @@ Both pages link to each other ("Full detail →" / "← Surface view"). From the
 - Calculation-history lines (written by the separate `calc_logger`, prefixed `[CALC_LOG]`) carry a thumbnail `image`, the uploaded `filename`, and the full parameter set (`tileType`, `calcMode`, tile counts, grading, shape params) — rendered inline with a small preview image. These come from `calc_log/log.jsonl` / `calc_log/images`, a separate file from `lattice.log`, but the viewer streams and displays both together.
 - The bracketed tag at the start of a message (`[CALC]`, `[TILE]`, `[DOWNLOAD]`, `[CALC_LOG]`, `[TMP]`, `[UNCAUGHT]`, ...) identifies which part of the backend logged it — group by `[TAG]` in the viewer's "Group by" dropdown to see one subsystem's lines together.
 
-A calculation's backend-side lifecycle is logged step by step: the request is received and validated (`[CALC]` info/error lines), handed to the native engine (`debug`), the engine's own progress callbacks stream through as `update` Socket.IO events (not log lines), the engine finishes and the result is compressed (`debug`/`info` with timing and size), and finally downloaded (`[DOWNLOAD]`). If a calculation fails, the error-level `[CALC]` line names which step it failed at.
+A successful calculation logs three `[CALC]` info lines: `Request` (file, client IP, mode and all parameters), `Engine start` (dispatch function, input size, and where the upload was saved under `client_data/`), and `Done` (result size, total/engine/compression times, download token). The engine's own progress callbacks stream through as `update` Socket.IO events (not log lines), and the download is logged as `[DOWNLOAD]`. Silent macro-shape previews log the same three steps as `[CALC preview]` at `debug` level. If a calculation fails, the error-level `[CALC]` line names which step it failed at and the calculation mode.
 
 ### Logs during local development
 
@@ -347,7 +347,6 @@ Backend (`tests/`), pytest:
 | `test_convert_igs_to_obj_queue.py` | `/convert_igs_to_obj` goes through the same DLL-slot queue as `calculate`/`calculate_tile` and always releases it |
 | `test_dll_instance.py` | `DllInstance` — tile generation, DLL errors surfaced without raising, two independently-loaded instances get distinct handles, progress-emit gating by sid |
 | `test_dll_lane.py` | `BackgroundDllLane` locking primitive on its own — exclusivity, blocking acquire, timeout |
-| `test_dll_lane_isolation.py` | Regression guard for the empirical finding the background-DLL-lane feature is built on: two loaded copies of the DLL have independent global state, so background and main-lane calls can run concurrently without corrupting each other's output. Slower — runs several real lattice calculations. |
 | `test_http_routes.py` | HTTP routes: `/`, `/viewlog`, `/viewfulllog`, `/calc-log-image/<name>`, `/download-results` |
 | `test_logging_safety_net.py` | Logging itself — `extra=` fields reach the JSON formatter, uncaught exceptions in HTTP and Socket.IO handlers get logged (and HTTP ones still return 500), normal 404/405s aren't hijacked by the error handler |
 | `test_real_dll_sanity.py` | The one test that does **not** monkeypatch the DLL — exercises the real `gershon/MSDLL64.dll`, the real queue, and a real download end to end |
@@ -405,7 +404,7 @@ TILE_TYPE_MAP = {
 
 The string key (`"new_tile"`) is what the frontend sends as `tileType` — it must match the key you add to `TILE_DEFS` in `calculation_params.ts` (see Frontend below) exactly.
 
-If the new tile type needs a different *number* of shape parameters than the current 3 (`p1`, `p2`, `p3`), that's a bigger change: `tile_params` is a fixed `(c_double * 3)` array built in `_run_calculate_dll_phase()` and `calculate_tile()`, and `MSDLLGetTile`'s `argtypes` in `dll_instance.py` expects exactly that size — both would need updating together with the DLL's own signature.
+If the new tile type needs a different *number* of shape parameters, no server change is needed: the frontend sends them as the `tileParams` array (`values` for `calculate_tile`) of any length, and `parse_tile_params()` in `main.py` turns it into a `c_double` array of the same length for the DLL's `double *TileParams`. Lists shorter than `MIN_TILE_PARAMS` (3) are padded with zeros, so raise that constant if a tile type ever reads more values than the frontend might send.
 
 #### Adding a new calculation mode
 

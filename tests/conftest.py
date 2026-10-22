@@ -1,6 +1,15 @@
 import pytest
 import main as main_module
 
+# Importing main attaches file handlers to the real lattice.log and
+# calc_log/log.jsonl. Detach them so a test run never writes to (or rotates)
+# the live server's logs; tests that check logging use caplog, which doesn't
+# need the files.
+main_module.logger.removeHandler(main_module.fh)
+main_module.fh.close()
+main_module.calc_logger.removeHandler(main_module.calc_fh)
+main_module.calc_fh.close()
+
 
 @pytest.fixture
 def fresh_test_client_for_http_error_test():
