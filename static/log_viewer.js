@@ -179,9 +179,26 @@ function initLogViewer(config) {
         var out = document.getElementById('log-output');
         out.innerHTML = '<p style="padding:12px;color:#ffffff;">Loading history…</p>';
         var sinceQ = 'since=' + encodeURIComponent(since);
+        // Check the content type before parsing: if a proxy doesn't route
+        // /log-history to Flask, the SPA's index.html comes back instead,
+        // and r.json() would fail with an unhelpful "Unexpected token '<'".
+        function getHistory(file) {
+            var url = '/log-history?file=' + file + '&' + sinceQ;
+            return fetch(url).then(function(r) {
+                var ct = r.headers.get('Content-Type') || '';
+                if (ct.indexOf('application/json') === -1) {
+                    throw new Error(url + ' returned ' + r.status + ' ' + (ct || 'no content type')
+                        + ' instead of JSON (is the proxy forwarding /log-history to the backend?)');
+                }
+                return r.json().then(function(body) {
+                    if (!r.ok) throw new Error(body.error || (url + ' returned ' + r.status));
+                    return body;
+                });
+            });
+        }
         Promise.all([
-            fetch('/log-history?file=main&' + sinceQ).then(function(r){ return r.json(); }),
-            fetch('/log-history?file=calc&' + sinceQ).then(function(r){ return r.json(); }),
+            getHistory('main'),
+            getHistory('calc'),
         ]).then(function(results) {
             var lines = (results[0].lines || []).concat(results[1].lines || []);
             allEntries = lines.map(parseLine);

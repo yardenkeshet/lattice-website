@@ -22,7 +22,7 @@ What nginx sends where, for `lattice.cs.technion.ac.il`:
 | URL path | Goes to |
 | --- | --- |
 | `/socket.io/` | Flask on 127.0.0.1:5003 (WebSocket upgrade) |
-| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/viewlog`, `/viewfulllog`, `/static` | Flask on 127.0.0.1:5003 |
+| `/convert_igs_to_obj`, `/download-results`, `/log-calculation`, `/calc-log-image`, `/log-history`, `/viewlog`, `/viewfulllog`, `/static` | Flask on 127.0.0.1:5003 |
 | `/assets/...` | files in `dist/assets` (cached 1 year; names are hashed) |
 | everything else (`/`, `/tool`, ...) | files in `dist`, falling back to `dist/index.html` so React routing works |
 
@@ -216,7 +216,7 @@ server {
     }
 
     # Flask HTTP routes (see main.py)
-    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|viewlog|viewfulllog|static)(/|$) {
+    location ~ ^/(convert_igs_to_obj|download-results|log-calculation|calc-log-image|log-history|viewlog|viewfulllog|static)(/|$) {
         proxy_pass http://127.0.0.1:5003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
