@@ -89,6 +89,34 @@ export function ToolPage() {
   const viewerSceneRef = React.useRef<ViewerSceneHandle>(null)
   const [pendingCameraSnapshot, setPendingCameraSnapshot] = React.useState<CameraSnapshot | null>(null)
 
+  /* ── Force-remount the viewer's Canvas after the window settles from a
+     resize (in particular, a browser zoom change). react-three-fiber
+     tracks its container's size via ResizeObserver and sometimes gets
+     stuck on a stale/incorrect measurement after a zoom change — observed
+     as the canvas's own inline height ballooning and never correcting
+     itself, even though the surrounding CSS box is the right size. A full
+     remount forces a clean re-measurement; pendingCameraSnapshot (the same
+     mechanism the perspective/orthographic toggle already uses) makes it
+     invisible — same camera position, freshly correct canvas size.
+     Debounced so we remount once after zooming settles, not on every
+     intermediate tick while the user is still actively zooming. */
+  const [viewerRemountNonce, setViewerRemountNonce] = React.useState(0)
+  React.useEffect(() => {
+    let timeoutId: number | undefined
+    const handleResize = () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      timeoutId = window.setTimeout(() => {
+        setPendingCameraSnapshot(viewerSceneRef.current?.getCameraSnapshot() ?? null)
+        setViewerRemountNonce(n => n + 1)
+      }, 300)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    }
+  }, [])
+
   /* ── Tile state ── */
   const [tileType, setTileType]           = React.useState<TileType>(DEFAULT_TILE_TYPE)
   const [tileSliderValues, setTileSliderValues] = React.useState(defaultSliderValues(DEFAULT_TILE_TYPE))
@@ -715,6 +743,7 @@ export function ToolPage() {
               cameraMode={cameraMode}
               cameraResetKey={viewerResetKey}
               pendingCameraSnapshot={pendingCameraSnapshot}
+              remountNonce={viewerRemountNonce}
               onFileDrop={handleViewerFileDrop}
               onAutoFitComplete={handleAutoFitComplete}
               meshColor={meshColor}

@@ -90,6 +90,13 @@ export interface ViewerSceneProps {
    *  camera, so the toggle preserves position/rotation/zoom instead of
    *  resetting to the default fit. `null`/omitted on every other mount. */
   pendingCameraSnapshot?: CameraSnapshot | null
+  /** Bump this (e.g. on a debounced window resize) to force the Canvas to
+   *  remount and re-measure its container from scratch. Works around
+   *  react-three-fiber's resize tracking getting stuck after a browser
+   *  zoom change — see ToolPage's resize listener for why this exists.
+   *  Combined with `pendingCameraSnapshot`, the remount is invisible to
+   *  the user: same camera position, freshly correct canvas size. */
+  remountNonce?: number
 }
 
 const SCROLL_ZOOM_STEP = 10
@@ -125,6 +132,7 @@ function ViewerSceneFn({
   shininess = DEFAULT_SHININESS,
   hideEmptyPlaceholder = false,
   pendingCameraSnapshot = null,
+  remountNonce = 0,
 }: ViewerSceneProps, ref: React.Ref<ViewerSceneHandle>) {
   const [isDragOver, setIsDragOver] = React.useState(false)
 
@@ -268,9 +276,10 @@ function ViewerSceneFn({
         </div>
       )}
 
-      {/* ── Three.js canvas — remounts when camera mode changes ── */}
+      {/* ── Three.js canvas — remounts when camera mode changes, or when
+          remountNonce is bumped to force a fresh size measurement ── */}
       <Canvas
-        key={cameraMode}
+        key={`${cameraMode}-${remountNonce}`}
         frameloop="demand"
         style={{ width: '100%', height: '100%' }}
         camera={
