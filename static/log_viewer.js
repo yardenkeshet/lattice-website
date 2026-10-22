@@ -4,10 +4,6 @@ function initLogViewer(config) {
 
     document.querySelector('h1').textContent = config.heading;
 
-    var navLink = document.getElementById('other-page-link');
-    navLink.href = config.otherPageHref;
-    navLink.textContent = config.otherPageLabel;
-
     var fEl = document.getElementById('lvl-filters');
     LEVELS.forEach(function(lv) {
         var b = document.createElement('button');
@@ -62,6 +58,12 @@ function initLogViewer(config) {
 
     var allEntries = [];
 
+    // Entries start collapsed (one-line message, no snapshot/traceback);
+    // clicking one toggles it. render() rebuilds the whole list on every
+    // new line, so expanded state is kept by entry id rather than on the DOM.
+    var nextEntryId = 0;
+    var expanded = new Set();
+
     function entryHtml(e, hideSid) {
         var lv = e.level || 'INFO';
         var lc = lv === 'WARNING' ? 'W' : lv === 'ERROR' ? 'E' : '';
@@ -76,13 +78,11 @@ function initLogViewer(config) {
                 + (e.args ? '<span class="calc-log-params">' + esc(paramsSummary(e.args)) + '</span>' : '')
                 + '</div>'
             : '';
-        var excBlock = e.exc
-            ? (config.excBlocksExpandedByDefault
-                ? '<pre class="exc-block">' + esc(e.exc) + '</pre>'
-                : '<details><summary style="cursor:pointer;color:#ffffff;font-size:11px;margin:3px 0 0 90px;">Exception</summary><pre class="exc-block">' + esc(e.exc) + '</pre></details>')
-            : '';
-        return '<div class="log-entry ' + lc + '">'
+        var excBlock = e.exc ? '<pre class="exc-block">' + esc(e.exc) + '</pre>' : '';
+        var isOpen = expanded.has(e._id);
+        return '<div class="log-entry ' + lc + (isOpen ? '' : ' collapsed') + '" data-id="' + e._id + '">'
             + '<div class="log-line">'
+            + '<span class="caret">' + (isOpen ? '▾' : '▸') + '</span>'
             + '<span class="ts">' + esc(timeStr(e.ts)) + '</span>'
             + '<span class="badge ' + lv + '">' + lv + '</span>'
             + '<span class="msg">' + msgHtml(e.msg) + '</span>'
@@ -152,12 +152,29 @@ function initLogViewer(config) {
     document.getElementById('sort').onchange = render;
     document.getElementById('group').onchange = render;
 
+    document.getElementById('log-output').addEventListener('click', function(ev) {
+        // Let the snapshot link open, and don't toggle when the click
+        // was the end of a text selection (copying a message).
+        if (ev.target.closest('a')) return;
+        if (String(window.getSelection())) return;
+        var el = ev.target.closest('.log-entry');
+        if (!el) return;
+        var id = Number(el.dataset.id);
+        if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+        var isOpen = expanded.has(id);
+        el.classList.toggle('collapsed', !isOpen);
+        el.querySelector('.caret').textContent = isOpen ? '▾' : '▸';
+    });
+
     function parseLine(raw) {
+        var e;
         try {
-            return JSON.parse(raw);
-        } catch(e) {
-            return { msg: raw, level: 'INFO', ts: '' };
+            e = JSON.parse(raw);
+        } catch(err) {
+            e = { msg: raw, level: 'INFO', ts: '' };
         }
+        e._id = nextEntryId++;
+        return e;
     }
 
     // History filter: "Since page opened" is the normal live view (just
@@ -222,12 +239,12 @@ function initLogViewer(config) {
     });
 
     socket.on('log_error', function(msg) {
-        allEntries.push({ msg: 'SERVER ERROR: ' + msg.data, level: 'ERROR', ts: '' });
+        allEntries.push({ msg: 'SERVER ERROR: ' + msg.data, level: 'ERROR', ts: '', _id: nextEntryId++ });
         render();
     });
 
     socket.on('disconnect', function() {
-        allEntries.push({ msg: 'Disconnected. Refresh to reconnect.', level: 'WARNING', ts: '' });
+        allEntries.push({ msg: 'Disconnected. Refresh to reconnect.', level: 'WARNING', ts: '', _id: nextEntryId++ });
         render();
     });
 }

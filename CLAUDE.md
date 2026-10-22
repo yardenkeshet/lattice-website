@@ -69,7 +69,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 
 **`dll_lane.py`** / **`calc_queue.py`** — serialize access to the two loaded DLL copies (background lane vs. main calculation queue).
 
-**`templates/`** + **`static/log_viewer.js`** — the `/viewlog` and `/viewfulllog` log pages. (The old `static/client.js` frontend has been retired; the backend's `/` is now just a JSON health check.)
+**`templates/`** + **`static/log_viewer.js`** — the `/viewlog` log page (`full_log_view.html`). (The old `static/client.js` frontend has been retired; the backend's `/` is now just a JSON health check.)
 
 **`react_frontend/`** — new React + TypeScript frontend (Vite). Two pages (`HomePage`, `ToolPage`) with a full UI component library and a React Three Fiber viewer. See [React Frontend](#react-frontend) section below.
 
@@ -98,7 +98,7 @@ The mapping from the string values used in the frontend (`"cross"`, `"diagonal"`
 
 ## Log Viewer
 
-Visit `/viewlog` for a real-time log tail, or `/viewfulllog` for the full log.
+Visit `/viewlog` for the live log viewer (all levels shown; entries collapsed to one line, click to expand).
 
 ## React Frontend
 

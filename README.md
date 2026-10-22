@@ -178,6 +178,4 @@ npm run storybook   # http://localhost:6006
 
 ### Log viewer
 
-With the backend running, open:
-- **http://localhost:5003/viewlog** — live log tail
-- **http://localhost:5003/viewfulllog** — full log
+With the backend running, open **http://localhost:5003/viewlog** for the live log viewer.

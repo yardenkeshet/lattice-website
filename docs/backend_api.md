@@ -18,17 +18,10 @@ Serves the main single-page app (`templates/index.html`).
 ---
 
 ### `GET /viewlog`
-Renders the real-time log viewer page (`templates/log_view.html`).  
-The page uses SocketIO to receive `log_update` events.
-
----
-
-### `GET /viewfulllog`
-Renders a live full-detail log viewer (`templates/full_log_view.html`), sharing
-`static/log_viewer.js` with `/viewlog`. Streams `log_update` events over SocketIO
-the same way `/viewlog` does, but defaults to showing all levels including `DEBUG`
-(vs. `/viewlog`'s default of hiding `DEBUG`) and renders exception tracebacks
-always-expanded. Each page links to the other via a small nav link in its header.
+Renders the live log viewer page (`templates/full_log_view.html` + `static/log_viewer.js`).
+The page uses SocketIO to receive `log_update` events. It defaults to showing all
+levels including `DEBUG`. Each entry starts collapsed to one line (snapshot and
+exception traceback hidden); clicking it toggles it open.
 
 ---
 

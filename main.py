@@ -1220,11 +1220,6 @@ def index():
 
 @app.route('/viewlog')
 def view_log():
-    return render_template('log_view.html', log_file=os.path.basename(LOG_FILE_NAME))
-
-
-@app.route('/viewfulllog')
-def view_full_log():
     return render_template('full_log_view.html', log_file=os.path.basename(LOG_FILE_NAME))
 
 
