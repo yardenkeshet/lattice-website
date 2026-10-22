@@ -111,6 +111,13 @@ export function HomePage() {
         >
           Open Lattice Maker →
         </button>
+          <p style={ctaSubtitleStyle}>
+          {"Created using LatticeMaker, "}
+          <a href="mailto:https://lattice.cs.technion.ac.il">
+          https://lattice.cs.technion.ac.il
+          </a>
+          {", Gershon Elber, Technion"}
+        </p>
       </div>
 
       {/* ── Body text ── */}

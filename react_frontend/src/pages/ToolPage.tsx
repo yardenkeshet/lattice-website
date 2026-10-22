@@ -15,6 +15,7 @@ import { downloadResults, convertIgsToObj, logCalculation } from '../api/httpCli
 import { meshTextToGzB64, useObjBlobUrl } from '../lib/obj'
 import { type CalcOverlayPhase, calcLabelForQueueStatus } from '../lib/progressDisplay'
 import { isLogViewerShortcut } from '../lib/logViewerShortcut'
+import { useMediaQuery } from '../lib/useMediaQuery'
 import defaultTileUrl from '../assets/default_diagonal_tile.obj?url'
 import {
   DEFAULT_X_COUNT, DEFAULT_Y_COUNT, DEFAULT_Z_COUNT,
@@ -68,6 +69,8 @@ function fileToBase64(file: File): Promise<string> {
 
 export function ToolPage() {
   const navigate = useNavigate()
+  // Below this width the three panels stack vertically (phones / narrow tablets).
+  const isNarrow = useMediaQuery('(max-width: 900px)')
   const socket = getLatticeSocket()
 
   /* ── UI state ── */
@@ -633,10 +636,10 @@ export function ToolPage() {
       <Banner onClick={() => navigate('/')}/>
 
       {/* ── Workspace ── */}
-      <div style={workspaceStyle}>
+      <div style={isNarrow ? { ...workspaceStyle, ...narrowWorkspaceStyle } : workspaceStyle}>
 
         {/* Left: LatticeMenu */}
-        <div style={leftPanelStyle}>
+        <div style={isNarrow ? { ...leftPanelStyle, ...narrowLeftPanelStyle } : leftPanelStyle}>
           <LatticeMenu
             nt1={nt1} nt2={nt2} nt3={nt3}
             g1={g1} g2={g2}
@@ -666,8 +669,8 @@ export function ToolPage() {
         </div>
 
         {/* Centre: Toolbar + ViewerScene */}
-        <div style={centerStyle}>
-          <div style={toolbarRowStyle}>
+        <div style={isNarrow ? { ...centerStyle, ...narrowCenterStyle } : centerStyle}>
+          <div style={isNarrow ? { ...toolbarRowStyle, flexWrap: 'wrap' } : toolbarRowStyle}>
             <Toolbar
               onCalculate={handleCalculate}
               cameraMode={cameraMode}
@@ -708,7 +711,7 @@ export function ToolPage() {
             </div>
           )}
 
-          <div style={viewerStyle}>
+          <div style={isNarrow ? { ...viewerStyle, ...narrowViewerStyle } : viewerStyle}>
             <ViewerScene
               ref={viewerSceneRef}
               layers={displayedLayers}
@@ -729,7 +732,7 @@ export function ToolPage() {
         </div>
 
         {/* Right: TileMenu (always visible) */}
-        <div style={rightPanelStyle}>
+        <div style={isNarrow ? { ...rightPanelStyle, ...narrowRightPanelStyle } : rightPanelStyle}>
           <TileMenu
             tileType={tileType}
             sliderValues={tileSliderValues}
@@ -808,6 +811,36 @@ const viewerStyle: React.CSSProperties = {
 const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
   padding: '20px 20px 20px 0',
+}
+
+/* Narrow-screen overrides (merged over the base styles when isNarrow) */
+
+const narrowWorkspaceStyle: React.CSSProperties = {
+  flexDirection: 'column',
+  alignItems: 'center',
+}
+
+const narrowLeftPanelStyle: React.CSSProperties = {
+  padding: '12px 12px 0',
+  alignSelf: 'center',
+}
+
+const narrowCenterStyle: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: 12,
+}
+
+// In column mode there is no flex height to fill, so give the canvas an explicit one.
+const narrowViewerStyle: React.CSSProperties = {
+  flex: 'none',
+  height: '60vh',
+  minHeight: 300,
+}
+
+const narrowRightPanelStyle: React.CSSProperties = {
+  padding: '0 12px 12px',
+  alignSelf: 'center',
 }
 
 const errorStyle: React.CSSProperties = {

@@ -18,6 +18,7 @@ from typing import Callable
 
 logger = logging.getLogger('lattice')
 
+# maximum number of jobs allowed in the waiting room at once
 MAX_WAITING = 10
 
 

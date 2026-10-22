@@ -154,14 +154,17 @@ const leftSectionStyle: React.CSSProperties = {
   flexShrink: 0,
 }
 
+/* Scales a Figma px value with the banner (--banner-scale shrinks it on narrow screens) */
+const scaled = (px: number) => `calc(${px}px * var(--banner-scale))`
+
 /* Circular blob: 496px circle positioned so it peeks out top-left (Figma coords: x=-182, y=-82) */
 const circleBlobStyle: React.CSSProperties = {
   position: 'absolute',
   width: 'var(--banner-circle-size)',
   height: 'var(--banner-circle-size)',
   borderRadius: 'var(--radius-full)',
-  top: '-82px',
-  left: '-273px',
+  top: scaled(-82),
+  left: scaled(-273),
   overflow: 'hidden',
 }
 
@@ -176,10 +179,10 @@ const circleBlobImgStyle: React.CSSProperties = {
 /* TAMC logo button (when onLeftLogoClick is provided) */
 const labLogoButtonStyle: React.CSSProperties = {
   position: 'absolute',
-  left: '-25px',
-  top: '5px',
-  width: '239px',
-  height: '148px',
+  left: scaled(-25),
+  top: scaled(5),
+  width: scaled(239),
+  height: scaled(148),
   background: 'none',
   border: 'none',
   padding: 0,
@@ -194,11 +197,13 @@ const centerSectionStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   height: '100%',
+  minWidth: 0,
 }
 
 const centerLogoStyle: React.CSSProperties = {
   height: '80%',
-  maxHeight: '126px',
+  maxHeight: scaled(126),
+  maxWidth: '100%',
   objectFit: 'contain',
 }
 
@@ -208,14 +213,14 @@ const rightSectionStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  paddingRight: 'var(--space-lg)',
+  paddingRight: `calc(var(--space-lg) * var(--banner-scale))`,
   flexShrink: 0,
 }
 
 const rightLogoStyle: React.CSSProperties = {
   width: '100%',
-  maxWidth: '232px',
-  height: '53px',
+  maxWidth: scaled(232),
+  height: scaled(53),
   objectFit: 'contain',
 }
 
