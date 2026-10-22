@@ -48,10 +48,28 @@ class CalcQueueManager:
         self._emit_lock = threading.Lock()
         self._waiting: list[Job] = []
         self._busy = False  # True while a full job OR a tile-preview call holds the DLL
+        self._stopped = False
         self._worker = threading.Thread(target=self._worker_loop, daemon=True, name='calc-queue-worker')
 
     def start(self) -> None:
         self._worker.start()
+
+    def stop(self, timeout: float = 2.0) -> None:
+        """Signal the worker thread to exit (after finishing any job
+        already in flight) and wait for it to actually stop.
+
+        The worker is a daemon thread, so this was never needed just to
+        let the process exit — it matters for callers, tests especially,
+        that create many CalcQueueManager instances in one process. Left
+        unstopped, those worker threads just sit blocked forever: not a
+        deadlock, not something Python itself complains about, but still
+        real accumulated cruft across a long test session with no way to
+        clean it up before this existed. See tests/test_calc_queue.py's
+        manager-cleanup fixture."""
+        with self._lock:
+            self._stopped = True
+            self._not_empty.notify_all()
+        self._worker.join(timeout=timeout)
 
     # ── calculate: enqueue / cancel ──────────────────────────────────────
 
@@ -102,8 +120,10 @@ class CalcQueueManager:
         while True:
             try:
                 with self._not_empty:
-                    while not self._waiting or self._busy:
+                    while not self._stopped and (not self._waiting or self._busy):
                         self._not_empty.wait()
+                    if self._stopped:
+                        return
                     job = self._waiting.pop(0)
                     self._busy = True
                 try:

@@ -88,13 +88,15 @@ def test_lane_is_independent_of_a_calc_queue_manager():
 
     queue_manager = CalcQueueManager(run_job=slow_run_job, emit=no_emit)
     queue_manager.start()
-    queue_manager.enqueue('main-job', {})
-    time.sleep(0.05)  # let the worker pick it up — main queue is now busy
+    try:
+        queue_manager.enqueue('main-job', {})
+        time.sleep(0.05)  # let the worker pick it up — main queue is now busy
 
-    lane = BackgroundDllLane()
-    start = time.time()
-    assert lane.try_acquire() is True  # must not be affected by the main queue at all
-    assert time.time() - start < 0.1
-    lane.release()
-
-    release_main_job.set()
+        lane = BackgroundDllLane()
+        start = time.time()
+        assert lane.try_acquire() is True  # must not be affected by the main queue at all
+        assert time.time() - start < 0.1
+        lane.release()
+    finally:
+        release_main_job.set()
+        queue_manager.stop()

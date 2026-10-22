@@ -1,7 +1,25 @@
 import threading
 import time
 
+import pytest
+
 from calc_queue import CalcQueueManager, MAX_WAITING
+
+# Every manager created via make_manager() in this file is registered here
+# and stopped by the autouse fixture below once its test finishes. Each
+# started-but-never-stopped CalcQueueManager leaves a daemon thread parked
+# forever — harmless to the process, but this file alone creates well over
+# a hundred of them (two tests loop 100 trials each) with no way to clean
+# them up before CalcQueueManager.stop() existed. Good hygiene for a test
+# session this size regardless of any one test's own behavior.
+_active_managers: list[CalcQueueManager] = []
+
+
+@pytest.fixture(autouse=True)
+def _stop_managers_after_test():
+    yield
+    while _active_managers:
+        _active_managers.pop().stop()
 
 
 def make_manager(run_job=None, emit=None):
@@ -18,6 +36,7 @@ def make_manager(run_job=None, emit=None):
         run_job=run_job or _default_run_job,
         emit=emit or _default_emit,
     )
+    _active_managers.append(manager)
     return manager, calls, events
 
 
@@ -242,15 +261,20 @@ def test_idle_queue_dispatch_emits_no_preceding_waiting():
 
         manager = CalcQueueManager(run_job=run_job, emit=emit)
         manager.start()
+        try:
+            sid = f'solo-{trial}'
+            manager.enqueue(sid, {})
 
-        sid = f'solo-{trial}'
-        manager.enqueue(sid, {})
-
-        assert _wait_until(
-            lambda: any(e == 'queue_status' and p['state'] == 'calculating' for (e, s, p) in events if s == sid)
-        )
-        sid_events = [(e, p['state']) for (e, s, p) in events if e == 'queue_status' and s == sid]
-        assert sid_events == [('queue_status', 'calculating')]
+            assert _wait_until(
+                lambda: any(e == 'queue_status' and p['state'] == 'calculating' for (e, s, p) in events if s == sid)
+            )
+            sid_events = [(e, p['state']) for (e, s, p) in events if e == 'queue_status' and s == sid]
+            assert sid_events == [('queue_status', 'calculating')]
+        finally:
+            # 100 trials, each its own manager/worker thread — stop it before
+            # the next trial starts one, not just at the end of the test (see
+            # the file-level comment on _active_managers for why).
+            manager.stop()
 
 
 def test_no_client_ever_sees_calculating_before_waiting_concurrent():
@@ -275,34 +299,39 @@ def test_no_client_ever_sees_calculating_before_waiting_concurrent():
 
         manager = CalcQueueManager(run_job=run_job, emit=emit)
         manager.start()
+        try:
+            sids = [f't{trial}-{i}' for i in range(N_CONCURRENT)]
+            barrier = threading.Barrier(N_CONCURRENT)
 
-        sids = [f't{trial}-{i}' for i in range(N_CONCURRENT)]
-        barrier = threading.Barrier(N_CONCURRENT)
+            def make_enqueue(s):
+                def _f():
+                    barrier.wait()
+                    manager.enqueue(s, {})
+                return _f
 
-        def make_enqueue(s):
-            def _f():
-                barrier.wait()
-                manager.enqueue(s, {})
-            return _f
+            threads = [threading.Thread(target=make_enqueue(s)) for s in sids]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
-        threads = [threading.Thread(target=make_enqueue(s)) for s in sids]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+            def all_calculating():
+                calculating_sids = {s for (e, s, st) in events if e == 'queue_status' and st == 'calculating'}
+                return all(s in calculating_sids for s in sids)
 
-        def all_calculating():
-            calculating_sids = {s for (e, s, st) in events if e == 'queue_status' and st == 'calculating'}
-            return all(s in calculating_sids for s in sids)
+            assert _wait_until(all_calculating, timeout=2.0)
 
-        assert _wait_until(all_calculating, timeout=2.0)
-
-        for sid in sids:
-            sid_states = [st for (e, s, st) in events if s == sid]
-            waiting_idx = sid_states.index('waiting') if 'waiting' in sid_states else None
-            calc_idx = sid_states.index('calculating') if 'calculating' in sid_states else None
-            if waiting_idx is not None and calc_idx is not None and waiting_idx > calc_idx:
-                bad_order_count += 1
+            for sid in sids:
+                sid_states = [st for (e, s, st) in events if s == sid]
+                waiting_idx = sid_states.index('waiting') if 'waiting' in sid_states else None
+                calc_idx = sid_states.index('calculating') if 'calculating' in sid_states else None
+                if waiting_idx is not None and calc_idx is not None and waiting_idx > calc_idx:
+                    bad_order_count += 1
+        finally:
+            # 100 trials, each its own manager/worker thread — stop it before
+            # the next trial starts one, not just at the end of the test (see
+            # the file-level comment on _active_managers for why).
+            manager.stop()
 
     assert bad_order_count == 0, f"{bad_order_count} sid(s) saw calculating before waiting"
 
