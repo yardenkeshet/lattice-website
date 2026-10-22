@@ -519,6 +519,20 @@ import yourTileImg from './assets/TileTypes/your-tile.png'
 - `TileCard`, `TileMenu`, and `LatticeMenu` iterate over these records generically, so new tiles/modes appear in the UI automatically once added here.
 - Double-check `backend_api.md` for the exact string values the backend expects for tile types and calculation modes — the frontend keys must match exactly.
 
+## Changing the calculation queue capacity
+
+Only one calculation runs at a time (the DLL isn't safe for concurrent calls — see `calc_queue.py`'s own module docstring). Everyone else waits in line. The queue's waiting room is bounded: once it's full, a new request is rejected outright with "Site is too busy right now" rather than being queued indefinitely.
+
+That limit is one constant, **`MAX_QUEUE_WAITING`**, defined in `main.py` right next to the tile/calc-mode config (`TILE_TYPE_MAP`, `VALID_CALC_MODES`, etc.) under the `# Queue capacity` header, near the top of the file:
+
+```python
+MAX_QUEUE_WAITING = 10
+```
+
+Change that one number and restart `python main.py` — nothing else to touch. It's passed into `CalcQueueManager` at construction (`queue_manager = CalcQueueManager(..., max_waiting=MAX_QUEUE_WAITING)`); `calc_queue.py` itself doesn't hardcode a limit for the live app — it only keeps its own `MAX_WAITING` as a default for callers (tests) that construct a `CalcQueueManager` without specifying one.
+
+This caps how many requests can be *waiting*, not how fast they're processed — raising it doesn't speed anything up, it just lets more people queue up behind the one calculation that's running before new requests start getting rejected.
+
 ## Windows helpers
 
 | Command | What it shows |

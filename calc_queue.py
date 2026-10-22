@@ -18,7 +18,10 @@ from typing import Callable
 
 logger = logging.getLogger('lattice')
 
-# maximum number of jobs allowed in the waiting room at once
+# Default maximum number of jobs allowed in the waiting room at once.
+# main.py passes its own value (see MAX_QUEUE_WAITING there) when
+# constructing the real CalcQueueManager — this default only applies if a
+# caller (e.g. a test) builds one without passing max_waiting explicitly.
 MAX_WAITING = 10
 
 
@@ -31,9 +34,11 @@ class Job:
 
 
 class CalcQueueManager:
-    def __init__(self, run_job: Callable[[Job], None], emit: Callable[[str, str, dict], None]):
+    def __init__(self, run_job: Callable[[Job], None], emit: Callable[[str, str, dict], None],
+                 max_waiting: int = MAX_WAITING):
         self._run_job = run_job
         self._emit = emit
+        self._max_waiting = max_waiting
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         # Serializes emit *sequences* against each other (worker's 'calculating'
@@ -52,9 +57,9 @@ class CalcQueueManager:
 
     def enqueue(self, sid: str, payload: dict, silent: bool = False) -> bool:
         """Add a job to the waiting room. Returns False (enqueues nothing)
-        if the waiting room is already at MAX_WAITING."""
+        if the waiting room is already at max_waiting."""
         with self._lock:
-            if len(self._waiting) >= MAX_WAITING:
+            if len(self._waiting) >= self._max_waiting:
                 return False
             self._waiting.append(Job(sid=sid, payload=payload, silent=silent))
             # True exactly when this job is the only one waiting and the DLL

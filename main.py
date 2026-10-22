@@ -53,10 +53,22 @@ TILE_TYPE_MAP = {
 }
 
 VALID_CALC_MODES = {
-    CALC_MODE_RULING, 
-    CALC_MODE_EXTRUSION, 
+    CALC_MODE_RULING,
+    CALC_MODE_EXTRUSION,
     CALC_MODE_REVOLUTION
     }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Queue capacity
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Max jobs allowed to wait in line for the DLL at once (the calculation
+# already running doesn't count). A request past this limit is rejected
+# outright (the user sees "site is too busy") rather than queued — this
+# just caps how long that queue can get, it doesn't change how fast jobs
+# are processed. Change this one number to raise or lower it; see
+# CalcQueueManager in calc_queue.py for how it's enforced.
+MAX_QUEUE_WAITING = 10
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CLI args — parsed early so CORS can use --frontend-port
@@ -1043,7 +1055,7 @@ def _run_silent_calculate(sid: str, payload: dict) -> None:
         _finish_calculate(payload, sid, dll_result)
 
 
-queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event)
+queue_manager = CalcQueueManager(run_job=_run_calculate_job, emit=_emit_queue_event, max_waiting=MAX_QUEUE_WAITING)
 queue_manager.start()
 
 
