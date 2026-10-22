@@ -763,12 +763,20 @@ export function ToolPage() {
 const pageStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  minHeight: '100vh',
+  // A hard ceiling, not just a floor: the page (and everything that takes
+  // flex:1 of it, down to the viewer) can never be taller than the
+  // viewport. Side panels that don't fit scroll internally instead (see
+  // LatticeMenu/TileMenu's own overflowY:auto + maxHeight:100%, which
+  // only actually applies once an ancestor gives them a bounded height —
+  // this is that ancestor).
+  height: '100vh',
+  overflow: 'hidden',
   backgroundColor: 'var(--bg-primary)',
 }
 
 const workspaceStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   display: 'flex',
   gap: 0,
   backgroundColor: '#e3e3e3',
@@ -778,8 +786,8 @@ const workspaceStyle: React.CSSProperties = {
 
 const leftPanelStyle: React.CSSProperties = {
   flexShrink: 0,
+  minHeight: 0,
   padding: '20px 0 20px 20px',
-  alignSelf: 'flex-start',
 }
 
 const centerStyle: React.CSSProperties = {
@@ -807,6 +815,7 @@ const viewerStyle: React.CSSProperties = {
 
 const rightPanelStyle: React.CSSProperties = {
   flexShrink: 0,
+  minHeight: 0,
   padding: '20px 20px 20px 0',
 }
 
