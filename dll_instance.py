@@ -18,6 +18,12 @@ import shutil
 from ctypes import c_void_p, c_char_p, c_int, c_double, POINTER, Structure, CFUNCTYPE
 from typing import Callable
 
+# Tessellation fineness accepted by MSDLLSetPolyTolerance (gershon/Interface.c):
+# an integer in [2, 200], higher = finer / denser OBJ meshes.
+MIN_FINENESS = 2
+MAX_FINENESS = 200
+DEFAULT_FINENESS = 20
+
 
 class _PRInfoStruct(Structure):
     _fields_ = [("InitMsg", c_char_p), ("Progress", c_int)]
@@ -109,39 +115,49 @@ class DllInstance:
             return
         self._emit("update", self._current_sid, {"type": "progress_end", "progress": 100})
 
-    def get_tile(self, tile_type, tile_params, graded, tolerance, out_obj_file: bytes):
-        # `tolerance` is accepted for caller compatibility but not passed:
-        # MSDLLGetTile takes no tolerance. Tessellation fineness is global
-        # DLL state — see set_poly_tolerance().
-        return _call(self._dll.MSDLLGetTile, tile_type, tile_params, graded, out_obj_file)
+    def _with_fineness(self, fineness: int, fn, *args) -> str | None:
+        """Sets this instance's tessellation fineness, then calls `fn`.
+
+        Fineness is global state inside each loaded DLL copy, so it is set
+        on every call, inside the caller's exclusive section on this
+        instance (calc_queue.py / dll_lane.py). Each call therefore always
+        uses its own requester's value, never one left behind by another
+        user's earlier call. If the DLL rejects the value, `fn` is skipped."""
+        err = self.set_poly_tolerance(fineness)
+        if err:
+            return err
+        return _call(fn, *args)
+
+    def get_tile(self, tile_type, tile_params, graded, fineness: int, out_obj_file: bytes):
+        return self._with_fineness(fineness, self._dll.MSDLLGetTile,
+                                   tile_type, tile_params, graded, out_obj_file)
 
     def from_revolution(self, srf_igs: bytes, num_tiles, graded, tile_type, tile_params,
-                         out_igs: bytes, out_obj: bytes):
-        return _call(self._dll.MSDLLMSFromRevolution,
-                     srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
+                         out_igs: bytes, out_obj: bytes, fineness: int):
+        return self._with_fineness(fineness, self._dll.MSDLLMSFromRevolution,
+                                   srf_igs, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
 
     def from_extrusion(self, srf_igs: bytes, extrude_length: float, num_tiles, graded,
-                        tile_type, tile_params, out_igs: bytes, out_obj: bytes):
-        return _call(self._dll.MSDLLMSFromExtrusion,
-                     srf_igs, c_double(extrude_length), num_tiles, graded,
-                     tile_type, tile_params, out_igs, out_obj)
+                        tile_type, tile_params, out_igs: bytes, out_obj: bytes, fineness: int):
+        return self._with_fineness(fineness, self._dll.MSDLLMSFromExtrusion,
+                                   srf_igs, c_double(extrude_length), num_tiles, graded,
+                                   tile_type, tile_params, out_igs, out_obj)
 
     def from_ruling(self, srf1: bytes, srf2: bytes, num_tiles, graded, tile_type, tile_params,
-                     out_igs: bytes, out_obj: bytes):
-        return _call(self._dll.MSDLLMSFromRuling,
-                     srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
+                     out_igs: bytes, out_obj: bytes, fineness: int):
+        return self._with_fineness(fineness, self._dll.MSDLLMSFromRuling,
+                                   srf1, srf2, num_tiles, graded, tile_type, tile_params, out_igs, out_obj)
 
-    def iges2obj(self, igs_file: bytes, obj_file: bytes, tolerance=None) -> str | None:
-        # `tolerance` is accepted for caller compatibility but not passed:
-        # MSDLLIGES2OBJ takes only the two file paths. Tessellation fineness
-        # is global DLL state — see set_poly_tolerance().
-        return _call(self._dll.MSDLLIGES2OBJ, igs_file, obj_file)
+    def iges2obj(self, igs_file: bytes, obj_file: bytes, fineness: int) -> str | None:
+        return self._with_fineness(fineness, self._dll.MSDLLIGES2OBJ, igs_file, obj_file)
 
-    def set_poly_tolerance(self, tolerance: int) -> str | None:
-        """Sets the tessellation fineness used by every later OBJ export on
-        this instance (MSDLLGetTile, MSDLLMSFrom*, MSDLLIGES2OBJ). The DLL
-        accepts integers in [2, 200] and returns an error string otherwise."""
-        return _call(self._dll.MSDLLSetPolyTolerance, c_int(tolerance))
+    def set_poly_tolerance(self, fineness: int) -> str | None:
+        """Low-level: sets the tessellation fineness used by later OBJ
+        exports on this instance. The DLL accepts integers in
+        [MIN_FINENESS, MAX_FINENESS] (higher = finer) and returns an error
+        string otherwise. Prefer the work methods above, which call this
+        for you."""
+        return _call(self._dll.MSDLLSetPolyTolerance, c_int(int(fineness)))
 
 
 def prepare_background_dll_copy(source_dll_path: str, source_manifest_path: str, dest_dir: str) -> str:

@@ -19,7 +19,8 @@ from dotenv import load_dotenv
 from ctypes import c_int, c_double
 
 from calc_queue import CalcQueueManager, Job
-from dll_instance import DllInstance, prepare_background_dll_copy, assert_distinct_dll_instances
+from dll_instance import (DllInstance, prepare_background_dll_copy, assert_distinct_dll_instances,
+                          DEFAULT_FINENESS, MIN_FINENESS, MAX_FINENESS)
 from dll_lane import BackgroundDllLane
 
 from flask import Flask, render_template, send_file, jsonify, request
@@ -319,9 +320,10 @@ DOWNLOAD_CACHE = {}
 
 # All do_* functions share one signature so CALC_MODE_DISPATCH can call any of
 # them the same way; each ignores the inputs its mode doesn't use (igs_path2 is
-# only set for ruling, extrude_length only matters for extrusion).
+# only set for ruling, extrude_length only matters for extrusion). `fineness`
+# is the request's own tessellation fineness, set on the DLL right before the call.
 
-def do_revolution(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+def do_revolution(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
     out_igs = os.path.join(out_folder, "MSRevolv.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSRevolv.obj").encode('ascii')
     dll_error = dll_instance.from_revolution(
@@ -330,6 +332,7 @@ def do_revolution(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile
         tile_type_int,
         tile_params,
         out_igs, out_obj,
+        fineness,
     )
     if dll_error:
         raise RuntimeError(dll_error)
@@ -337,7 +340,7 @@ def do_revolution(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile
     return obj_content, "MSRevolv.obj", "MSRevolv.igs"
 
 
-def do_extrusion(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+def do_extrusion(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
     out_igs = os.path.join(out_folder, "MSExtrd.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSExtrd.obj").encode('ascii')
     dll_error = dll_instance.from_extrusion(
@@ -347,6 +350,7 @@ def do_extrusion(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_
         tile_type_int,
         tile_params,
         out_igs, out_obj,
+        fineness,
     )
     if dll_error:
         raise RuntimeError(dll_error)
@@ -355,7 +359,7 @@ def do_extrusion(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_
     return obj_content, "MSExtrd.obj", "MSExtrd.igs"
 
 
-def do_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+def do_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
     out_igs = os.path.join(out_folder, "MSRuled.igs").encode('ascii')
     out_obj = os.path.join(out_folder, "MSRuled.obj").encode('ascii')
 
@@ -365,6 +369,7 @@ def do_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_par
         tile_type_int,
         tile_params,
         out_igs, out_obj,
+        fineness,
     )
     if dll_error:
         raise RuntimeError(dll_error)
@@ -410,6 +415,24 @@ def format_tile_params(params) -> str:
     return '(' + ', '.join(f'{v:.2f}' for v in params) + ')'
 
 
+def parse_fineness(raw) -> int:
+    """Client `tolerance` field -> tessellation fineness int in
+    [MIN_FINENESS, MAX_FINENESS] (None/'' = DEFAULT_FINENESS). Accepts
+    whole numbers given as floats/strings (20.0, "20"); rejects fractions
+    and out-of-range values. Raises ValueError/TypeError."""
+    if raw is None or raw == '':
+        return DEFAULT_FINENESS
+    if isinstance(raw, bool):
+        raise TypeError("tessellation fineness must be a number")
+    value = float(raw)
+    if not value.is_integer():
+        raise ValueError(f"tessellation fineness must be a whole number, got {raw!r}")
+    value = int(value)
+    if not MIN_FINENESS <= value <= MAX_FINENESS:
+        raise ValueError(f"tessellation fineness must be between {MIN_FINENESS} and {MAX_FINENESS}, got {value}")
+    return value
+
+
 CALC_MODE_DISPATCH = {
     CALC_MODE_EXTRUSION:  do_extrusion,
     CALC_MODE_REVOLUTION: do_revolution,
@@ -418,7 +441,7 @@ CALC_MODE_DISPATCH = {
 
 
 
-def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
+def calculate_tile(dll_instance, tile_params, graded, tile_type_str, fineness, sid):
     t_recv = time.time()
     tile_type_int = TILE_TYPE_MAP.get(tile_type_str)
     if tile_type_int is None:
@@ -428,7 +451,7 @@ def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, 
     obj_tile_path = os.path.join(os.getcwd(), TMP_DIR, f"tile_{uuid.uuid4().hex}.obj")
     
     # Actual calculation
-    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, tolerance, obj_tile_path.encode('utf-8'))
+    dll_error = dll_instance.get_tile(tile_type_int, tile_params, graded, fineness, obj_tile_path.encode('utf-8'))
     
     if dll_error:
         emit('error', {'msg': f'Tile generation failed: {dll_error}'})
@@ -465,7 +488,7 @@ def calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, 
             f"MSDLLGetTile: "
             f"  p={format_tile_params(tile_params)}"
             f"  g=({graded[0]:.2f},{graded[1]:.2f})"
-            f"  t=({tolerance:.2f})"
+            f"  fineness={fineness}"
             f"  {timings['overall_ms']:.0f}ms",
             extra=_log_extra(sid),
         )
@@ -758,6 +781,7 @@ def handle_calculate(data):
         g2  = float(args.get('g2', 1.5))
         tile_params = parse_tile_params(args.get('tileParams'), tile_type)
         extrude_length = float(args.get('extrudeLength', 10.0))
+        fineness = parse_fineness(data.get('tolerance'))
     except (TypeError, ValueError) as exc:
         logger.exception(f"[CALC] Rejected the request ({calc_mode} mode) — one of the tile/grading numbers wasn't valid: {exc}", extra=_log_extra(sid))
         emit('error', {'msg': f'Invalid numeric argument: {exc}'})
@@ -768,7 +792,7 @@ def handle_calculate(data):
     _log_calc_step(
         silent,
         f"Request \"{filename}\" from {_client_ip(sid)} — {calc_mode}, {tile_type}, "
-        f"tiles {nt1}×{nt2}×{nt3}, g=({g1}, {g2}), p={format_tile_params(tile_params)}",
+        f"tiles {nt1}×{nt2}×{nt3}, g=({g1}, {g2}), p={format_tile_params(tile_params)}, fineness={fineness}",
         sid,
     )
 
@@ -811,6 +835,7 @@ def handle_calculate(data):
         'calc_mode': calc_mode, 'tile_type_int': tile_type_int,
         'nt1': nt1, 'nt2': nt2, 'nt3': nt3, 'g1': g1, 'g2': g2,
         'tile_params': tile_params, 'extrude_length': extrude_length,
+        'fineness': fineness,
         'igs_bytes': igs_bytes, 'igs_bytes2': igs_bytes2,
         't_received': t_received, 'silent': silent,
     }
@@ -877,6 +902,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
     g1, g2         = p['g1'], p['g2']
     tile_params    = p['tile_params']
     extrude_length = p['extrude_length']
+    fineness       = p.get('fineness', DEFAULT_FINENESS)
     igs_bytes      = p['igs_bytes']
     igs_bytes2     = p['igs_bytes2']
 
@@ -905,7 +931,7 @@ def _run_calculate_dll_phase(dll_instance, payload: dict, sid: str) -> dict | No
         with temp_igs_file(igs_bytes) as igs_path, second_surface as igs_path2:
             obj_content, out_obj_name, out_igs_name = dispatch_fn(
                 dll_instance, out_folder, igs_path, igs_path2,
-                curr_num_tiles, curr_tile_params, curr_graded, tile_type_int, extrude_length,
+                curr_num_tiles, curr_tile_params, curr_graded, tile_type_int, extrude_length, fineness,
             )
     except FileNotFoundError as exc:
         logger.exception(f"[CALC] The native engine finished but didn't produce the expected output file ({calc_mode} mode): {exc}", extra=_log_extra(sid))
@@ -1066,7 +1092,7 @@ def handle_calculate_tile(data):
         tile_params = tile_params_array(parse_tile_params(data['values'], tile_type))
         graded1, graded2   = data.get('graded', [1, 1])
         graded  = (c_double * 2)(graded1, graded2)
-        tolerance = float(data.get('tolerance', 0.0))
+        fineness = parse_fineness(data.get('tolerance'))
 
         sid = request.sid
         if not dll_background_lane.try_acquire():
@@ -1077,7 +1103,7 @@ def handle_calculate_tile(data):
             return
         dll_background.set_current_sid(sid)
         try:
-            calculate_tile(dll_background, tile_params, graded, tile_type, tolerance, sid)
+            calculate_tile(dll_background, tile_params, graded, tile_type, fineness, sid)
         finally:
             dll_background.set_current_sid(None)
             dll_background_lane.release()
@@ -1092,7 +1118,10 @@ def handle_convert_igs_to_obj():
         return jsonify({'error': 'No file provided'}), 400
 
     igs_bytes = request.files['file'].read()
-    tolerance = float(request.form.get('tolerance', 0.0))
+    try:
+        fineness = parse_fineness(request.form.get('tolerance'))
+    except (TypeError, ValueError) as exc:
+        return jsonify({'error': str(exc), 'message': str(exc)}), 400
 
     # This route hits the same DLL as calculate_tile / silent calculate (on
     # every file upload, potentially twice concurrently in ruling mode), so
@@ -1113,7 +1142,7 @@ def handle_convert_igs_to_obj():
                 t_igs_start = time.time()
                 err = dll_background.iges2obj(igs_path.encode('ascii'),
                                               obj_path.encode('ascii'),
-                                              tolerance)
+                                              fineness)
                 t_igs_ms = round((time.time() - t_igs_start) * 1000)
                 if err:
                     logger.warning(f"[IGS2OBJ] DLL warning: {err}")
@@ -1132,7 +1161,7 @@ def handle_convert_igs_to_obj():
                         logger.warning(f"[TMP] failed to remove temp file: {obj_path}")
 
             b64_str = base64.b64encode(obj_content).decode('utf-8')
-            logger.info(f"[IGS2OBJ] {len(obj_content) // 1024}KB  {t_igs_ms}ms")
+            logger.info(f"[IGS2OBJ] {len(obj_content) // 1024}KB  fineness={fineness}  {t_igs_ms}ms")
             response = {'obj_b64': b64_str}
             if err:
                 response['warning'] = err

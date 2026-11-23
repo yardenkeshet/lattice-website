@@ -60,3 +60,10 @@ export const TILE_DEFS: Record<string, TileDef> = {
 }
 
 export type TileType = keyof typeof TILE_DEFS
+
+// Tessellation fineness for every OBJ the backend DLL produces (surface
+// preview, tile preview, macro shape, calculated lattice). Integer, higher =
+// finer / denser mesh. Must match MIN/MAX/DEFAULT_FINENESS in dll_instance.py.
+export const MIN_FINENESS = 2;
+export const MAX_FINENESS = 200;
+export const DEFAULT_FINENESS = 20;

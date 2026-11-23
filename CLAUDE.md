@@ -64,7 +64,7 @@ This is a Flask + SocketIO web app for generating parametric lattice structures 
 - `MSDLLMSFromRuling` / `MSDLLMSFromRevolution` / `MSDLLMSFromExtrusion` — lattice generation
 - `MSDLLGetTile` — standalone tile geometry (for the tile preview panel)
 - `MSDLLIGES2OBJ` — IGS surface → OBJ preview
-- `MSDLLSetPolyTolerance` — global tessellation fineness
+- `MSDLLSetPolyTolerance` — tessellation fineness (int 2–200, higher = finer); global per DLL copy, so `DllInstance` sets it before every work call using that request's value
 - `MSDLLSetProgressReportFuncs` — progress callbacks
 
 **`dll_lane.py`** / **`calc_queue.py`** — serialize access to the two loaded DLL copies (background lane vs. main calculation queue).

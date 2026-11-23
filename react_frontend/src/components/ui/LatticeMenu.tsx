@@ -4,7 +4,7 @@ import { Button } from './Button'
 import { Slider } from './Slider'
 import { NumberInput } from './NumberInput'
 import { Dropdown, type DropdownOption } from './Dropdown'
-import { CALC_MODE_DEFS, MAX_EXTRUSION_LENGTH, type CalcMode } from '../../calculation_params'
+import { CALC_MODE_DEFS, MAX_EXTRUSION_LENGTH, MIN_FINENESS, MAX_FINENESS, type CalcMode } from '../../calculation_params'
 import { CubeIcon3D } from './Toolbar'
 import { ColorPicker } from './ColorPicker'
 import {
@@ -358,16 +358,16 @@ const LatticeMenu = React.forwardRef<HTMLDivElement, LatticeMenuProps>(
               Reset Display Settings
             </Button>
             <Divider />
-            <Tooltip content="Controls the visual quality of the surface preview. Lower values produce a finer, more accurate tessellation. This affects only the display — the macro shape and lattice are always computed directly from the raw IGES data.">
+            <Tooltip content="Tessellation fineness. Higher values produce a finer, denser mesh (slower and larger). Applies to the surface preview, the tile preview, the macro shape and the calculated lattice OBJ; releasing the slider recalculates a lattice already on screen. The exported IGS is exact and unaffected.">
               <div style={sliderRowStyle}>
                 <Slider
-                  label="Tessellation Tolerance"
-                  min={0}
-                  max={1}
-                  step={0.05}
+                  label="Tessellation Fineness"
+                  min={MIN_FINENESS}
+                  max={MAX_FINENESS}
+                  step={1}
                   value={[localTolerance]}
                   showValue
-                  valuePrecision={2}
+                  valuePrecision={0}
                   fontSize={12}
                   onValueChange={([v]) => setLocalTolerance(v)}
                   onValueCommit={([v]) => { setLocalTolerance(v); onToleranceChange(v) }}

@@ -22,6 +22,7 @@ export interface CalculatePayload {
   /** performance.now() value captured just before emit, for round-trip timing */
   client_ts: number;
   args: CalculateArgs;
+  /** Tessellation fineness of the output OBJ: integer 2–200, higher = finer (backend default 20). */
   tolerance: number;
   /**
    * True for the frontend's own automatic macro-shape-preview calls (fired
@@ -39,6 +40,7 @@ export interface CalculateTilePayload {
   type: TileType;
   /** Tile shape parameters, any length (one per slider of the chosen tile type). */
   values: number[];
+  /** Tessellation fineness of the tile OBJ: integer 2–200, higher = finer (backend default 20). */
   tolerance: number;
 }
 

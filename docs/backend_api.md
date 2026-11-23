@@ -77,7 +77,8 @@ Triggers a full lattice generation from an uploaded STL surface.
     "g1": 2.0,                       // grading amplitude (float)
     "g2": 0.2,                       // grading frequency (float)
     "tileParams": [0.2, 0.0, 0.4]    // tile shape parameters, any length; defaults to [0.2, 0.0, 0.4], padded with 0s to at least 3
-  }
+  },
+  "tolerance": 20                    // tessellation fineness, see "Tessellation fineness" below
 }
 ```
 
@@ -106,11 +107,28 @@ Generates a standalone tile preview (no surface input needed).
 ```jsonc
 {
   "type": "diagonal",          // "cross" | "diagonal" | "cross_diagonal"
-  "values": [0.2, 0.1, 0.4]   // tile shape parameters, any length (padded with 0s to at least 3)
+  "values": [0.2, 0.1, 0.4],  // tile shape parameters, any length (padded with 0s to at least 3)
+  "tolerance": 20             // tessellation fineness, see "Tessellation fineness" below
 }
 ```
 
 **Server responds with one `result` emission** containing the tile OBJ.
+
+---
+
+#### Tessellation fineness
+
+`calculate`, `calculate_tile` and `POST /convert_igs_to_obj` (form field) all take an
+optional `tolerance` field: the **tessellation fineness** handed to `MSDLLSetPolyTolerance`.
+
+- An integer in `[2, 200]`; **higher = finer, denser OBJ mesh**. Default `20` when absent.
+- Whole numbers given as floats/strings (`20.0`, `"20"`) are accepted. Fractions or
+  out-of-range values are rejected: `calculate` / `calculate_tile` → `error` event,
+  `/convert_igs_to_obj` → `400`.
+- Affects only OBJ output; the IGS output is exact.
+- **Per request, never shared between users.** Fineness is global state inside each loaded
+  DLL copy, so `DllInstance` sets it right before every DLL work call, inside that lane's
+  exclusive section (`calc_queue.py` / `dll_lane.py`). The server stores no per-user value.
 
 ---
 

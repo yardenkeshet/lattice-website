@@ -51,7 +51,7 @@ Almost every label has a hover `Tooltip` explaining it.
 | ↳ Specular | 0–255 | 17 | Phong only |
 | ↳ Shininess | 0–200 | 50 | Phong only |
 | ↳ Reset Display Settings | button | | Restores the five values above |
-| ↳ Tessellation Tolerance | 0–1, step 0.05 | 0 | Display-only fineness of the surface preview. On release, re-converts the uploaded surface(s) and recalculates the tile preview. |
+| ↳ Tessellation Fineness | 2–200, step 1 (higher = finer) | 20 | Fineness of every DLL-generated OBJ (surface preview, tile preview, macro shape, calculated lattice); sent per request, never affects other users. Always 20 on page load; kept across calc-mode switches; not touched by Reset Display Settings. On release: re-converts the surface(s) and recalculates the tile preview, then either recalculates the lattice on screen with its own settings (only fineness changed; skipped if the value is unchanged) or, with no lattice yet, re-runs the macro-shape preview. |
 
 ## TileMenu (right panel)
 

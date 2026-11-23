@@ -41,7 +41,7 @@ def _install_fake_revolution(monkeypatch, delay=0.3):
     dict already captured the original function reference at import time."""
     calls = []
 
-    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
         calls.append(time.time())
         time.sleep(delay)
         return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRevolv.obj", "MSRevolv.igs"
@@ -196,7 +196,7 @@ def test_tile_call_is_not_blocked_by_a_running_main_calculation(monkeypatch):
 
     start = time.time()
     c2.emit('calculate_tile', {
-        'values': [0.15, 0.05, 0.0], 'type': 'cross', 'tolerance': 0.0,
+        'values': [0.15, 0.05, 0.0], 'type': 'cross', 'tolerance': 20,
     })
     assert _wait_until(lambda: any(
         m['name'] == 'result' for m in c2.get_received()
@@ -344,7 +344,7 @@ def test_real_calculate_saves_original_upload_and_logs_its_path(monkeypatch, tmp
 def test_ruling_mode_saves_both_surfaces(monkeypatch, tmp_path):
     monkeypatch.setattr(main_module, 'DATA_DIR', str(tmp_path))
 
-    def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+    def _fake_ruling(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
         return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "MSRuled.obj", "MSRuled.igs"
 
     monkeypatch.setitem(main_module.CALC_MODE_DISPATCH, main_module.CALC_MODE_RULING, _fake_ruling)
@@ -415,7 +415,7 @@ def test_calculate_forwards_six_tile_params_in_order(monkeypatch, calc_mode):
     order, as the double[] handed to the MSDLLMSFrom* call."""
     received = []
 
-    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length):
+    def _fake(dll_instance, out_folder, igs_path, igs_path2, num_tiles, tile_params, grading_params, tile_type_int, extrude_length, fineness):
         received.append(list(tile_params))
         return "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", "out.obj", "out.igs"
 
@@ -437,7 +437,7 @@ def test_calculate_forwards_six_tile_params_in_order(monkeypatch, calc_mode):
 def test_calculate_tile_forwards_six_tile_params(monkeypatch):
     received = []
 
-    def _fake_calculate_tile(dll_instance, tile_params, graded, tile_type_str, tolerance, sid):
+    def _fake_calculate_tile(dll_instance, tile_params, graded, tile_type_str, fineness, sid):
         received.append(list(tile_params))
 
     monkeypatch.setattr(main_module, 'calculate_tile', _fake_calculate_tile)

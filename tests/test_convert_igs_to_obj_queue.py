@@ -15,7 +15,7 @@ def _post(client, **overrides):
 
 
 def _fake_dll_success(obj_bytes=b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'):
-    def _fake(igs_file, obj_file, tolerance):
+    def _fake(igs_file, obj_file, fineness):
         obj_path = obj_file.decode('ascii')
         with open(obj_path, 'wb') as f:
             f.write(obj_bytes)
@@ -37,7 +37,7 @@ def test_success_releases_dll_slot(monkeypatch):
 
 
 def test_dll_error_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, obj_file, tolerance):
+    def _fake(igs_file, obj_file, fineness):
         return "DLL said no"
     monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()
@@ -50,7 +50,7 @@ def test_dll_error_releases_dll_slot(monkeypatch):
 
 
 def test_missing_output_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, obj_file, tolerance):
+    def _fake(igs_file, obj_file, fineness):
         return None  # "succeeds" but never writes obj_file
     monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()
@@ -63,7 +63,7 @@ def test_missing_output_releases_dll_slot(monkeypatch):
 
 
 def test_internal_exception_releases_dll_slot(monkeypatch):
-    def _fake(igs_file, obj_file, tolerance):
+    def _fake(igs_file, obj_file, fineness):
         raise RuntimeError('boom')
     monkeypatch.setattr(main_module.dll_background, 'iges2obj', _fake)
     client = main_module.app.test_client()

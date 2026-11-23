@@ -48,7 +48,7 @@ def test_get_tile_reports_dll_error_without_raising(tmp_path):
         instance = DllInstance({MAIN_DLL_PATH!r}, emit=lambda *a: None)
         params = (ctypes.c_double * 2)(0.0, 0.0)
         graded = (ctypes.c_double * 2)(0.2, 1.5)
-        err = instance.get_tile(0, params, graded, 0.0, {out_stl!r}.encode("ascii"))
+        err = instance.get_tile(0, params, graded, 20, {out_stl!r}.encode("ascii"))
         assert err is not None and isinstance(err, str), repr(err)
         print("DLL_RETURNED_CLEAN_ERROR")
     """)
@@ -125,7 +125,7 @@ def test_prepare_background_dll_copy_creates_a_loadable_copy(tmp_path):
     params = (ctypes.c_double * 2)(0.15, 0.05)
     graded = (ctypes.c_double * 2)(0.2, 1.5)
     out_stl = str(tmp_path / "from_copy.stl").encode("ascii")
-    assert instance.get_tile(0, params, graded, 0.0, out_stl) is None
+    assert instance.get_tile(0, params, graded, 20, out_stl) is None
 
 
 def test_prepare_background_dll_copy_is_idempotent_across_restarts(tmp_path):
@@ -183,15 +183,18 @@ def test_from_extrusion_passes_six_tile_params_through_ctypes():
     fake_fn = proto(_fake_dll_fn)
     fake_fn.argtypes, fake_fn.restype = real_fn.argtypes, real_fn.restype
 
+    real_set = instance._dll.MSDLLSetPolyTolerance
+
     class _FakeDll:
         MSDLLMSFromExtrusion = fake_fn
+        MSDLLSetPolyTolerance = real_set
     instance._dll = _FakeDll()
 
     six = [0.11, 0.22, 0.33, 0.44, 0.55, 0.66]
     err = instance.from_extrusion(
         b"in.igs", 12.5,
         (ctypes.c_int * 3)(2, 3, 4), (ctypes.c_double * 2)(0.2, 1.5),
-        2, (ctypes.c_double * 6)(*six), b"out.igs", b"out.obj",
+        2, (ctypes.c_double * 6)(*six), b"out.igs", b"out.obj", 20,
     )
 
     assert err is None

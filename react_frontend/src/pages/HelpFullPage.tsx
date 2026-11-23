@@ -181,7 +181,7 @@ const STEPS: HelpStep[] = [
 
 const COMMENTS: React.ReactNode[] = [
   <>The toolbar has a toggle button to switch between Perspective and Orthographic views.</>,
-  <>The Lattice Maker panel has a "Viewer Settings" option, with which you can control the foreground/background colors, tessellation tolerance for display, and more.</>,
+  <>The Lattice Maker panel has a "Viewer Settings" option, with which you can control the foreground/background colors, the tessellation fineness used for every generated mesh, and more.</>,
   <>
     This Web interface also demonstrates the ability to create graded geometry — tiles that change
     shape along the lattice. Here, you can vary arm thickness from beginning to end, along the

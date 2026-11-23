@@ -8,9 +8,11 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEN
  * Sends a .igs file to the server and returns the converted OBJ content
  * as a plain base64 string (no gzip wrapper).
  *
+ * `tolerance` is the tessellation fineness: integer 2–200, higher = finer.
+ *
  * Expected server response: JSON { obj_b64: string }
  */
-export async function convertIgsToObj(file: File, tolerance: number = 0.0): Promise<string> {
+export async function convertIgsToObj(file: File, tolerance: number = 20): Promise<string> {
   const form = new FormData();
   form.append('file', file);
   form.append('tolerance', String(tolerance));

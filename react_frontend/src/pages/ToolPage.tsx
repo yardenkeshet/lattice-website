@@ -29,8 +29,8 @@ import {
   ACCEPTED_FILE_EXT,
   type ShadingMode,
 } from '../lib/parameters'
-import { CALC_MODE_DEFS, type CalcMode, type TileType } from '../calculation_params'
-import type { CalculateArgs, ValidationError } from '../api/types'
+import { CALC_MODE_DEFS, DEFAULT_FINENESS, type CalcMode, type TileType } from '../calculation_params'
+import type { CalculateArgs, CalculatePayload, ValidationError } from '../api/types'
 
 /* ─── IGS conversion utility ─── */
 
@@ -40,7 +40,7 @@ import type { CalculateArgs, ValidationError } from '../api/types'
  * can resend them at Calculate time — the backend no longer persists
  * uploaded files between requests.
  */
-async function convertIgsFile(file: File, tolerance: number = 0.0): Promise<{ objFile: File; igsB64: string }> {
+async function convertIgsFile(file: File, tolerance: number = DEFAULT_FINENESS): Promise<{ objFile: File; igsB64: string }> {
   const [objB64, igsB64, ...rest] = await Promise.all([convertIgsToObj(file, tolerance), fileToBase64(file)])
   if (import.meta.env.DEV) {
     console.log("rest:", rest)
@@ -174,8 +174,10 @@ export function ToolPage() {
   const [uploadedFile2, setUploadedFile2] = React.useState<File | null>(null)
   const [uploadedIgsB64_2, setUploadedIgsB64_2] = React.useState<string | null>(null)
 
-  /* ── Tessellation tolerance + original IGS file references for re-conversion ── */
-  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(0.0)
+  /* ── Tessellation fineness (int 2–200, higher = finer) + original IGS file references for re-conversion.
+     Sent with every DLL-backed request; the backend applies it per request, so it never
+     affects other users. Always starts at the default on page load (not remembered). ── */
+  const [igsConversionTolerance, setIgsConversionTolerance] = React.useState(DEFAULT_FINENESS)
   // Keep a reference to the original File objects so tolerance changes can re-convert
   const [originalIgsFile,  setOriginalIgsFile]  = React.useState<File | null>(null)
   const [originalIgsFile2, setOriginalIgsFile2] = React.useState<File | null>(null)
@@ -253,6 +255,13 @@ export function ToolPage() {
      auto-fits (plain uploads, tile previews) never reuse stale data. */
   const pendingSnapshotRef = React.useRef<{ filename: string; args: CalculateArgs; savedInputPaths: string[] } | null>(null)
 
+  /* The exact `calculate` payload of the real calculation in flight, and of the
+     lattice currently on screen. A fineness-slider release re-sends
+     shownLatticeRef with only `tolerance` changed, so unsaved edits to other
+     settings wait for Make Lattice. Cleared wherever the result is cleared. */
+  const pendingCalcRef  = React.useRef<CalculatePayload | null>(null)
+  const shownLatticeRef = React.useRef<CalculatePayload | null>(null)
+
 
   /* ── Load bundled default tile on mount so preview is ready without a server round-trip ── */
   React.useEffect(() => {
@@ -297,7 +306,12 @@ export function ToolPage() {
           setOverlayPhase('calculating')
           setResultGzB64(payload.obj_gz_b64)
           setDownloadToken(payload.download_token)
-          if (payload.args_echo) {
+          shownLatticeRef.current = pendingCalcRef.current
+          pendingCalcRef.current = null
+          // Only stash a calc-log snapshot when a camera auto-fit will follow
+          // to consume it; a fineness-only recalc keeps the camera, and a
+          // leftover snapshot would be logged with the wrong image later.
+          if (payload.args_echo && pendingResetKey.current !== null) {
             pendingSnapshotRef.current = {
               filename: payload.filename, args: payload.args_echo,
               savedInputPaths: payload.saved_input_paths ?? [],
@@ -418,8 +432,9 @@ export function ToolPage() {
       })
     }, 500)
     return () => clearTimeout(timer)
+  // igsConversionTolerance intentionally omitted: handleToleranceChange handles fineness changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extrudeLength, igsConversionTolerance])
+  }, [extrudeLength])
   
   /* ── Tile param change → update state only (no backend call on drag) ── */
   const handleTileSliderChange = React.useCallback((values: number[]) => {
@@ -433,6 +448,21 @@ export function ToolPage() {
      recalculation (socket, hits the DLL's tile path) must not run concurrently —
      the DLL isn't thread-safe, so overlapping calls corrupt each other's output.
      Wait for the conversions to fully settle before firing calculateTile. ── */
+  /* ── Starts a real (non-silent) calculation: overlay, queue, result routing.
+     Shared by Make Lattice and the fineness-slider auto-recalc so both behave
+     identically. resetCamera=false keeps the current view (fineness-only recalc). ── */
+  const startCalculation = React.useCallback((payload: CalculatePayload, resetCamera: boolean) => {
+    setErrorMsg(null)
+    setQueueBusyMsg(null)
+    pendingMacroCountRef.current = 0  // cancel any in-flight macro preview routing
+    pendingResetKey.current = resetCamera ? 'calc-' + Date.now() : null
+    setIsCalculating(true)
+    setOverlayPhase('calculating')
+    setQueueWaitingLabel('')
+    pendingCalcRef.current = payload
+    socket.calculate(payload)
+  }, [socket, setErrorMsg, setQueueBusyMsg])
+
   const handleToleranceChange = React.useCallback((v: number) => {
     setErrorMsg(null)
     setIgsConversionTolerance(v)
@@ -459,8 +489,45 @@ export function ToolPage() {
     }
     Promise.all(conversions).then(() => {
       socket.calculateTile({ type: tileType, values: tileSliderValues, tolerance: v })
+
+      const shown = shownLatticeRef.current
+      if (shown) {
+        // A calculated lattice is on screen: rebuild that same lattice at the
+        // new fineness (its own settings, not current unsaved edits). The
+        // macro preview is skipped — both return model_obj and are routed by
+        // pendingMacroCountRef, so running them together could misroute.
+        if (shown.tolerance !== v) {
+          startCalculation({ ...shown, tolerance: v, client_ts: performance.now() }, false)
+        }
+        return
+      }
+
+      // No lattice yet: refresh the silent macro-shape preview at the new
+      // fineness. The upload effect won't re-fire on its own (re-conversion
+      // yields identical igsB64 strings).
+      const igsB64 = uploadedIgsB64Ref.current
+      const needsTwo = CALC_MODE_DEFS[calcMode].requiredFilesCount === 2
+      if (!igsB64 || (needsTwo && !uploadedIgsB64_2) || isCalculatingRef.current) return
+      pendingMacroCountRef.current += 1
+      socket.calculate({
+        filename: uploadedFile?.name ?? 'surface.igs',
+        surface_b64: igsB64,
+        ...(needsTwo ? { surface2_b64: uploadedIgsB64_2! } : {}),
+        client_ts: performance.now(),
+        args: {
+          tileType,
+          calcMode,
+          nt1: 0, nt2: 0, nt3: 0,
+          g1, g2,
+          tileParams: tileSliderValues,
+          extrudeLength,
+        },
+        tolerance: v,
+        silent: true,
+      })
     })
-  }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket, setErrorMsg])
+  }, [originalIgsFile, originalIgsFile2, tileType, tileSliderValues, socket, setErrorMsg,
+      startCalculation, calcMode, uploadedFile, uploadedIgsB64_2, g1, g2, extrudeLength])
 
   /* ── Tile param commit (mouse-up or badge Enter) → calculateTile, no camera reset ── */
   const handleTileSliderCommit = React.useCallback((values: number[]) => {
@@ -491,6 +558,7 @@ export function ToolPage() {
     setOriginalIgsFile2(null)
     setResultGzB64(null)
     setDownloadToken(null)
+    shownLatticeRef.current = null
     setMacroShapeGzB64(null)
     setDisplayedLayers([])
     setCalcMode(mode)
@@ -499,6 +567,7 @@ export function ToolPage() {
   /* ── File upload ── */
   const handleFilesAdd = React.useCallback(async (files: File[]) => {
     setResultGzB64(null)
+    shownLatticeRef.current = null
     setErrorMsg(null)
     pendingMacroCountRef.current = 0
 
@@ -548,10 +617,12 @@ export function ToolPage() {
     setMacroShapeGzB64(null)
     setResultGzB64(null)
     setDownloadToken(null)
+    shownLatticeRef.current = null
   }, [])
 
   const handleClear2 = React.useCallback(() => {
     pendingMacroCountRef.current = 0
+    shownLatticeRef.current = null  // a ruling lattice without surface 2 can't be rebuilt
     setUploadedFile2(null)
     setUploadedIgsB64_2(null)
     setOriginalIgsFile2(null)
@@ -588,20 +659,15 @@ export function ToolPage() {
         return
       }
     }
-    pendingResetKey.current = 'calc-' + Date.now()
-    setIsCalculating(true)
-    setOverlayPhase('calculating')
-    setQueueWaitingLabel('')
-    const calculateArgs = {
+    startCalculation({
       filename: uploadedFile!.name,
       surface_b64: uploadedIgsB64!,
       ...(calcMode === RULING ? { surface2_b64: uploadedIgsB64_2! } : {}),
       client_ts: performance.now(),
       args: { tileType, calcMode, nt1, nt2, nt3, g1, g2, tileParams: tileSliderValues, extrudeLength },
       tolerance: igsConversionTolerance
-    }
-    socket.calculate(calculateArgs)
-  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, socket, setErrorMsg, setQueueBusyMsg])
+    }, true)
+  }, [validationErrors, calcMode, uploadedFile, uploadedFile2, uploadedIgsB64, uploadedIgsB64_2, nt1, nt2, nt3, g1, g2, tileSliderValues, tileType, extrudeLength, igsConversionTolerance, startCalculation, setErrorMsg, setQueueBusyMsg])
 
   /* ── Export ── */
   const handleExportObj = React.useCallback(() => {

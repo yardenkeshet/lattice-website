@@ -78,7 +78,7 @@ describe('convertIgsToObj()', () => {
     fetchSpy.mockResolvedValue(new Response('{"obj_b64":"b2JqLWJ5dGVz"}', { status: 200 }))
 
     const file = new File(['igs-bytes'], 'part.igs')
-    const result = await convertIgsToObj(file, 0.5)
+    const result = await convertIgsToObj(file, 35)
 
     expect(result).toBe('b2JqLWJ5dGVz')
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
@@ -86,7 +86,7 @@ describe('convertIgsToObj()', () => {
     expect(init.method).toBe('POST')
     const form = init.body as FormData
     expect((form.get('file') as File).name).toBe('part.igs')
-    expect(form.get('tolerance')).toBe('0.5')
+    expect(form.get('tolerance')).toBe('35')
   })
 
   it('throws with the server-provided error message on a non-ok status', async () => {
